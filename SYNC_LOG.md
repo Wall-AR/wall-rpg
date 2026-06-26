@@ -68,6 +68,25 @@ npm run db:generate --workspace=server
 npm run db:migrate --workspace=server
 ```
 
+### 2026-06-26 — Fase 2: Autenticação, Lobby de Abas e Presença (Casa - D:\MEGACOLISEUM)
+
+**Ações:**
+- Implementação das rotas REST de autenticação (`POST /auth/register` e `POST /auth/login`) no backend com criptografia de senha (`bcryptjs`) e geração de tokens JWT.
+- Criação automática de personagem com atributos iniciais padrão ao registrar uma nova conta.
+- Implementação de um endpoint `/character/me` autenticado com JWT para recuperação dos atributos do personagem.
+- Suporte a fallback em memória no backend caso o banco de dados PostgreSQL esteja offline, permitindo desenvolvimento in-memory sem travar.
+- Atualização do proxy do cliente Vite para espelhar rotas `/character` para o backend na porta 3001.
+- Criação dos componentes de interface do cliente:
+  - `LoginScreen.tsx`: Tela de formulário de login/registro estilizada com tratamento de erros.
+  - `LobbyScreen.tsx`: Interface completa do lobby com navegação em abas (Início, Perfil, Inventário, Amigos, Batalhas, Missões, Ajustes) com sincronização em tempo real da contagem de jogadores online via salas Colyseus.
+  - Integração do Zustand para persistência e armazenamento das credenciais do usuário.
+
+**Como Atualizar em Outras Máquinas:**
+```bash
+git pull
+npm install --legacy-peer-deps
+```
+
 ---
 
 <!-- NOVAS ENTRADAS DEVEM SER ADICIONADAS ACIMA DESTA LINHA -->

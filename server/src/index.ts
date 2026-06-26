@@ -8,6 +8,8 @@ import { monitor } from '@colyseus/monitor';
 
 import { GameRoom } from './rooms/GameRoom.js';
 import { BattleRoom } from './rooms/BattleRoom.js';
+import authRouter from './routes/auth.js';
+import characterRouter from './routes/character.js';
 
 dotenv.config();
 
@@ -16,6 +18,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/auth', authRouter);
+app.use('/character', characterRouter);
 
 // Maintain /health route
 app.get('/health', (_req, res) => {

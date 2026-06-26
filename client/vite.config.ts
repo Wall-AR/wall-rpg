@@ -27,6 +27,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/auth': 'http://localhost:3001',
+      '/character': 'http://localhost:3001',
     },
   },
 });
