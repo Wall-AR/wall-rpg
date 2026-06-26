@@ -1,0 +1,13 @@
+{
+  "name": "wall-rpg",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev": "npm run dev --workspace=client & npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspace=client && npm run build --workspace=server",
+    "lint": "npm run lint --workspace=client && npm run lint --workspace=server"
+  }
+}
