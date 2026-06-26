@@ -1,33 +1,44 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { Server } from 'colyseus';
+import { WebSocketTransport } from '@colyseus/ws-transport';
+import { monitor } from '@colyseus/monitor';
+
+import { GameRoom } from './rooms/GameRoom.js';
+import { BattleRoom } from './rooms/BattleRoom.js';
 
 dotenv.config();
 
+const port = Number(process.env.PORT || 3001);
 const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
-});
 
 app.use(cors());
 app.use(express.json());
 
+// Maintain /health route
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-io.on('connection', (socket) => {
-  console.log(`[connect] ${socket.id}`);
+const httpServer = createServer(app);
 
-  socket.on('disconnect', () => {
-    console.log(`[disconnect] ${socket.id}`);
-  });
+// Initialize Colyseus Server using WebSockets
+const gameServer = new Server({
+  transport: new WebSocketTransport({
+    server: httpServer,
+  }),
 });
 
-const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`[server] rodando na porta ${PORT}`);
+// Register Rooms
+gameServer.define("game", GameRoom);
+gameServer.define("battle", BattleRoom);
+
+// Register Colyseus monitor panel route
+app.use("/colyseus", monitor());
+
+// Start Server
+httpServer.listen(port, () => {
+  console.log(`[server] Colyseus game server running on port ${port}`);
 });
