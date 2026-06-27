@@ -87,6 +87,23 @@ git pull
 npm install --legacy-peer-deps
 ```
 
+### 2026-06-26 — Fase 3: Renderização do Mapa, Movimentação e Câmera (Casa - D:\MEGACOLISEUM)
+
+**Ações:**
+- Criação de um gerador programático de texturas retro pixel-art (`textures.ts`) usando HTML5 Canvas no frontend para evitar dependência de arquivos físicos estáticos (Grama, Pedra, Tijolo, Portal, Animação de Jogadores em 4 direções e Monstros).
+- Definição estruturada de mapa do lobby (`map.ts`) em matriz binária com dimensões de 24x16, definindo zonas de colisão e check de caminhabilidade (`isWalkable`).
+- Refatoração do `GameCanvas.tsx` para inicialização imperativa da `Application` do PixiJS (v8), eliminando erros de compilação de JSX de React-Pixi.
+- Implementação de movimentação grid-based clássica em 4 direções (com suavização de movimento por interpolação de ticks).
+- Implementação de câmera dinâmica que segue o jogador centralizado e se prende aos limites do mapa.
+- Sincronização de movimento em tempo real com o Colyseus, enviando mensagens `"move"` ao servidor e renderizando os outros jogadores ativos no mapa com suas posições corretas e tags de nomes correspondentes.
+- Verificação de compilação do cliente com TypeScript (`tsc`) e build de produção para PWA realizadas com 100% de sucesso.
+
+**Como Atualizar em Outras Máquinas:**
+```bash
+git pull
+npm run build --workspace=client
+```
+
 ---
 
 <!-- NOVAS ENTRADAS DEVEM SER ADICIONADAS ACIMA DESTA LINHA -->
