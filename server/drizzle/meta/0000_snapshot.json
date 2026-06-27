@@ -1,5 +1,5 @@
 {
-  "id": "ce6fda31-de24-48dc-8cc6-52b5b61453e2",
+  "id": "da5eead5-42eb-40ff-a294-86504a222606",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -26,6 +26,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "soul_orbs": {
+          "name": "soul_orbs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -275,8 +282,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "character_id": {
-          "name": "character_id",
+        "account_id": {
+          "name": "account_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -286,6 +293,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "equipped_character_id": {
+          "name": "equipped_character_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "slot": {
           "name": "slot",
@@ -310,12 +323,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "inventory_character_id_characters_id_fk": {
-          "name": "inventory_character_id_characters_id_fk",
+        "inventory_account_id_accounts_id_fk": {
+          "name": "inventory_account_id_accounts_id_fk",
           "tableFrom": "inventory",
-          "tableTo": "characters",
+          "tableTo": "accounts",
           "columnsFrom": [
-            "character_id"
+            "account_id"
           ],
           "columnsTo": [
             "id"
@@ -334,6 +347,19 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inventory_equipped_character_id_characters_id_fk": {
+          "name": "inventory_equipped_character_id_characters_id_fk",
+          "tableFrom": "inventory",
+          "tableTo": "characters",
+          "columnsFrom": [
+            "equipped_character_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -490,6 +516,77 @@
       },
       "indexes": {},
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.retired_characters": {
+      "name": "retired_characters",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "xp": {
+          "name": "xp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "element": {
+          "name": "element",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired_at": {
+          "name": "retired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "retired_characters_account_id_accounts_id_fk": {
+          "name": "retired_characters_account_id_accounts_id_fk",
+          "tableFrom": "retired_characters",
+          "tableTo": "accounts",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

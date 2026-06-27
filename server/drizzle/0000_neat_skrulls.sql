@@ -2,6 +2,7 @@ CREATE TABLE "accounts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"username" text NOT NULL,
 	"password_hash" text NOT NULL,
+	"soul_orbs" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "accounts_username_unique" UNIQUE("username")
 );
@@ -37,8 +38,9 @@ CREATE TABLE "friendships" (
 --> statement-breakpoint
 CREATE TABLE "inventory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"character_id" uuid NOT NULL,
+	"account_id" uuid NOT NULL,
 	"item_id" text NOT NULL,
+	"equipped_character_id" uuid,
 	"slot" integer NOT NULL,
 	"quantity" integer DEFAULT 1 NOT NULL,
 	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL
@@ -67,10 +69,22 @@ CREATE TABLE "quests" (
 	"description" text NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "retired_characters" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"account_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"level" integer NOT NULL,
+	"xp" integer NOT NULL,
+	"element" text NOT NULL,
+	"retired_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 ALTER TABLE "characters" ADD CONSTRAINT "characters_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "friendships" ADD CONSTRAINT "friendships_user_id_1_accounts_id_fk" FOREIGN KEY ("user_id_1") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "friendships" ADD CONSTRAINT "friendships_user_id_2_accounts_id_fk" FOREIGN KEY ("user_id_2") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "inventory" ADD CONSTRAINT "inventory_character_id_characters_id_fk" FOREIGN KEY ("character_id") REFERENCES "public"."characters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory" ADD CONSTRAINT "inventory_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory" ADD CONSTRAINT "inventory_item_id_items_base_id_fk" FOREIGN KEY ("item_id") REFERENCES "public"."items_base"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inventory" ADD CONSTRAINT "inventory_equipped_character_id_characters_id_fk" FOREIGN KEY ("equipped_character_id") REFERENCES "public"."characters"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "quest_progress" ADD CONSTRAINT "quest_progress_quest_id_quests_id_fk" FOREIGN KEY ("quest_id") REFERENCES "public"."quests"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "quest_progress" ADD CONSTRAINT "quest_progress_character_id_characters_id_fk" FOREIGN KEY ("character_id") REFERENCES "public"."characters"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "quest_progress" ADD CONSTRAINT "quest_progress_character_id_characters_id_fk" FOREIGN KEY ("character_id") REFERENCES "public"."characters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "retired_characters" ADD CONSTRAINT "retired_characters_account_id_accounts_id_fk" FOREIGN KEY ("account_id") REFERENCES "public"."accounts"("id") ON DELETE cascade ON UPDATE no action;

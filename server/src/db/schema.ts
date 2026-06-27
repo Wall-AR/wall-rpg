@@ -4,6 +4,7 @@ export const accounts = pgTable('accounts', {
   id: uuid('id').defaultRandom().primaryKey(),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  soulOrbs: integer('soul_orbs').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -26,6 +27,18 @@ export const characters = pgTable('characters', {
   dragoonLevel: integer('dragoon_level').default(0).notNull(),
 });
 
+export const retiredCharacters = pgTable('retired_characters', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  level: integer('level').notNull(),
+  xp: integer('xp').notNull(),
+  element: text('element').notNull(),
+  retiredAt: timestamp('retired_at').defaultNow().notNull(),
+});
+
 export const itemsBase = pgTable('items_base', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -36,13 +49,15 @@ export const itemsBase = pgTable('items_base', {
 
 export const inventory = pgTable('inventory', {
   id: uuid('id').defaultRandom().primaryKey(),
-  characterId: uuid('character_id')
+  accountId: uuid('account_id')
     .notNull()
-    .references(() => characters.id, { onDelete: 'cascade' }),
+    .references(() => accounts.id, { onDelete: 'cascade' }),
   itemId: text('item_id')
     .notNull()
     .references(() => itemsBase.id),
-  slot: integer('slot').notNull(),
+  equippedCharacterId: uuid('equipped_character_id')
+    .references(() => characters.id, { onDelete: 'set null' }),
+  slot: integer('slot').notNull(), // -1 if backpack, 0 weapon, 1 armor, etc.
   quantity: integer('quantity').default(1).notNull(),
   metadata: jsonb('metadata').$type<Record<string, any>>().default({}).notNull(),
 });
