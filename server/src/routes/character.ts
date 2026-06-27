@@ -26,7 +26,23 @@ router.get('/me', authenticateToken, async (req: any, res: any) => {
 
   try {
     if (db) {
-      const [character] = await db.select().from(characters).where(eq(characters.accountId, id)).limit(1);
+      const [character] = await db
+        .select({
+          id: characters.id,
+          accountId: characters.accountId,
+          name: characters.name,
+          level: characters.level,
+          xp: characters.xp,
+          stats: characters.stats,
+          element: characters.element,
+          dragoonLevel: characters.dragoonLevel,
+          soulOrbs: accounts.soulOrbs,
+        })
+        .from(characters)
+        .innerJoin(accounts, eq(characters.accountId, accounts.id))
+        .where(eq(characters.accountId, id))
+        .limit(1);
+
       if (!character) {
         return res.status(404).json({ error: 'Character not found' });
       }
@@ -41,6 +57,7 @@ router.get('/me', authenticateToken, async (req: any, res: any) => {
         xp: 0,
         element: 'fire',
         dragoonLevel: 0,
+        soulOrbs: 45,
         stats: {
           hp: 100,
           mp: 20,

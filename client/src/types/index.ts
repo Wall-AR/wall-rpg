@@ -18,6 +18,7 @@ export interface Character {
   dragoonLevel: number;
   additions: Addition[];
   equipment: Equipment;
+  soulOrbs?: number;
 }
 
 export type ElementType = 'fire' | 'water' | 'wind' | 'earth' | 'light' | 'darkness' | 'thunder' | 'non-elemental';
