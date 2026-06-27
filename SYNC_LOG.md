@@ -104,6 +104,30 @@ git pull
 npm run build --workspace=client
 ```
 
+### 2026-06-26 — Fase 4 & 5: Sistema de Batalha, Orbes e Despedida (Casa - D:\MEGACOLISEUM)
+
+**Ações:**
+- Implementação da lógica de combate em turnos simultâneos no Colyseus server (`BattleRoom.ts` e `BattleState.ts`), gerenciando Phase de Planejamento e Resolução com base na Velocidade (Speed) dos heróis.
+- Implementação da fórmula de modificador elemental cruzado (`Terra > Vento > Água > Fogo > Terra`) no backend para as armas equipadas.
+- Criação da interface visual de batalha no cliente (`BattleScreen.tsx`), incluindo tela de carregamento (cards), barras de vida/mana animadas, menu de seleção e console de logs de combate.
+- Atualização do esquema do banco de dados Drizzle (`schema.ts`):
+  - Adição de `soulOrbs` em `accounts`.
+  - Refatoração de `inventory` para associar itens a `accountId` e adicionar `equippedCharacterId` com comportamento `onDelete: 'set null'` (garantindo que itens equipados voltem automaticamente para a mochila/inventário caso o herói seja despedido).
+  - Criação da tabela `retired_characters` para o mural histórico.
+- Simplificação das configurações do Drizzle (`drizzle.config.ts`) para usar caminhos relativos ao monorepo (evitando bugs de caminho absoluto duplicado no Windows).
+- Criação dos endpoints `/character/dismiss` (transação de despedida, deletando herói e gerando orbes na conta) e `/character/retired` (obter heróis aposentados) no express server.
+- Integração no Perfil do jogador no Lobby para exibir saldo de Orbes de Alma, botão de Despedir-se e o Álbum de Lembranças.
+- Fresh migration SQL gerada e aplicada com sucesso. Ambos os workspaces (cliente e servidor) compilados sem erros.
+
+**Como Atualizar em Outras Máquinas:**
+```bash
+git pull
+# Rodar migrações do banco (caso conecte no PG real)
+npx drizzle-kit generate --config=server/drizzle.config.ts
+npm run lint
+npm run build
+```
+
 ---
 
 <!-- NOVAS ENTRADAS DEVEM SER ADICIONADAS ACIMA DESTA LINHA -->
