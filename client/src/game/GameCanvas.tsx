@@ -6,7 +6,11 @@ import { generateTextures } from './textures';
 import { LOBBY_MAP, isWalkable } from './map';
 import * as EasyStar from 'easystarjs';
 
-export const GameCanvas: React.FC = () => {
+export interface GameCanvasProps {
+  onTriggerBattle: () => void;
+}
+
+export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { token } = useAuthStore();
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -298,6 +302,7 @@ export const GameCanvas: React.FC = () => {
               const playerPixelY = state.gridY * tileSize;
               if (monster.x === playerPixelX && monster.y === playerPixelY) {
                 console.log(`💥 Battle triggered against ${monster.name}!`);
+                onTriggerBattle();
               }
             });
           }
