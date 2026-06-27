@@ -2,6 +2,7 @@ import { Room, Client } from 'colyseus';
 import jwt from 'jsonwebtoken';
 import { MapState } from '../schemas/MapState.js';
 import { PlayerState } from '../schemas/PlayerState.js';
+import { MonsterState } from '../schemas/MonsterState.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
@@ -22,6 +23,25 @@ export class GameRoom extends Room<{ state: MapState }> {
   override onCreate(options: any) {
     this.setState(new MapState());
     this.state.mapId = options.mapId || "default_map";
+
+    // Spawn some default monsters in grass areas
+    const defaultMonsters = [
+      { id: "m1", name: "Orc Silvestre", x: 2 * 32, y: 2 * 32, type: "orc" },
+      { id: "m2", name: "Goblin Saqueador", x: 3 * 32, y: 13 * 32, type: "goblin" },
+      { id: "m3", name: "Lobo da Areia", x: 20 * 32, y: 2 * 32, type: "wolf" },
+      { id: "m4", name: "Gárgula Rúnica", x: 20 * 32, y: 13 * 32, type: "gargoyle" }
+    ];
+
+    defaultMonsters.forEach(m => {
+      const monster = new MonsterState();
+      monster.id = m.id;
+      monster.name = m.name;
+      monster.x = m.x;
+      monster.y = m.y;
+      monster.type = m.type;
+      monster.active = true;
+      this.state.monsters.set(m.id, monster);
+    });
 
     // Handle movement messages from clients
     this.onMessage("move", (client, data: { x: number; y: number }) => {

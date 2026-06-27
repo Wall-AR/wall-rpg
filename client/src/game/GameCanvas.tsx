@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/auth';
 import { client } from './colyseus';
 import { generateTextures } from './textures';
 import { LOBBY_MAP, isWalkable } from './map';
+import * as EasyStar from 'easystarjs';
 
 export const GameCanvas: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,6 +91,48 @@ export const GameCanvas: React.FC = () => {
         // Group container for other players
         const otherPlayersContainer = new Container();
         mainContainer.addChild(otherPlayersContainer);
+
+        // Group container for monsters
+        const monstersContainer = new Container();
+        mainContainer.addChild(monstersContainer);
+
+        // Initialize EasyStar.js pathfinding
+        const easystar = new EasyStar.js();
+        easystar.setGrid(LOBBY_MAP.grid);
+        easystar.setAcceptableTiles([0, 1, 3]);
+
+        // Group container for NPCs
+        const npcsContainer = new Container();
+        mainContainer.addChild(npcsContainer);
+
+        // NPC State
+        const npcState = {
+          gridX: 14,
+          gridY: 6,
+          targetGridX: 14,
+          targetGridY: 6,
+          moveProgress: 1,
+          path: [] as { x: number; y: number }[],
+          lastPatrolTime: Date.now(),
+        };
+
+        // Create NPC Sprite and Name Tag
+        const npcSprite = new Sprite(textures.playerUp);
+        npcSprite.anchor.set(0.5);
+        npcSprite.width = tileSize;
+        npcSprite.height = tileSize;
+        npcsContainer.addChild(npcSprite);
+
+        const npcStyle = new TextStyle({
+          fontFamily: 'Arial',
+          fontSize: 9,
+          fill: '#a78bfa',
+          align: 'center',
+          stroke: { color: '#000000', width: 2 }
+        });
+        const npcNameText = new Text({ text: 'Guia da Arena (NPC)', style: npcStyle });
+        npcNameText.anchor.set(0.5);
+        npcsContainer.addChild(npcNameText);
 
         // Nameplate text style
         const textStyle = new TextStyle({
@@ -229,6 +272,84 @@ export const GameCanvas: React.FC = () => {
             otherNameText.y = player.y - 6;
             otherPlayersContainer.addChild(otherNameText);
           });
+
+          // 7. Draw Monsters & Check Collision
+          monstersContainer.removeChildren();
+          if (room.state.monsters) {
+            room.state.monsters.forEach((monster: any) => {
+              if (!monster.active) return;
+
+              const monsterSprite = new Sprite(textures.monster);
+              monsterSprite.anchor.set(0.5);
+              monsterSprite.x = monster.x + tileSize / 2;
+              monsterSprite.y = monster.y + tileSize / 2;
+              monsterSprite.width = tileSize;
+              monsterSprite.height = tileSize;
+              monstersContainer.addChild(monsterSprite);
+
+              const monsterNameText = new Text({ text: monster.name, style: textStyle });
+              monsterNameText.anchor.set(0.5);
+              monsterNameText.x = monster.x + tileSize / 2;
+              monsterNameText.y = monster.y - 6;
+              monstersContainer.addChild(monsterNameText);
+
+              // Collision check with local player (grid position)
+              const playerPixelX = state.gridX * tileSize;
+              const playerPixelY = state.gridY * tileSize;
+              if (monster.x === playerPixelX && monster.y === playerPixelY) {
+                console.log(`💥 Battle triggered against ${monster.name}!`);
+              }
+            });
+          }
+
+          // 8. Update NPC Patrolling (Pathfinding)
+          if (npcState.moveProgress < 1) {
+            npcState.moveProgress += 0.05; // Make NPC move slower than player
+            if (npcState.moveProgress >= 1) {
+              npcState.moveProgress = 1;
+              npcState.gridX = npcState.targetGridX;
+              npcState.gridY = npcState.targetGridY;
+            }
+          }
+
+          // If NPC is idle and has no path, periodically find a new path
+          if (npcState.moveProgress === 1 && npcState.path.length === 0) {
+            const now = Date.now();
+            if (now - npcState.lastPatrolTime > 3000) {
+              npcState.lastPatrolTime = now;
+              // Choose a random walkable target cell in the stone lobby area
+              let targetX = 8 + Math.floor(Math.random() * 8);
+              let targetY = 5 + Math.floor(Math.random() * 5);
+
+              if (isWalkable(targetX, targetY)) {
+                easystar.findPath(npcState.gridX, npcState.gridY, targetX, targetY, (path) => {
+                  if (path && path.length > 1) {
+                    npcState.path = path.slice(1);
+                  }
+                });
+                easystar.calculate();
+              }
+            }
+          }
+
+          // If NPC has a path, take the next step
+          if (npcState.moveProgress === 1 && npcState.path.length > 0) {
+            const nextNode = npcState.path.shift();
+            if (nextNode) {
+              npcState.targetGridX = nextNode.x;
+              npcState.targetGridY = nextNode.y;
+              npcState.moveProgress = 0;
+            }
+          }
+
+          // Interpolate NPC visual position
+          const npcVisualX = (npcState.gridX + (npcState.targetGridX - npcState.gridX) * npcState.moveProgress) * tileSize + tileSize / 2;
+          const npcVisualY = (npcState.gridY + (npcState.targetGridY - npcState.gridY) * npcState.moveProgress) * tileSize + tileSize / 2;
+
+          npcSprite.x = npcVisualX;
+          npcSprite.y = npcVisualY;
+          npcNameText.x = npcVisualX;
+          npcNameText.y = npcVisualY - 22;
 
           animationFrameId = requestAnimationFrame(tick);
         };
