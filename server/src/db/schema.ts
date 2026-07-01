@@ -4,6 +4,7 @@ export const accounts = pgTable('accounts', {
   id: uuid('id').defaultRandom().primaryKey(),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
+  role: text('role').default('player').notNull(), // 'player' | 'gm'
   soulOrbs: integer('soul_orbs').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

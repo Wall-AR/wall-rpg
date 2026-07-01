@@ -2,27 +2,13 @@ import { Router } from 'express';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { characters, accounts, retiredCharacters } from '../db/schema.js';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
-// Middleware to authenticate JWT
-const authenticateToken = (req: any, res: any, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+router.get('/me', authenticateToken, async (req, res) => {
+  const { username, id, characterId } = (req as AuthenticatedRequest).user;
 
-  if (!token) return res.sendStatus(401);
-
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
-
-router.get('/me', authenticateToken, async (req: any, res: any) => {
-  const { username, id, characterId } = req.user;
 
   try {
     if (db) {
@@ -74,8 +60,8 @@ router.get('/me', authenticateToken, async (req: any, res: any) => {
 });
 
 // POST /character/dismiss - retires a character to obtain soul orbs
-router.post('/dismiss', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.post('/dismiss', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
   const { characterId } = req.body;
 
   if (!characterId) {
@@ -147,8 +133,8 @@ router.post('/dismiss', authenticateToken, async (req: any, res: any) => {
 });
 
 // GET /character/retired - fetches the retired characters (mural/album)
-router.get('/retired', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.get('/retired', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
 
   try {
     if (db) {
@@ -190,8 +176,8 @@ const BASE_SPEED = 8;
 const STAT_POINTS_PER_LEVEL = 3;
 
 // GET /character/available-points - returns how many stat points the player can still allocate
-router.get('/available-points', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.get('/available-points', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
 
   try {
     if (db) {
@@ -224,8 +210,8 @@ router.get('/available-points', authenticateToken, async (req: any, res: any) =>
 });
 
 // POST /character/add-stats - permanently allocate stat points to a character
-router.post('/add-stats', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.post('/add-stats', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
   const { strength, defense, speed } = req.body;
 
   // Validate that all three values are provided and are non-negative integers

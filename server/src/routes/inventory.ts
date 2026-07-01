@@ -2,28 +2,13 @@ import { Router } from 'express';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { accounts, inventory, itemsBase } from '../db/schema.js';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
-
-// Middleware to authenticate JWT
-const authenticateToken = (req: any, res: any, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.sendStatus(401);
-
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
 
 // GET /inventory - lists all items in user's inventory
-router.get('/', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.get('/', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
 
   try {
     if (db) {
@@ -78,8 +63,8 @@ router.get('/', authenticateToken, async (req: any, res: any) => {
 });
 
 // POST /inventory/transfer - transfers an item to another player's backpack
-router.post('/transfer', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.post('/transfer', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
   const { targetUsername, inventoryId } = req.body;
 
   if (!targetUsername || !inventoryId) {
@@ -138,8 +123,8 @@ router.post('/transfer', authenticateToken, async (req: any, res: any) => {
 });
 
 // POST /inventory/fuse - fuses two identical items to level up
-router.post('/fuse', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.post('/fuse', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
   const { item1Id, item2Id } = req.body;
 
   if (!item1Id || !item2Id) {
@@ -199,8 +184,8 @@ router.post('/fuse', authenticateToken, async (req: any, res: any) => {
 });
 
 // POST /inventory/evolve-rarity - upgrades item rarity using Soul Orbs
-router.post('/evolve-rarity', authenticateToken, async (req: any, res: any) => {
-  const { id: accountId } = req.user;
+router.post('/evolve-rarity', authenticateToken, async (req, res) => {
+  const { id: accountId } = (req as AuthenticatedRequest).user;
   const { inventoryId } = req.body;
 
   if (!inventoryId) {

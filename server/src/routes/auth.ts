@@ -5,9 +5,9 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import { db } from '../db/index.js';
 import { accounts, characters } from '../db/schema.js';
+import { JWT_SECRET } from '../middleware/auth.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
 // In-memory fallback database for development when PG is not running
 interface InMemoryAccount {

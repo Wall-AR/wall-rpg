@@ -661,6 +661,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
         const monstersContainer = new Container();
         mainContainer.addChild(monstersContainer);
 
+        // Sprite pools — cria uma vez, reutiliza a cada frame (evita GC thrashing)
+        type SpritePoolEntry = { sprite: Sprite; nameText: Text };
+        const playerSpritePool = new Map<string, SpritePoolEntry>();
+        const monsterSpritePool = new Map<string, SpritePoolEntry>();
+
         // Initialize EasyStar.js pathfinding
         const easystar = new EasyStar.js();
         easystar.setGrid(LOBBY_MAP.grid);
@@ -870,51 +875,94 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
           mainContainer.x = Math.max(minCamX, Math.min(0, targetCamX));
           mainContainer.y = Math.max(minCamY, Math.min(0, targetCamY));
 
-          // 6. Draw Other Players
-          otherPlayersContainer.removeChildren();
+          // 6. Draw Other Players (Sprite Pool — reutiliza sprites existentes)
+          const activePlayerIds = new Set<string>();
 
           room.state.players.forEach((player: any, sessionId: string) => {
             if (sessionId === room.sessionId) return;
+            activePlayerIds.add(sessionId);
 
-            const otherSprite = new Sprite(textures.playerDown[0]);
-            otherSprite.anchor.set(0.5);
-            otherSprite.x = player.x + tileSize / 2;
-            otherSprite.y = player.y + tileSize / 2;
-            otherSprite.width = tileSize;
-            otherSprite.height = tileSize;
-            otherPlayersContainer.addChild(otherSprite);
+            let entry = playerSpritePool.get(sessionId);
+            if (!entry) {
+              // Criar sprite apenas uma vez por jogador
+              const sprite = new Sprite(textures.playerDown[0]);
+              sprite.anchor.set(0.5);
+              sprite.width = tileSize;
+              sprite.height = tileSize;
+              otherPlayersContainer.addChild(sprite);
 
-            const otherNameText = new Text({ text: player.username || sessionId.substring(0, 5), style: textStyle });
-            otherNameText.anchor.set(0.5);
-            otherNameText.x = player.x + tileSize / 2;
-            otherNameText.y = player.y - 6;
-            otherPlayersContainer.addChild(otherNameText);
+              const nameText = new Text({ text: player.username || sessionId.substring(0, 5), style: textStyle });
+              nameText.anchor.set(0.5);
+              otherPlayersContainer.addChild(nameText);
+
+              entry = { sprite, nameText };
+              playerSpritePool.set(sessionId, entry);
+            }
+
+            // Atualizar posição (barato — sem alocação)
+            entry.sprite.x = player.x + tileSize / 2;
+            entry.sprite.y = player.y + tileSize / 2;
+            entry.sprite.visible = true;
+            entry.nameText.x = player.x + tileSize / 2;
+            entry.nameText.y = player.y - 6;
+            entry.nameText.visible = true;
           });
 
-          // 7. Draw Monsters & Check Collision
-          monstersContainer.removeChildren();
+          // Esconder sprites de jogadores que saíram (sem destruir)
+          playerSpritePool.forEach((entry, sessionId) => {
+            if (!activePlayerIds.has(sessionId)) {
+              entry.sprite.visible = false;
+              entry.nameText.visible = false;
+            }
+          });
+
+          // 7. Draw Monsters & Check Collision (Sprite Pool)
+          const activeMonsterId = new Set<string>();
+
           if (room.state.monsters) {
             room.state.monsters.forEach((monster: any) => {
-              if (!monster.active) return;
+              if (!monster.active) {
+                // Esconder monstro inativo
+                const entry = monsterSpritePool.get(monster.id);
+                if (entry) {
+                  entry.sprite.visible = false;
+                  entry.nameText.visible = false;
+                }
+                return;
+              }
+              activeMonsterId.add(monster.id);
 
-              const monsterSprite = new Sprite(textures.monster);
-              monsterSprite.anchor.set(0.5);
-              monsterSprite.x = monster.x + tileSize / 2;
-              monsterSprite.y = monster.y + tileSize / 2;
-              monsterSprite.width = tileSize;
-              monsterSprite.height = tileSize;
-              monstersContainer.addChild(monsterSprite);
+              let entry = monsterSpritePool.get(monster.id);
+              if (!entry) {
+                // Criar sprite apenas uma vez por monstro
+                const sprite = new Sprite(textures.monster);
+                sprite.anchor.set(0.5);
+                sprite.width = tileSize;
+                sprite.height = tileSize;
+                monstersContainer.addChild(sprite);
 
-              const monsterNameText = new Text({ text: monster.name, style: textStyle });
-              monsterNameText.anchor.set(0.5);
-              monsterNameText.x = monster.x + tileSize / 2;
-              monsterNameText.y = monster.y - 6;
-              monstersContainer.addChild(monsterNameText);
+                const nameText = new Text({ text: monster.name, style: textStyle });
+                nameText.anchor.set(0.5);
+                monstersContainer.addChild(nameText);
 
-              // Collision check with local player (grid position)
+                entry = { sprite, nameText };
+                monsterSpritePool.set(monster.id, entry);
+              }
+
+              // Atualizar posição
+              entry.sprite.x = monster.x + tileSize / 2;
+              entry.sprite.y = monster.y + tileSize / 2;
+              entry.sprite.visible = true;
+              entry.nameText.x = monster.x + tileSize / 2;
+              entry.nameText.y = monster.y - 6;
+              entry.nameText.visible = true;
+
+              // Collision check com jogador local (proximidade em vez de exato)
               const playerPixelX = state.gridX * tileSize;
               const playerPixelY = state.gridY * tileSize;
-              if (monster.x === playerPixelX && monster.y === playerPixelY) {
+              const distX = Math.abs(monster.x - playerPixelX);
+              const distY = Math.abs(monster.y - playerPixelY);
+              if (distX <= tileSize / 2 && distY <= tileSize / 2 && state.moveProgress === 1) {
                 console.log(`💥 Requesting battle trigger against ${monster.name}!`);
                 room.send("triggerBattle", { monsterId: monster.id });
               }

@@ -2,28 +2,13 @@ import { Router } from 'express';
 import { eq, and, or } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { accounts, friendships } from '../db/schema.js';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
-
-// Middleware to authenticate JWT
-const authenticateToken = (req: any, res: any, next: any) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.sendStatus(401);
-
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-};
 
 // GET /friends/ - lists all friendships for the authenticated user
-router.get('/', authenticateToken, async (req: any, res: any) => {
-  const { id: myId } = req.user;
+router.get('/', authenticateToken, async (req, res) => {
+  const { id: myId } = (req as AuthenticatedRequest).user;
 
   try {
     if (db) {
@@ -70,8 +55,8 @@ router.get('/', authenticateToken, async (req: any, res: any) => {
 });
 
 // POST /friends/request - sends a friend request to a user by username
-router.post('/request', authenticateToken, async (req: any, res: any) => {
-  const { id: myId } = req.user;
+router.post('/request', authenticateToken, async (req, res) => {
+  const { id: myId } = (req as AuthenticatedRequest).user;
   const { targetUsername } = req.body;
 
   if (!targetUsername) {
@@ -131,8 +116,8 @@ router.post('/request', authenticateToken, async (req: any, res: any) => {
 });
 
 // POST /friends/accept - accepts a pending friend request
-router.post('/accept', authenticateToken, async (req: any, res: any) => {
-  const { id: myId } = req.user;
+router.post('/accept', authenticateToken, async (req, res) => {
+  const { id: myId } = (req as AuthenticatedRequest).user;
   const { friendId } = req.body;
 
   if (!friendId) {

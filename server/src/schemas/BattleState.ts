@@ -14,8 +14,9 @@ export class BattlePlayerState extends Schema {
   
   // Turn choices
   @type("boolean") hasSelectedAction: boolean = false;
-  @type("string") selectedAction: string = "none"; // 'attack', 'defend', 'spell', 'item', 'none'
-  @type("string") selectedSpellId: string = "";
+  // NOT synced to clients — prevents opponent from seeing chosen action during planning
+  selectedAction: string = "none"; // 'attack', 'defend', 'spell', 'item', 'none'
+  selectedSpellId: string = "";
 }
 
 export class BattleState extends Schema {

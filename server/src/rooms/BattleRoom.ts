@@ -2,10 +2,9 @@ import { Room, Client } from 'colyseus';
 import jwt from 'jsonwebtoken';
 import { BattleState, BattlePlayerState } from '../schemas/BattleState.js';
 import { db } from '../db/index.js';
-import { characters } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
+import { characters, inventory, itemsBase, battleHistory } from '../db/schema.js';
+import { eq, and } from 'drizzle-orm';
+import { JWT_SECRET } from '../middleware/auth.js';
 
 const getElementModifier = (attackerEl: string, defenderEl: string): number => {
   const el = attackerEl.toLowerCase();
@@ -113,11 +112,21 @@ export class BattleRoom extends Room<{ state: BattleState }> {
             charMp = c.stats.mp;
             charSpeed = c.stats.speed;
             charStrength = c.stats.strength;
-            charIntelligence = c.stats.strength; // Fallback to strength
+            // Usar defense como proxy para poder mágico até campo intelligence ser adicionado ao schema
+            charIntelligence = c.stats.defense;
           }
-          // Set random elemental enchantment for high-level mock items
-          const elements = ["none", "terra", "vento", "agua", "fogo"];
-          weaponEl = elements[Math.floor(Math.random() * elements.length)];
+          // Carregar elemento da arma equipada do inventário
+          try {
+            const equippedWeapon = await db!.select({ metadata: inventory.metadata })
+              .from(inventory)
+              .innerJoin(itemsBase, eq(inventory.itemId, itemsBase.id))
+              .where(and(eq(inventory.equippedCharacterId, auth.characterId), eq(inventory.slot, 0)))
+              .limit(1);
+            if (equippedWeapon.length > 0) {
+              const meta = (equippedWeapon[0].metadata || {}) as Record<string, any>;
+              weaponEl = meta.element || 'none';
+            }
+          } catch (_) { /* fallback para 'none' */ }
         }
       } catch (err) {
         console.warn("[BattleRoom] DB query failed, using mock default stats:", err);
@@ -148,6 +157,25 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.state.status = "planning";
     this.state.turn = 1;
     this.state.logs.push("A batalha começou! Escolham suas ações na Fase de Planejamento.");
+    this.startPlanningTimeout();
+  }
+
+  // Timeout de 30s para a fase de planejamento — auto-defende jogadores inativos
+  private startPlanningTimeout() {
+    this.clock.setTimeout(() => {
+      if (this.state.status !== 'planning') return;
+
+      let allReady = true;
+      this.state.players.forEach(p => {
+        if (!p.hasSelectedAction) {
+          p.selectedAction = 'defend';
+          p.hasSelectedAction = true;
+          this.state.logs.push(`${p.username} não agiu a tempo — defesa automática.`);
+        }
+      });
+
+      this.resolveRound();
+    }, 30000);
   }
 
   private resolveRound() {
@@ -203,21 +231,33 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       if (actorState.selectedAction === "spell") {
         if (actorState.selectedSpellId === "cure") {
-          const heal = Math.floor(actorState.intelligence * 1.5) + Math.floor(Math.random() * 5);
-          actorState.hp = Math.min(actorState.maxHp, actorState.hp + heal);
-          this.state.logs.push(`${actorState.username} usou Cura restaurando ${heal} de HP.`);
-        } else {
-          // Default magical attack
-          const baseDmg = Math.floor(actorState.intelligence * 1.2) + Math.floor(Math.random() * 4) + 5;
-          const modifier = getElementModifier(actorState.weaponElement, targetState.weaponElement);
-          let finalDmg = Math.floor(baseDmg * modifier);
-
-          if (targetState.selectedAction === "defend") {
-            finalDmg = Math.floor(finalDmg * 0.5);
+          const mpCost = 10;
+          if (actorState.mp < mpCost) {
+            this.state.logs.push(`${actorState.username} tentou usar Cura mas não tem MP suficiente (${actorState.mp}/${mpCost}).`);
+          } else {
+            actorState.mp -= mpCost;
+            const heal = Math.floor(actorState.intelligence * 1.5) + Math.floor(Math.random() * 5);
+            actorState.hp = Math.min(actorState.maxHp, actorState.hp + heal);
+            this.state.logs.push(`${actorState.username} usou Cura restaurando ${heal} de HP. (MP: ${actorState.mp}/${actorState.maxMp})`);
           }
+        } else {
+          const mpCost = 15;
+          if (actorState.mp < mpCost) {
+            this.state.logs.push(`${actorState.username} tentou lançar magia mas não tem MP suficiente (${actorState.mp}/${mpCost}).`);
+          } else {
+            actorState.mp -= mpCost;
+            // Ataque mágico
+            const baseDmg = Math.floor(actorState.intelligence * 1.2) + Math.floor(Math.random() * 4) + 5;
+            const modifier = getElementModifier(actorState.weaponElement, targetState.weaponElement);
+            let finalDmg = Math.floor(baseDmg * modifier);
 
-          targetState.hp = Math.max(0, targetState.hp - finalDmg);
-          this.state.logs.push(`${actorState.username} lançou magia em ${targetState.username} causando ${finalDmg} de dano.`);
+            if (targetState.selectedAction === "defend") {
+              finalDmg = Math.floor(finalDmg * 0.5);
+            }
+
+            targetState.hp = Math.max(0, targetState.hp - finalDmg);
+            this.state.logs.push(`${actorState.username} lançou magia em ${targetState.username} causando ${finalDmg} de dano. (MP: ${actorState.mp}/${actorState.maxMp})`);
+          }
         }
       }
 
@@ -242,13 +282,24 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.state.turn += 1;
     this.state.status = "planning";
     this.state.logs.push("Novo turno iniciado. Selecionem suas ações.");
+    this.startPlanningTimeout();
   }
 
   private async saveBattleHistory() {
     try {
-      console.log(`[BattleRoom] Saving battle history for Battle ${this.roomId}...`);
+      if (db) {
+        const playerIds = Array.from(this.state.players.keys());
+        const logs = Array.from(this.state.logs);
+        await db.insert(battleHistory).values({
+          playerIds,
+          result: this.state.winnerSessionId ? 'victory' : 'draw',
+          xpGained: 0,
+          log: logs,
+        });
+      }
+      console.log(`[BattleRoom] Battle history saved for room ${this.roomId}`);
     } catch (err) {
-      console.error("[BattleRoom] Error saving battle history:", err);
+      console.error('[BattleRoom] Error saving battle history:', err);
     }
   }
 

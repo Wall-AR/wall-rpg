@@ -3,10 +3,17 @@ import jwt from 'jsonwebtoken';
 import { MapState } from '../schemas/MapState.js';
 import { PlayerState } from '../schemas/PlayerState.js';
 import { MonsterState } from '../schemas/MonsterState.js';
+import { JWT_SECRET } from '../middleware/auth.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
+const GM_SECRET = process.env.GM_SECRET || 'gm-master-key';
+
+// Map dimensions (matching client map.ts)
+const MAP_WIDTH = 32;
+const MAP_HEIGHT = 24;
+const TILE_SIZE = 32;
 
 export class GameRoom extends Room<{ state: MapState }> {
+  private gmSessions = new Set<string>();
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;
     if (!token) {
@@ -43,14 +50,36 @@ export class GameRoom extends Room<{ state: MapState }> {
       this.state.monsters.set(m.id, monster);
     });
 
-    // Handle movement messages from clients
+    // Handle GM authentication via secret passphrase
+    this.onMessage("authenticateGM", (client, data: { secret: string }) => {
+      if (data.secret === GM_SECRET) {
+        this.gmSessions.add(client.sessionId);
+        client.send("gmAuthenticated", { success: true });
+        console.log(`[GameRoom] Player ${client.sessionId} authenticated as GM`);
+      } else {
+        client.send("error", "Invalid GM passphrase");
+      }
+    });
+
+    // Handle movement messages from clients (with server-side validation)
     this.onMessage("move", (client, data: { x: number; y: number }) => {
       const player = this.state.players.get(client.sessionId);
-      if (player) {
-        player.x = data.x;
-        player.y = data.y;
-        player.status = "moving";
-      }
+      if (!player) return;
+
+      // Validate data types
+      if (typeof data.x !== 'number' || typeof data.y !== 'number') return;
+
+      // Validate bounds
+      if (data.x < 0 || data.x >= MAP_WIDTH * TILE_SIZE || data.y < 0 || data.y >= MAP_HEIGHT * TILE_SIZE) return;
+
+      // Validate distance (max 1 tile movement per message)
+      const dx = Math.abs(data.x - player.x);
+      const dy = Math.abs(data.y - player.y);
+      if (dx > TILE_SIZE || dy > TILE_SIZE) return;
+
+      player.x = data.x;
+      player.y = data.y;
+      player.status = "moving";
     });
 
     // Handle status change messages
@@ -61,16 +90,20 @@ export class GameRoom extends Room<{ state: MapState }> {
       }
     });
 
-    // Handle real-time chat messages
+    // Handle real-time chat messages (with sanitization and length limit)
     this.onMessage("chat", (client, data: { text: string }) => {
       const player = this.state.players.get(client.sessionId);
-      if (player) {
-        this.broadcast("chat", {
-          sender: player.username,
-          text: data.text,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-      }
+      if (!player) return;
+      if (typeof data.text !== 'string' || data.text.length === 0) return;
+
+      // Sanitize: limit length and strip HTML tags
+      const sanitizedText = data.text.substring(0, 200).replace(/<[^>]*>/g, '');
+
+      this.broadcast("chat", {
+        sender: player.username,
+        text: sanitizedText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
     });
 
     // Handle duel invitation requests
@@ -109,16 +142,24 @@ export class GameRoom extends Room<{ state: MapState }> {
       }
     });
 
-    // Handle GM Narration Event
+    // Handle GM Narration Event (requires GM authentication)
     this.onMessage("gmNarrate", (client, data: { text: string }) => {
+      if (!this.gmSessions.has(client.sessionId)) {
+        client.send("error", "Não autorizado como Mestre. Use o comando de autenticação GM.");
+        return;
+      }
       this.broadcast("narration", {
         text: data.text,
         sender: this.state.players.get(client.sessionId)?.username || "Mestre"
       });
     });
 
-    // Handle GM Monster Spawn Event
+    // Handle GM Monster Spawn Event (requires GM authentication)
     this.onMessage("gmSpawn", (client, data: { type: string, name: string, x: number, y: number }) => {
+      if (!this.gmSessions.has(client.sessionId)) {
+        client.send("error", "Não autorizado como Mestre.");
+        return;
+      }
       const monsterId = `gm-${Date.now()}`;
       const monster = new MonsterState();
       monster.id = monsterId;
@@ -139,8 +180,12 @@ export class GameRoom extends Room<{ state: MapState }> {
       });
     });
 
-    // Handle GM Quest Activation Event
+    // Handle GM Quest Activation Event (requires GM authentication)
     this.onMessage("gmQuest", (client, data: { id: string, name: string, description: string }) => {
+      if (!this.gmSessions.has(client.sessionId)) {
+        client.send("error", "Não autorizado como Mestre.");
+        return;
+      }
       this.broadcast("newQuest", {
         id: data.id,
         name: data.name,
