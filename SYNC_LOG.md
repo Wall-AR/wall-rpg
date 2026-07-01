@@ -167,6 +167,48 @@ npm run lint
 npm run build
 ```
 
+### 2026-07-01 — Sprint 1: Estabilização, Segurança e Performance (Casa - D:\MEGACOLISEUM)
+
+**Contexto:** Auditoria completa do projeto revelou problemas críticos de segurança, performance e bugs no sistema de batalha. Sprint de estabilização executada.
+
+**Ações — Performance:**
+- **Sprite Pool no GameCanvas**: Substituição da recriação de sprites por frame (~60x/segundo) por sistema de pool que cria sprites uma vez e reutiliza. Eliminado GC thrashing catastrófico. Jogadores e monstros agora são atualizados apenas em posição/visibilidade.
+- **Collision Check por Proximidade**: Colisão com monstros agora usa distância em vez de pixel-exact, corrigindo falsos negativos.
+
+**Ações — Segurança:**
+- **Middleware de Auth Compartilhado** (`server/src/middleware/auth.ts`): JWT_SECRET centralizado — falha em produção se não configurado, sem mais fallback `'super-secret-key'`. Eliminou duplicação em 6 arquivos.
+- **GM Authorization**: Comandos `gmNarrate`, `gmSpawn`, `gmQuest` agora exigem autenticação GM via passphrase (`authenticateGM`). Jogadores comuns não podem mais usar poderes de Mestre.
+- **Validação de Movimento no Server**: Bounds checking, distance validation (máx 1 tile), e type checking — anti-teleport.
+- **Sanitização de Chat**: Mensagens limitadas a 200 caracteres e HTML tags removidas.
+- **BattleState Privacy**: `selectedAction` e `selectedSpellId` não são mais sincronizados (`@type` removido). Oponente vê apenas readiness (`hasSelectedAction`), não a ação escolhida.
+
+**Ações — Bugs Corrigidos:**
+- `charIntelligence = c.stats.strength` → `c.stats.defense` (proxy para poder mágico até campo intelligence ser adicionado).
+- Weapon element agora carrega do inventário equipado (antes era aleatório a cada batalha).
+- `saveBattleHistory()` agora salva no DB (antes era no-op/console.log).
+- Spells agora consomem MP (Cura: 10 MP, Ataque Mágico: 15 MP). Sem MP suficiente → ação falha.
+- Timeout de 30 segundos na fase de planejamento — auto-defende jogadores inativos.
+
+**Ações — Client:**
+- Auth store agora persiste no `localStorage` via `zustand/persist` (F5 não perde mais a sessão).
+
+**Novos Arquivos:**
+- `server/src/middleware/auth.ts` — Middleware compartilhado (JwtPayload, AuthenticatedRequest, authenticateToken)
+- `.dockerignore` — Exclui node_modules, .git, .env do build Docker
+
+**Variáveis de Ambiente Novas (opcionais):**
+- `GM_SECRET` — Passphrase para autenticação como Game Master (padrão: 'gm-master-key')
+
+**Status:** Sprint 1 completa. Ambos workspaces compilando sem erros. Próximo: Sprint 2 (refatoração de componentes).
+
+**Como Atualizar em Outras Máquinas:**
+```bash
+git pull
+npm install --legacy-peer-deps
+npm run lint
+npm run build
+```
+
 ---
 
 <!-- NOVAS ENTRADAS DEVEM SER ADICIONADAS ACIMA DESTA LINHA -->
