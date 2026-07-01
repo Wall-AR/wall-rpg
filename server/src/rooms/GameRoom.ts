@@ -252,12 +252,27 @@ export class GameRoom extends Room<{ state: MapState }> {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
+      // Cooldown: evitar triggers duplicados (1 por sessão a cada 3s)
+      const now = Date.now();
+      const lastTrigger = (player as any).__lastBattleTrigger || 0;
+      if (now - lastTrigger < 3000) return;
+      (player as any).__lastBattleTrigger = now;
+
       const monster = this.state.monsters.get(data.monsterId);
       if (monster && monster.active) {
         monster.active = false; // Deactivate monster on map state
 
+        // Contexto do encontro para transição no client
+        const encounterData = {
+          roomId: '',  // preenchido abaixo
+          type: 'wild' as const,
+          enemyName: monster.name,
+          enemyElement: (monster as any).element || 'none',
+        };
+
         try {
           const battleRoom = await matchMaker.createRoom("battle", {});
+          encounterData.roomId = battleRoom.roomId;
           
           // If in a party, pull everyone into the same battle room!
           if (player.partyId) {
@@ -271,14 +286,16 @@ export class GameRoom extends Room<{ state: MapState }> {
             members.forEach(sid => {
               const memberClient = this.clients.find(c => c.sessionId === sid);
               if (memberClient) {
-                memberClient.send("startBattle", { roomId: battleRoom.roomId });
+                memberClient.send("startBattle", encounterData);
               }
             });
           } else {
-            client.send("startBattle", { roomId: battleRoom.roomId });
+            client.send("startBattle", encounterData);
           }
         } catch (err) {
           console.error("Failed to create battle room for encounter:", err);
+          // Reativar monstro se falhou
+          monster.active = true;
         }
       }
     });

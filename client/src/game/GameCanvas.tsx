@@ -6,8 +6,10 @@ import { generateTextures } from './textures';
 import { LOBBY_MAP, isWalkable } from './map';
 import * as EasyStar from 'easystarjs';
 
+import { EncounterContext } from './BattleTransition';
+
 export interface GameCanvasProps {
-  onTriggerBattle: (roomId: string) => void;
+  onTriggerBattle: (roomId: string, context?: Partial<EncounterContext>) => void;
 }
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
@@ -589,9 +591,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
           setActiveQuest(data);
         });
 
-        // Listen to room startBattle redirect
-        room.onMessage("startBattle", (data: { roomId: string }) => {
-          onTriggerBattle(data.roomId);
+        // Listen to room startBattle redirect (com contexto de encontro)
+        room.onMessage("startBattle", (data: { roomId: string; type?: string; enemyName?: string; enemyElement?: string }) => {
+          onTriggerBattle(data.roomId, {
+            type: (data.type as any) || 'wild',
+            enemyName: data.enemyName || 'Inimigo',
+            enemyElement: data.enemyElement,
+          });
         });
 
         if (isDestroyed) {

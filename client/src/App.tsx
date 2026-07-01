@@ -1,36 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuthStore } from './stores/auth';
 import { LoginScreen } from './screens/LoginScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
 import GameCanvas from './game/GameCanvas';
 import { BattleScreen } from './screens/BattleScreen';
+import { BattleTransition, EncounterContext } from './game/BattleTransition';
 
 type ScreenType = 'lobby' | 'game' | 'battle';
 
+/**
+ * App — Orquestrador de telas do MEGACOLISEUM.
+ * 
+ * Fluxo de encontro:
+ *   Mapa (GameCanvas) → Trigger (colisão/duelo)
+ *     → BattleTransition (animação ~4s)
+ *       → BattleScreen (combate por turnos)
+ *         → Volta ao Mapa
+ */
 export const App: React.FC = () => {
   const { token, username } = useAuthStore();
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('lobby');
   const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
 
-  // If not logged in, render the login screen
+  // Estado da transição de encontro
+  const [encounter, setEncounter] = useState<EncounterContext | null>(null);
+  const [showTransition, setShowTransition] = useState(false);
+
+  /**
+   * handleEncounter — Chamado quando o jogador inicia um encontro.
+   * Recebe o contexto do encontro (tipo, inimigo, room) e dispara a transição.
+   * 
+   * Pode ser chamado de:
+   *   - GameCanvas (colisão com monstro no mapa → encontro selvagem)
+   *   - LobbyScreen (duelo PvP aceito → duelo na arena)
+   *   - GameRoom server (boss spawn → chefe de batalha)
+   */
+  const handleEncounter = useCallback((ctx: EncounterContext) => {
+    setEncounter(ctx);
+    setShowTransition(true);
+  }, []);
+
+  /**
+   * handleTransitionComplete — Chamado quando a animação de transição termina.
+   * Efetua a troca real de tela para o BattleScreen.
+   */
+  const handleTransitionComplete = useCallback(() => {
+    if (encounter) {
+      setBattleRoomId(encounter.roomId);
+      setCurrentScreen('battle');
+    }
+    setShowTransition(false);
+    setEncounter(null);
+  }, [encounter]);
+
+  /**
+   * Backwards-compatible trigger para uso simples com roomId.
+   * Constrói um EncounterContext mínimo para manter compatibilidade
+   * com o sistema atual que só envia roomId.
+   */
+  const handleSimpleBattleTrigger = useCallback((roomId: string, context?: Partial<EncounterContext>) => {
+    handleEncounter({
+      type: context?.type || 'wild',
+      enemyName: context?.enemyName || 'Inimigo Desconhecido',
+      enemyLevel: context?.enemyLevel,
+      enemyElement: context?.enemyElement,
+      roomId,
+    });
+  }, [handleEncounter]);
+
+  /**
+   * handleDuelTrigger — Específico para duelos PvP do lobby.
+   */
+  const handleDuelTrigger = useCallback((roomId: string) => {
+    handleSimpleBattleTrigger(roomId, {
+      type: 'duel',
+      enemyName: 'Guerreiro Desafiante',
+    });
+  }, [handleSimpleBattleTrigger]);
+
   if (!token) {
     return <LoginScreen />;
   }
 
-  // Render main screen when logged in
   return (
     <div className="min-h-screen bg-[#0f0f1a] text-white flex flex-col font-sans select-none">
+
+      {/* ═══ Battle Transition Overlay ═══ */}
+      {showTransition && encounter && (
+        <BattleTransition
+          encounter={encounter}
+          onTransitionComplete={handleTransitionComplete}
+        />
+      )}
+
       {currentScreen === 'lobby' ? (
         <LobbyScreen 
           onStartGame={() => setCurrentScreen('game')} 
-          onStartBattle={(roomId) => {
-            setBattleRoomId(roomId);
-            setCurrentScreen('battle');
-          }}
+          onStartBattle={handleDuelTrigger}
         />
       ) : currentScreen === 'battle' ? (
         <div className="flex-1 flex flex-col">
-          {/* HUD Header */}
+          {/* Battle HUD Header */}
           <header className="bg-[#16162a] border-b border-indigo-900/40 px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
               <span className="text-2xl font-extrabold text-indigo-400 tracking-widest bg-gradient-to-r from-indigo-400 to-indigo-500 bg-clip-text">
@@ -40,7 +110,6 @@ export const App: React.FC = () => {
                 Arena de Combate Elementar
               </span>
             </div>
-
             <div className="flex items-center gap-6">
               <div className="text-right">
                 <p className="text-xs text-gray-400">Guerreiro</p>
@@ -49,7 +118,7 @@ export const App: React.FC = () => {
             </div>
           </header>
 
-          {/* Battle Screen Area */}
+          {/* Battle Screen */}
           <main className="flex-1 flex flex-col p-6 justify-center">
             <div className="max-w-5xl w-full mx-auto">
               <BattleScreen 
@@ -64,7 +133,7 @@ export const App: React.FC = () => {
         </div>
       ) : (
         <div className="flex-1 flex flex-col">
-          {/* HUD Header */}
+          {/* Game HUD Header */}
           <header className="bg-[#16162a] border-b border-indigo-900/40 px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
               <span className="text-2xl font-extrabold text-indigo-400 tracking-widest bg-gradient-to-r from-indigo-400 to-indigo-500 bg-clip-text">
@@ -74,7 +143,6 @@ export const App: React.FC = () => {
                 Arena de Jogo
               </span>
             </div>
-
             <div className="flex items-center gap-6">
               <div className="text-right">
                 <p className="text-xs text-gray-400">Guerreiro</p>
@@ -93,10 +161,7 @@ export const App: React.FC = () => {
           <main className="flex-1 flex flex-col p-6">
             <div className="flex-1 flex flex-col gap-4">
               <div className="flex-1 min-h-[400px] border border-indigo-900/40 rounded-lg overflow-hidden shadow-inner bg-[#1a1a2e]">
-                <GameCanvas onTriggerBattle={(roomId) => {
-                  setBattleRoomId(roomId);
-                  setCurrentScreen('battle');
-                }} />
+                <GameCanvas onTriggerBattle={handleSimpleBattleTrigger} />
               </div>
             </div>
           </main>
