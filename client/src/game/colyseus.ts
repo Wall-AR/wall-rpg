@@ -1,4 +1,4 @@
-import { Client } from 'colyseus.js';
+import { Client } from '@colyseus/sdk';
 
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const wsHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'

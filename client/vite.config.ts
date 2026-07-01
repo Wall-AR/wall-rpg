@@ -28,6 +28,8 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:3001',
       '/character': 'http://localhost:3001',
+      '/inventory': 'http://localhost:3001',
+      '/friends': 'http://localhost:3001',
     },
   },
 });

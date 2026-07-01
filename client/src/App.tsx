@@ -10,6 +10,7 @@ type ScreenType = 'lobby' | 'game' | 'battle';
 export const App: React.FC = () => {
   const { token, username } = useAuthStore();
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('lobby');
+  const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
 
   // If not logged in, render the login screen
   if (!token) {
@@ -20,7 +21,13 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0f0f1a] text-white flex flex-col font-sans select-none">
       {currentScreen === 'lobby' ? (
-        <LobbyScreen onStartGame={() => setCurrentScreen('game')} />
+        <LobbyScreen 
+          onStartGame={() => setCurrentScreen('game')} 
+          onStartBattle={(roomId) => {
+            setBattleRoomId(roomId);
+            setCurrentScreen('battle');
+          }}
+        />
       ) : currentScreen === 'battle' ? (
         <div className="flex-1 flex flex-col">
           {/* HUD Header */}
@@ -45,7 +52,13 @@ export const App: React.FC = () => {
           {/* Battle Screen Area */}
           <main className="flex-1 flex flex-col p-6 justify-center">
             <div className="max-w-5xl w-full mx-auto">
-              <BattleScreen onFinishBattle={() => setCurrentScreen('game')} />
+              <BattleScreen 
+                roomId={battleRoomId} 
+                onFinishBattle={() => {
+                  setBattleRoomId(null);
+                  setCurrentScreen('game');
+                }} 
+              />
             </div>
           </main>
         </div>
@@ -80,7 +93,10 @@ export const App: React.FC = () => {
           <main className="flex-1 flex flex-col p-6">
             <div className="flex-1 flex flex-col gap-4">
               <div className="flex-1 min-h-[400px] border border-indigo-900/40 rounded-lg overflow-hidden shadow-inner bg-[#1a1a2e]">
-                <GameCanvas onTriggerBattle={() => setCurrentScreen('battle')} />
+                <GameCanvas onTriggerBattle={(roomId) => {
+                  setBattleRoomId(roomId);
+                  setCurrentScreen('battle');
+                }} />
               </div>
             </div>
           </main>

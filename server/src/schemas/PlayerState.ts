@@ -6,4 +6,5 @@ export class PlayerState extends Schema {
   @type("string") username: string = "";
   @type("string") characterId: string = "";
   @type("string") status: string = "idle";
+  @type("string") partyId: string = "";
 }

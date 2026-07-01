@@ -183,4 +183,127 @@ router.get('/retired', authenticateToken, async (req: any, res: any) => {
   }
 });
 
+// Base stats for a new character (used to calculate already-spent points)
+const BASE_STRENGTH = 15;
+const BASE_DEFENSE = 10;
+const BASE_SPEED = 8;
+const STAT_POINTS_PER_LEVEL = 3;
+
+// GET /character/available-points - returns how many stat points the player can still allocate
+router.get('/available-points', authenticateToken, async (req: any, res: any) => {
+  const { id: accountId } = req.user;
+
+  try {
+    if (db) {
+      const [character] = await db
+        .select()
+        .from(characters)
+        .where(eq(characters.accountId, accountId))
+        .limit(1);
+
+      if (!character) {
+        return res.status(404).json({ error: 'Character not found' });
+      }
+
+      const stats = character.stats as { strength: number; defense: number; speed: number };
+      const alreadySpent =
+        (stats.strength - BASE_STRENGTH) +
+        (stats.defense - BASE_DEFENSE) +
+        (stats.speed - BASE_SPEED);
+      const availablePoints = (character.level * STAT_POINTS_PER_LEVEL) - alreadySpent;
+
+      return res.json({ availablePoints });
+    } else {
+      // Mock fallback
+      return res.json({ availablePoints: 3 });
+    }
+  } catch (error) {
+    console.error('Error fetching available points:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /character/add-stats - permanently allocate stat points to a character
+router.post('/add-stats', authenticateToken, async (req: any, res: any) => {
+  const { id: accountId } = req.user;
+  const { strength, defense, speed } = req.body;
+
+  // Validate that all three values are provided and are non-negative integers
+  if (
+    !Number.isInteger(strength) || strength < 0 ||
+    !Number.isInteger(defense) || defense < 0 ||
+    !Number.isInteger(speed) || speed < 0
+  ) {
+    return res.status(400).json({ error: 'strength, defense, and speed must be non-negative integers' });
+  }
+
+  const totalRequested = strength + defense + speed;
+  if (totalRequested <= 0) {
+    return res.status(400).json({ error: 'You must allocate at least 1 stat point' });
+  }
+
+  try {
+    if (db) {
+      // 1. Fetch character and verify ownership
+      const [character] = await db
+        .select()
+        .from(characters)
+        .where(eq(characters.accountId, accountId))
+        .limit(1);
+
+      if (!character) {
+        return res.status(404).json({ error: 'Character not found or not owned by you' });
+      }
+
+      // 2. Calculate available points
+      const currentStats = character.stats as {
+        hp: number; mp: number; strength: number; defense: number; speed: number;
+      };
+      const alreadySpent =
+        (currentStats.strength - BASE_STRENGTH) +
+        (currentStats.defense - BASE_DEFENSE) +
+        (currentStats.speed - BASE_SPEED);
+      const availablePoints = (character.level * STAT_POINTS_PER_LEVEL) - alreadySpent;
+
+      if (totalRequested > availablePoints) {
+        return res.status(400).json({
+          error: `Not enough stat points. Available: ${availablePoints}, Requested: ${totalRequested}`,
+        });
+      }
+
+      // 3. Build updated stats
+      const newStats = {
+        hp: currentStats.hp,
+        mp: currentStats.mp,
+        strength: currentStats.strength + strength,
+        defense: currentStats.defense + defense,
+        speed: currentStats.speed + speed,
+      };
+
+      // 4. Save to database
+      await db
+        .update(characters)
+        .set({ stats: newStats })
+        .where(eq(characters.id, character.id));
+
+      const remainingPoints = availablePoints - totalRequested;
+
+      return res.json({ success: true, newStats, remainingPoints });
+    } else {
+      // Mock fallback
+      const mockNewStats = {
+        hp: 100,
+        mp: 20,
+        strength: 15 + strength,
+        defense: 10 + defense,
+        speed: 8 + speed,
+      };
+      return res.json({ success: true, newStats: mockNewStats, remainingPoints: 0 });
+    }
+  } catch (error) {
+    console.error('Error allocating stat points:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

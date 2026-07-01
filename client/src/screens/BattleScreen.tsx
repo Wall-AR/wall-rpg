@@ -3,10 +3,11 @@ import { useAuthStore } from '../stores/auth';
 import { client } from '../game/colyseus';
 
 interface BattleScreenProps {
+  roomId: string | null;
   onFinishBattle: () => void;
 }
 
-export const BattleScreen: React.FC<BattleScreenProps> = ({ onFinishBattle }) => {
+export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBattle }) => {
   const { token } = useAuthStore();
   const [room, setRoom] = useState<any>(null);
   const [battleState, setBattleState] = useState<any>(null);
@@ -20,7 +21,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ onFinishBattle }) =>
 
     const connectToBattle = async () => {
       try {
-        activeRoom = await client.joinOrCreate("battle", { token });
+        if (roomId) {
+          activeRoom = await client.joinById(roomId, { token });
+        } else {
+          activeRoom = await client.joinOrCreate("battle", { token });
+        }
         setRoom(activeRoom);
 
         // Sync state changes

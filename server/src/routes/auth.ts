@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
+import crypto from 'crypto';
 import { db } from '../db/index.js';
 import { accounts, characters } from '../db/schema.js';
 

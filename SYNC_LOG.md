@@ -128,6 +128,45 @@ npm run lint
 npm run build
 ```
 
+### 2026-06-26 — Fase 7 & 8: Campanha, Quests, Painel do Mestre (GM) e Containerização (Casa - D:\MEGACOLISEUM)
+
+**Ações:**
+- Implementação de ouvintes WebSocket de Mestre no Colyseus (`gmNarrate`, `gmSpawn` e `gmQuest`).
+- Criação do **Painel do Mestre (GM)** no Lobby com abas para narrar eventos, materializar monstros com coordenadas no grid e ativar missões globais.
+- Criação de overlays HTML em tempo real no `GameCanvas.tsx` de exploração para renderizar narrações com layout medieval e exibir missões de campanha ativas.
+- Configuração do Express (`index.ts`) para servir os arquivos estáticos compilados do cliente em produção (`NODE_ENV === 'production'`) sob uma única porta (3001).
+- Escrita de arquivos de containerização `Dockerfile` (multi-stage compact) e `docker-compose.yml` (PostgreSQL em container + App) para permitir deploy rápido em qualquer VPS com um único comando.
+- Compilado e testado localmente. Sem bugs pendentes.
+
+**Como Atualizar em Outras Máquinas:**
+```bash
+git pull
+npm run lint
+npm run build
+```
+
+### 2026-06-26 — Fase 9: Co-op Parties & Fusão de Itens (Casa - D:\MEGACOLISEUM)
+
+**Ações:**
+- **Co-op Parties**:
+  - Implementação de handlers WebSocket no Colyseus (`inviteParty`, `acceptParty`, `leaveParty`) sincronizando o `partyId` dos jogadores no `PlayerState`.
+  - Banner de convite de grupo animado no topo do Lobby e painel de membros ativos na aba Amigos.
+  - Redirecionamento de matchmaking co-op: ao colidir com monstro no mapa de exploração, o servidor cria a `BattleRoom` e puxa todos os membros ativos do grupo online para a mesma arena.
+- **Fusão e Evolução de Itens**:
+  - Endpoint `POST /inventory/fuse` que mescla dois itens iguais (mesmo base `itemId`) para elevar o nível até 10 com bônus de `+3 ATK`. Ao atingir o nível 10, insere o sufixo `[Evoluído]`.
+  - Endpoint `POST /inventory/evolve-rarity` que consome **10 Orbes de Alma** da conta para evoluir a raridade do item (Comum ➔ Raro ➔ Épico ➔ Lendário) e concede `+10 ATK`.
+  - Painel lateral de detalhes na mochila expandido com seleção de fusão e evolução de raridade.
+- **Portal de Viagem**:
+  - Adicionado menu de spawn no portal do mapa do Lobby (coordenadas 11,0 e 12,0) permitindo selecionar spawn com restrição de nível (Pântano Sombrio requer nível 3; Pico do Dragão requer nível 5).
+- Monorepo inteiro compilando com sucesso com zero erros de compilação ou linter.
+
+**Como Atualizar em Outras Máquinas:**
+```bash
+git pull
+npm run lint
+npm run build
+```
+
 ---
 
 <!-- NOVAS ENTRADAS DEVEM SER ADICIONADAS ACIMA DESTA LINHA -->
