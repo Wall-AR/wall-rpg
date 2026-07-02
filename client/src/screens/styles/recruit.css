@@ -26,9 +26,9 @@
 
 /* Sub-card active select frame to substitute */
 .confrontation-char-card.to-replace {
-  border-color: #ef4444;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(12, 12, 22, 0.95) 100%);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+  border-color: #3b82f6 !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(12, 12, 22, 0.95) 100%) !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.35) !important;
 }
 
 /* Circular glowing refresh icon */
@@ -66,4 +66,64 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
+}
+
+/* Comparison VS Grid elements */
+.comparison-table-container {
+  background: rgba(10, 10, 20, 0.8);
+  border: 1.5px solid rgba(181, 148, 65, 0.25);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+}
+
+.comparison-header-col {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 11px;
+  color: #ffe082;
+  letter-spacing: 1px;
+}
+
+.comparison-stat-row {
+  border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+  transition: background 0.15s ease-out;
+}
+.comparison-stat-row:hover {
+  background: rgba(255, 224, 130, 0.02);
+}
+
+.stat-val-left {
+  text-align: right;
+  color: #d1d5db;
+  font-size: 8.5px;
+}
+
+.stat-val-right {
+  text-align: left;
+  color: #ffffff;
+  font-size: 8.5px;
+}
+.stat-val-right.improved {
+  color: #34d399;
+  text-shadow: 0 0 6px rgba(52, 211, 153, 0.25);
+}
+
+.stat-label-center {
+  text-align: center;
+  color: #6b7280;
+  font-size: 7.5px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.stat-arrow-indicator {
+  font-size: 7px;
+  font-weight: 900;
+  margin-left: 3px;
+}
+.stat-arrow-up {
+  color: #34d399;
+}
+.stat-arrow-down {
+  color: #f87171;
 }

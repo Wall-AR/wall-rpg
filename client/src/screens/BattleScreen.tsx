@@ -405,8 +405,79 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
         return;
       }
       const replacedChar = PREP_ROSTER.find(c => c.id === characterToReplaceId);
-      alert(`Você substituiu ${replacedChar?.name} por Thorn! Thorn se juntou à sua equipe.`);
+      alert(`Você desencantou ${replacedChar?.name} e adicionou Thorn à sua equipe!`);
       onFinishBattle();
+    };
+
+    const replacedChar = PREP_ROSTER.find(c => c.id === characterToReplaceId);
+
+    // Mock comparison database mapping
+    const getComparisonStats = (charId: string) => {
+      if (charId === 'char-caelum') {
+        return {
+          rank: 'S', level: 128, class: 'Tanque', element: 'Agua',
+          atq: '1.420', def: '2.150', mag: '350', vel: '920',
+          passiva: 'Baluarte', habilidade: 'Barreira Sagrada',
+          historico: '312 batalhas', vinculo: 'Vinculo Maximo'
+        };
+      }
+      if (charId === 'char-lyria') {
+        return {
+          rank: 'S+', level: 124, class: 'Mago', element: 'Shadow',
+          atq: '850', def: '910', mag: '2.450', vel: '1.250',
+          passiva: 'Eco Astral', habilidade: 'Nova Astral',
+          historico: '290 batalhas', vinculo: 'Vinculo Alto'
+        };
+      }
+      if (charId === 'char-raven') {
+        return {
+          rank: 'S', level: 127, class: 'Assassino', element: 'Terra',
+          atq: '2.110', def: '1.150', mag: '820', vel: '1.840',
+          passiva: 'Sombra Agil', habilidade: 'Golpe Sombrio',
+          historico: '184 batalhas', vinculo: 'Vinculo Maximo'
+        };
+      }
+      if (charId === 'char-seraphina') {
+        return {
+          rank: 'A', level: 121, class: 'Cleriga', element: 'Luz',
+          atq: '980', def: '1.240', mag: '1.850', vel: '1.120',
+          passiva: 'Graca Divina', habilidade: 'Impacto Sismico',
+          historico: '92 batalhas', vinculo: 'Vinculo Regular'
+        };
+      }
+      if (charId === 'char-lobo') {
+        return {
+          rank: 'D', level: 132, class: 'Companheiro', element: 'Vento',
+          atq: '1.254', def: '1.486', mag: '1.102', vel: '1.307',
+          passiva: 'Instinto Leal', habilidade: 'Protecao Instintiva',
+          historico: 'Desde o inicio da jornada / 418 batalhas', vinculo: 'Vinculo Lendario'
+        };
+      }
+      // Korr default
+      return {
+        rank: 'A', level: 119, class: 'Lanceiro', element: 'Fogo',
+        atq: '1.640', def: '1.520', mag: '620', vel: '1.350',
+        passiva: 'Furia Ignea', habilidade: 'Investida Ignea',
+        historico: '45 batalhas', vinculo: 'Vinculo Alto'
+      };
+    };
+
+    const leftCharStats = replacedChar ? getComparisonStats(replacedChar.id) : null;
+    const thornStats = {
+      rank: 'B', level: 18, class: 'Lanceiro', element: 'Terra',
+      atq: '1.876', def: '1.932', mag: '978', vel: '1.642',
+      passiva: 'Instinto Sobrevivencia', habilidade: 'Golpe Perfurante',
+      historico: 'Novo recrutamento / 0 batalhas', vinculo: 'Potencial Maior'
+    };
+
+    // Vinculo tags values mapping
+    const getVinculoValueText = (charId: string) => {
+      if (charId === 'char-caelum') return 'Vinculo 10';
+      if (charId === 'char-lyria') return 'Vinculo 9';
+      if (charId === 'char-raven') return 'Vinculo 10';
+      if (charId === 'char-seraphina') return 'Vinculo 8';
+      if (charId === 'char-lobo') return 'Vinculo Lendario';
+      return 'Vinculo 9';
     };
 
     return (
@@ -425,13 +496,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           </div>
 
           <div className="text-center">
-            <h2 className="text-base font-black tracking-widest text-[#ffe082] uppercase leading-none font-sans">Novo Companheiro</h2>
+            <h2 className="text-base font-black tracking-widest text-[#ffe082] uppercase leading-none font-sans">
+              {replacedChar ? "Escolha de Companheiro" : "Novo Companheiro"}
+            </h2>
             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-1.5">
-              Recrutamento após combate
+              {replacedChar ? "Sua equipe esta cheia. Escolha quem sera desencantado para aceitar Thorn." : "Recrutamento apos combate"}
             </p>
-            <p className="text-[7.5px] text-gray-400 font-semibold tracking-wide mt-2">
-              Um inimigo derrotado reconheceu sua força e deseja se juntar à sua jornada.
-            </p>
+            {replacedChar ? (
+              <div className="flex justify-center mt-2">
+                <span className="text-[8px] px-2 py-0.5 bg-rose-955 text-rose-300 font-black border border-rose-900/60 rounded-full flex items-center gap-1.5">
+                  Warning: Equipe cheia: 6/6
+                </span>
+              </div>
+            ) : (
+              <p className="text-[7.5px] text-gray-400 font-semibold tracking-wide mt-2">
+                Um inimigo derrotado reconheceu sua forca e deseja se juntar a sua jornada.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3.5 text-right max-w-[220px]">
@@ -478,7 +559,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                     <div className="border-t border-indigo-950/40 pt-1">
                       <span className="text-[7px] text-gray-400 font-bold block leading-none">Lv. {c.level}</span>
                       <h5 className="font-extrabold text-[9px] text-white truncate leading-none mt-0.5">{c.name}</h5>
-                      <span className="text-[7px] text-gray-500 uppercase block mt-0.5">{c.class}</span>
+                      <span className="text-[6.5px] text-gray-500 uppercase block mt-0.5">{c.class}</span>
+                      <span className="block text-[6.5px] font-black mt-1 text-yellow-500">
+                        V. {getVinculoValueText(c.id)}
+                      </span>
                     </div>
                   </div>
                 );
@@ -487,39 +571,108 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           </div>
 
           {/* Column 2 & 3: Recruit Illustration (Thorn crouching on magic circle) */}
-          <div className="lg:col-span-2 flex flex-col justify-between items-center px-4 relative">
-            <div className="flex-1 flex flex-col justify-center items-center relative w-full">
-              {/* Magic Circle Backdrop */}
-              <div className="absolute w-64 h-64 rounded-full magic-circle-glow z-0 flex items-center justify-center border border-indigo-500/10">
-                <div className="w-52 h-52 rounded-full border border-indigo-500/20 border-dashed" />
-              </div>
+          <div className="lg:col-span-2 flex flex-col justify-between px-2 gap-4">
+            {replacedChar && leftCharStats ? (
+              /* COMPARISON GRID VIEW (VS) */
+              <div className="flex-1 flex flex-col justify-between">
+                <div className="comparison-table-container rounded-2xl p-4 flex-1 flex flex-col justify-between min-h-[300px]">
+                  
+                  {/* VS Headers */}
+                  <div className="grid grid-cols-3 items-center border-b border-indigo-950/60 pb-3 mb-2 shrink-0">
+                    <div className="text-right">
+                      <h4 className="font-extrabold text-sm text-white">{replacedChar.name}</h4>
+                      <span className="text-[9px] text-blue-400 font-bold">Rank {replacedChar.rank}</span>
+                    </div>
+                    <div className="text-center text-rose-500 font-black text-sm italic font-mono">VS</div>
+                    <div className="text-left">
+                      <h4 className="font-extrabold text-sm text-white">Thorn</h4>
+                      <span className="text-[9px] text-blue-400 font-bold">Rank B</span>
+                    </div>
+                  </div>
 
-              {/* Character Crouching Silhouette / Emoji */}
-              <div className="z-10 flex flex-col items-center justify-center relative select-none">
-                <span className="text-6xl filter drop-shadow-[0_4px_15px_rgba(168,85,247,0.7)] animate-bounce" style={{ animationDuration: '3s' }}>
-                  🥷
-                </span>
-                <span className="text-2xl mt-4">🗡️</span>
-              </div>
+                  {/* VS Stats Rows */}
+                  <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                    {[
+                      { label: 'Raridade', left: leftCharStats.rank, right: thornStats.rank, imp: true },
+                      { label: 'Nivel', left: leftCharStats.level, right: thornStats.level, arrowUp: true },
+                      { label: 'Funcao', left: leftCharStats.class, right: thornStats.class },
+                      { label: 'Elemento', left: leftCharStats.element, right: thornStats.element },
+                      { label: 'ATQ', left: leftCharStats.atq, right: thornStats.atq, imp: true, arrowUp: true },
+                      { label: 'DEF', left: leftCharStats.def, right: thornStats.def, imp: true, arrowUp: true },
+                      { label: 'MAG', left: leftCharStats.mag, right: thornStats.mag },
+                      { label: 'VEL', left: leftCharStats.vel, right: thornStats.vel, imp: true, arrowUp: true },
+                      { label: 'Passiva', left: leftCharStats.passiva, right: thornStats.passiva },
+                      { label: 'Habilidade', left: leftCharStats.habilidade, right: thornStats.habilidade, imp: true, arrowUp: true },
+                      { label: 'Historico', left: leftCharStats.historico, right: thornStats.historico },
+                      { label: 'Vinculo', left: leftCharStats.vinculo, right: thornStats.vinculo, imp: true }
+                    ].map((row, idx) => (
+                      <div key={idx} className="grid grid-cols-5 items-center py-1 comparison-stat-row">
+                        <div className="col-span-2 stat-val-left font-semibold">{row.left}</div>
+                        <div className="col-span-1 stat-label-center">{row.label}</div>
+                        <div className={`col-span-2 stat-val-right font-semibold ${row.imp ? 'improved' : ''}`}>
+                          {row.right}
+                          {row.arrowUp && (
+                            <span className="stat-arrow-indicator stat-arrow-up">^</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-              {/* Text overlay below magic circle */}
-              <div className="z-10 bg-black/60 border border-indigo-950/60 rounded-full px-6 py-1.5 mt-8 shadow-inner">
-                <span className="text-[9px] font-black text-purple-300 uppercase tracking-widest leading-none">
-                  Thorn deseja se juntar à sua equipe.
-                </span>
-              </div>
-            </div>
+                </div>
 
-            {/* Alert Full Panel below */}
-            <div className="w-full recruit-warning-alert rounded-2xl p-3.5 flex gap-3.5 items-center text-left z-10 shrink-0">
-              <span className="text-2xl text-rose-500 animate-pulse">⚠️</span>
-              <div>
-                <span className="text-[9px] font-black text-rose-400 block uppercase tracking-wide leading-none">Equipe cheia: 6/6</span>
-                <p className="text-[8px] text-gray-400 leading-normal mt-1">
-                  Para aceitar Thorn, será necessário desencantar um companheiro atual. Companheiros desencantados serão enviados ao Livro de Memórias.
-                </p>
+                {/* Warning Alert context box */}
+                <div className="w-full grid grid-cols-2 gap-3 mt-3">
+                  <div className="recruit-warning-alert rounded-xl p-3 flex gap-2.5 items-center text-left">
+                    <span className="text-lg text-rose-500 shrink-0">!</span>
+                    <p className="text-[7.5px] text-gray-400 leading-normal">
+                      O personagem desencantado sera enviado ao Livro de Memorias e nao podera mais lutar.
+                    </p>
+                  </div>
+                  
+                  <div className="bg-[#121226]/40 border border-indigo-950 rounded-xl p-3 flex gap-2.5 items-center text-left">
+                    <span className="text-lg text-[#ffe082] shrink-0">*</span>
+                    <p className="text-[7.5px] text-gray-400 leading-normal">
+                      {replacedChar.id === 'char-lobo' 
+                        ? "Lobo Cinzento acompanha sua jornada desde o inicio. Se for desencantado, seu legado sera preservado no Livro de Memorias."
+                        : `${replacedChar.name} acompanha sua jornada. Seu legado sera preservado no Livro de Memorias.`
+                      }
+                    </p>
+                  </div>
+                </div>
+
               </div>
-            </div>
+            ) : (
+              /* DEFAULT INVITATION VIEW (Crouching magic circle) */
+              <div className="flex-1 flex flex-col justify-between items-center relative">
+                <div className="flex-1 flex flex-col justify-center items-center relative w-full">
+                  <div className="absolute w-64 h-64 rounded-full magic-circle-glow z-0 flex items-center justify-center border border-indigo-500/10">
+                    <div className="w-52 h-52 rounded-full border border-indigo-500/20 border-dashed" />
+                  </div>
+
+                  <div className="z-10 flex flex-col items-center justify-center relative select-none animate-pulse">
+                    <span className="text-6xl filter drop-shadow-[0_4px_15px_rgba(168,85,247,0.7)]">O</span>
+                    <span className="text-2xl mt-4">/</span>
+                  </div>
+
+                  <div className="z-10 bg-black/60 border border-indigo-950/60 rounded-full px-6 py-1.5 mt-8 shadow-inner">
+                    <span className="text-[9px] font-black text-purple-300 uppercase tracking-widest leading-none">
+                      Thorn deseja se juntar a sua equipe.
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-full recruit-warning-alert rounded-2xl p-3.5 flex gap-3.5 items-center text-left z-10 shrink-0">
+                  <span className="text-2xl text-rose-500 animate-pulse">!</span>
+                  <div>
+                    <span className="text-[9px] font-black text-rose-400 block uppercase tracking-wide leading-none">Equipe cheia: 6/6</span>
+                    <p className="text-[8.5px] text-gray-400 leading-normal mt-1">
+                      Para aceitar Thorn, sera necessario desencantar um companheiro atual. Companheiros desencantados serao enviados ao Livro de Memorias.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Column 4: Recruit Character Details */}
@@ -583,35 +736,54 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
         {/* Footer controls & Action buttons */}
         <footer className="w-full bg-[#121226]/50 border border-indigo-950 rounded-2xl p-4 shrink-0 flex justify-end items-center gap-4">
           <div className="flex gap-3">
-            <button
-              onClick={handleSubstitute}
-              className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider substitute-btn-glowing shadow-md flex items-center gap-2"
-            >
-              🔄 Substituir Companheiro
-            </button>
-            
-            <button
-              onClick={() => {
-                alert("Thorn foi convertido em 25 Orbes de Alma!");
-                onFinishBattle();
-              }}
-              className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2"
-            >
-              🔮 Converter em Orbes
-            </button>
+            {replacedChar ? (
+              <>
+                <button
+                  onClick={() => setCharacterToReplaceId("")}
+                  className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2"
+                >
+                  Manter Equipe Atual
+                </button>
+                <button
+                  onClick={handleSubstitute}
+                  className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider substitute-btn-glowing shadow-md flex items-center gap-2"
+                >
+                  Substituir {replacedChar.name}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleSubstitute}
+                  disabled={!characterToReplaceId}
+                  className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider substitute-btn-glowing shadow-md flex items-center gap-2 disabled:opacity-40"
+                >
+                  Substituir Companheiro
+                </button>
+                <button
+                  onClick={() => {
+                    alert("Thorn foi convertido em 25 Orbes de Alma!");
+                    onFinishBattle();
+                  }}
+                  className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2"
+                >
+                  Converter em Orbes
+                </button>
+              </>
+            )}
 
             <button
-              onClick={() => alert("Thorn: Dano base 450, alcance 2 tiles, recarga de habilidades rápida.")}
+              onClick={() => alert("Thorn: Dano base 450, alcance 2 tiles, recarga de habilidades rapida.")}
               className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2"
             >
-              📖 Ver Detalhes
+              Ver Detalhes
             </button>
 
             <button
               onClick={onFinishBattle}
               className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2 text-rose-400 border-rose-955/40 hover:bg-rose-950/15"
             >
-              ❌ Cancelar
+              Cancelar
             </button>
           </div>
         </footer>
