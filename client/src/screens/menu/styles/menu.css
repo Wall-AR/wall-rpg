@@ -1,0 +1,113 @@
+/* ⚜️ GameMenu Dark Fantasy Styles (AAA JRPG style) ⚜️ */
+
+.game-menu-container {
+  background-color: rgba(6, 6, 12, 0.95);
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9);
+  font-family: 'Inter', 'Cinzel', 'MedievalSharp', 'Segoe UI', sans-serif;
+  color: #d1d5db;
+}
+
+/* Golden Border Frame */
+.menu-gold-frame {
+  border: 2px solid #b59441;
+  background: linear-gradient(135deg, #0e0e1e 0%, #06060c 100%);
+  position: relative;
+  box-shadow: 0 0 30px rgba(181, 148, 65, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+/* Corner Decorations (SVG-like styling using borders) */
+.menu-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #f5d67b;
+  z-index: 10;
+}
+.corner-tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+.corner-tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+.corner-bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+.corner-br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+/* Subtitle and header styles */
+.menu-header-title {
+  font-family: 'Cinzel Decorative', 'Cinzel', 'Georgia', serif;
+  background: linear-gradient(180deg, #ffe082 0%, #c5a059 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
+  letter-spacing: 0.15em;
+}
+
+/* Character card rank badges */
+.rank-badge {
+  font-weight: 900;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+.rank-S-plus {
+  background: linear-gradient(135deg, #d4af37 0%, #f9e8a2 100%);
+  color: #3b2203;
+}
+.rank-S {
+  background: linear-gradient(135deg, #8a2be2 0%, #c77dff 100%);
+  color: #fff;
+}
+.rank-A {
+  background: linear-gradient(135deg, #1e90ff 0%, #82c0ff 100%);
+  color: #fff;
+}
+.rank-D {
+  background: linear-gradient(135deg, #708090 0%, #c0c0c0 100%);
+  color: #fff;
+}
+
+/* Element color definitions */
+.text-element-fogo { color: #ff6b35; text-shadow: 0 0 8px rgba(255, 107, 53, 0.4); }
+.text-element-agua { color: #1e90ff; text-shadow: 0 0 8px rgba(30, 144, 255, 0.4); }
+.text-element-terra { color: #d4a574; text-shadow: 0 0 8px rgba(212, 165, 116, 0.4); }
+.text-element-vento { color: #00e676; text-shadow: 0 0 8px rgba(0, 230, 118, 0.4); }
+.text-element-none { color: #a855f7; text-shadow: 0 0 8px rgba(168, 85, 247, 0.4); }
+
+/* Navigation buttons styling */
+.menu-nav-btn {
+  border-left: 3px solid transparent;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-nav-btn.active {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%);
+  border-left-color: #ffe082;
+  color: #ffffff;
+}
+
+/* Decorative divider line */
+.menu-gold-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #b59441 50%, transparent);
+}
+
+/* Stat bars style */
+.stat-bar-container {
+  background-color: #0b0b14;
+  border: 1px solid #1a1a2e;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  transition: width 0.4s ease-out;
+}
+
+/* Pulsing selection glow */
+.pulse-selection-gold {
+  animation: selectGoldPulse 2s infinite alternate;
+}
+@keyframes selectGoldPulse {
+  0% { box-shadow: 0 0 4px rgba(245, 214, 123, 0.2); border-color: #b59441; }
+  100% { box-shadow: 0 0 16px rgba(245, 214, 123, 0.6); border-color: #f5d67b; }
+}
+
+.pulse-selection-blue {
+  animation: selectBluePulse 2s infinite alternate;
+}
+@keyframes selectBluePulse {
+  0% { box-shadow: 0 0 4px rgba(99, 102, 241, 0.2); border-color: #4f46e5; }
+  100% { box-shadow: 0 0 16px rgba(99, 102, 241, 0.6); border-color: #818cf8; }
+}

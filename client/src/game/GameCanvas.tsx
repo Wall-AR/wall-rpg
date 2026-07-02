@@ -10,9 +10,11 @@ import { EncounterContext } from './BattleTransition';
 
 export interface GameCanvasProps {
   onTriggerBattle: (roomId: string, context?: Partial<EncounterContext>) => void;
+  menuOpen?: boolean;
+  onToggleMenu?: () => void;
 }
 
-export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
+export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle, menuOpen, onToggleMenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { token } = useAuthStore();
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -83,16 +85,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
     dialogOpenRef.current = true;
   };
 
-  // GameBoy Menu States
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Game Menu state from props
   const menuOpenRef = useRef(false);
-  const toggleMenu = () => {
-    setMenuOpen(prev => {
-      const next = !prev;
-      menuOpenRef.current = next;
-      return next;
-    });
-  };
+  useEffect(() => {
+    menuOpenRef.current = !!menuOpen;
+  }, [menuOpen]);
+
   const [menuTab, setMenuTab] = useState<'status' | 'inventory' | 'party' | 'settings'>('status');
   const [menuCharacter, setMenuCharacter] = useState<any>(null);
   const [menuInventory, setMenuInventory] = useState<any[]>([]);
@@ -749,7 +747,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
             return;
           }
           if (e.key === 'Escape') {
-            toggleMenu();
+            if (onToggleMenu) onToggleMenu();
             state.keys = {};
             return;
           }
@@ -1231,61 +1229,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onTriggerBattle }) => {
         </div>
       )}
 
-      {/* 🎮 RETRO GAMEBOY MENU OVERLAY 🎮 */}
-      {menuOpen && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/85 z-35 font-mono p-4">
-          <div className="bg-[#0c0c16] border-4 border-indigo-900 rounded p-6 max-w-2xl w-full h-[85%] flex flex-col shadow-[6px_6px_0px_0px_rgba(0,0,0,0.6)] text-indigo-300">
-            {/* Console Header */}
-            <div className="flex justify-between items-center border-b-2 border-indigo-950 pb-3 mb-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-extrabold tracking-widest text-indigo-400 animate-pulse">▶ COLISEUM_OS v1.0</span>
-              </div>
-              <button
-                onClick={toggleMenu}
-                className="px-3 py-1 bg-rose-950/40 hover:bg-rose-900 border-2 border-rose-900 text-rose-300 font-extrabold text-[10px] rounded active:translate-y-0.5"
-              >
-                RETORNAR [ESC]
-              </button>
-            </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 border-b-2 border-indigo-950 pb-3 mb-4 overflow-x-auto shrink-0">
-              {(['status', 'inventory', 'party', 'settings'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setMenuTab(tab);
-                    setMenuSelectedItem(null);
-                  }}
-                  className={`px-3 py-1.5 text-[10px] font-extrabold uppercase border-2 transition-all ${
-                    menuTab === tab
-                      ? 'bg-indigo-900/40 border-indigo-400 text-white shadow-[2px_2px_0px_0px_rgba(99,102,241,0.3)]'
-                      : 'bg-slate-950/30 border-indigo-950 text-indigo-400 hover:border-indigo-850'
-                  }`}
-                >
-                  {tab === 'status' ? '👤 STATUS' : tab === 'inventory' ? '🎒 MOCHILA' : tab === 'party' ? '👥 GRUPO' : '⚙️ CONTROLES'}
-                </button>
-              ))}
-            </div>
-
-            {/* Scrollable Tab Content Container */}
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-              {menuLoading ? (
-                <div className="h-full flex flex-col items-center justify-center gap-2 text-[10px] text-indigo-400 animate-pulse">
-                  <span>CARREGANDO DADOS DA ARENA...</span>
-                </div>
-              ) : (
-                renderMenuTabContent()
-              )}
-            </div>
-
-            {/* System Footer */}
-            <div className="mt-4 border-t-2 border-indigo-950 pt-2 text-center text-[8px] text-gray-500 shrink-0 uppercase tracking-widest font-extrabold">
-              Mega Coliseum • Pressione ESC para fechar o Menu
-            </div>
-          </div>
-        </div>
-      )}
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]/90 text-indigo-400 z-10">
           <div className="text-center space-y-3">

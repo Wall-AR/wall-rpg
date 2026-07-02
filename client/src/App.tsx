@@ -5,6 +5,7 @@ import { LobbyScreen } from './screens/LobbyScreen';
 import GameCanvas from './game/GameCanvas';
 import { BattleScreen } from './screens/BattleScreen';
 import { BattleTransition, EncounterContext } from './game/BattleTransition';
+import { GameMenu } from './screens/menu';
 
 type ScreenType = 'lobby' | 'game' | 'battle';
 
@@ -21,6 +22,7 @@ export const App: React.FC = () => {
   const { token, username } = useAuthStore();
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('lobby');
   const [battleRoomId, setBattleRoomId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Estado da transição de encontro
   const [encounter, setEncounter] = useState<EncounterContext | null>(null);
@@ -160,8 +162,13 @@ export const App: React.FC = () => {
           {/* Game Area */}
           <main className="flex-1 flex flex-col p-6">
             <div className="flex-1 flex flex-col gap-4">
-              <div className="flex-1 min-h-[400px] border border-indigo-900/40 rounded-lg overflow-hidden shadow-inner bg-[#1a1a2e]">
-                <GameCanvas onTriggerBattle={handleSimpleBattleTrigger} />
+              <div className="flex-1 min-h-[400px] border border-indigo-900/40 rounded-lg overflow-hidden shadow-inner bg-[#1a1a2e] relative">
+                <GameCanvas 
+                  onTriggerBattle={handleSimpleBattleTrigger} 
+                  menuOpen={menuOpen} 
+                  onToggleMenu={() => setMenuOpen(p => !p)} 
+                />
+                {menuOpen && <GameMenu onClose={() => setMenuOpen(false)} />}
               </div>
             </div>
           </main>
