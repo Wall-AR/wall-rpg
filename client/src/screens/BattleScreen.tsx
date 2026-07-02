@@ -405,6 +405,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
         return;
       }
       const replacedChar = PREP_ROSTER.find(c => c.id === characterToReplaceId);
+      if (room) {
+        room.send("recruit_substitute", { substituteCharacterId: characterToReplaceId });
+      }
       alert(`Você desencantou ${replacedChar?.name} e adicionou Thorn à sua equipe!`);
       onFinishBattle();
     };
@@ -762,6 +765,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                 </button>
                 <button
                   onClick={() => {
+                    if (room) {
+                      room.send("recruit_convert");
+                    }
                     alert("Thorn foi convertido em 25 Orbes de Alma!");
                     onFinishBattle();
                   }}

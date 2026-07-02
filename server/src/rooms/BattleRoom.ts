@@ -2,7 +2,7 @@ import { Room, Client } from 'colyseus';
 import jwt from 'jsonwebtoken';
 import { BattleState, BattlePlayerState, BattleCombatantState } from '../schemas/BattleState.js';
 import { db } from '../db/index.js';
-import { characters, inventory, itemsBase, battleHistory } from '../db/schema.js';
+import { characters, inventory, itemsBase, battleHistory, accounts, retiredCharacters } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { JWT_SECRET } from '../middleware/auth.js';
 
@@ -44,6 +44,7 @@ const getElementModifier = (attackerEl: string, defenderEl: string): number => {
 
 export class BattleRoom extends Room<{ state: BattleState }> {
   override maxClients = 2;
+  private sessionAccounts = new Map<string, string>();
 
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;
@@ -157,6 +158,83 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         this.startBattle();
       }
     });
+
+    // Recrutamento Real: Substituir um companheiro atual por Thorn
+    this.onMessage("recruit_substitute", async (client, data: { substituteCharacterId: string }) => {
+      const accountId = this.sessionAccounts.get(client.sessionId);
+      if (!accountId || !db) return;
+
+      const charId = data.substituteCharacterId;
+      try {
+        // 1. Fetch character to replace
+        const charData = await db.select().from(characters).where(eq(characters.id, charId)).limit(1);
+        if (charData && charData.length > 0) {
+          const c = charData[0];
+          
+          // 2. Insert into retiredCharacters (Livro de Memórias)
+          await db.insert(retiredCharacters).values({
+            accountId: c.accountId,
+            name: c.name,
+            level: c.level,
+            xp: c.xp,
+            element: c.element,
+          });
+
+          // 3. Delete from characters table
+          await db.delete(characters).where(eq(characters.id, charId));
+
+          // 4. Insert new character Thorn
+          const username = this.state.players.get(client.sessionId)?.username || "Player";
+          await db.insert(characters).values({
+            accountId: c.accountId,
+            name: `Thorn de ${username}`,
+            level: 18,
+            xp: 0,
+            element: 'terra',
+            stats: {
+              hp: 1800,
+              mp: 90,
+              strength: 75,
+              defense: 60,
+              speed: 55
+            },
+            dragoonLevel: 0
+          });
+
+          this.state.logs.push(`${username} desencantou ${c.name} (enviado ao Livro de Memórias) e recrutou Thorn!`);
+          client.send("recruit_success", { message: `Você substituiu ${c.name} por Thorn!` });
+        } else {
+          client.send("recruit_error", { message: "Companheiro para substituir não encontrado." });
+        }
+      } catch (err) {
+        console.error("[BattleRoom] Error during recruit substitution:", err);
+        client.send("recruit_error", { message: "Erro ao processar substituição no banco de dados." });
+      }
+    });
+
+    // Converter em Orbes de Alma (+25)
+    this.onMessage("recruit_convert", async (client) => {
+      const accountId = this.sessionAccounts.get(client.sessionId);
+      if (!accountId || !db) return;
+
+      try {
+        // Increment soulOrbs in accounts table
+        const userAccounts = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
+        if (userAccounts && userAccounts.length > 0) {
+          const currentOrbs = userAccounts[0].soulOrbs || 0;
+          await db.update(accounts)
+            .set({ soulOrbs: currentOrbs + 25 })
+            .where(eq(accounts.id, accountId));
+
+          const username = this.state.players.get(client.sessionId)?.username || "Player";
+          this.state.logs.push(`${username} converteu Thorn em 25 Orbes de Alma.`);
+          client.send("recruit_success", { message: "Convertido com sucesso! +25 Orbes de Alma adicionados." });
+        }
+      } catch (err) {
+        console.error("[BattleRoom] Error converting Thorn to Orbs:", err);
+        client.send("recruit_error", { message: "Erro ao converter no banco de dados." });
+      }
+    });
   }
 
   override async onJoin(client: Client, options: any, auth: any) {
@@ -214,6 +292,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     player.hasSelectedAction = false;
     player.hasSelectedLineup = false;
 
+    this.sessionAccounts.set(client.sessionId, auth.id || "");
     this.state.players.set(client.sessionId, player);
     this.state.logs.push(`${player.username} entrou na sala de combate.`);
 
@@ -457,11 +536,73 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         await db.insert(battleHistory).values({
           playerIds,
           result: this.state.winnerSessionId ? 'victory' : 'draw',
-          xpGained: 0,
+          xpGained: 250,
           log: logs,
         });
+
+        // Distribui XP e loot no banco para cada participante
+        for (const sessionId of this.state.players.keys()) {
+          const accountId = this.sessionAccounts.get(sessionId);
+          if (!accountId) continue;
+
+          const isWinner = this.state.winnerSessionId === sessionId;
+          const xpGained = isWinner ? 250 : 50;
+
+          // Encontra ID do personagem do jogador
+          const playerState = this.state.players.get(sessionId);
+          if (playerState && playerState.characterId) {
+            try {
+              const charData = await db.select().from(characters).where(eq(characters.id, playerState.characterId)).limit(1);
+              if (charData && charData.length > 0) {
+                const char = charData[0];
+                let newXp = char.xp + xpGained;
+                let newLevel = char.level;
+                let newStats = { ...(char.stats || { hp: 100, mp: 50, strength: 10, defense: 10, speed: 10 }) };
+
+                // Formula simples de Level Up: level * 150 de XP
+                const nextLevelXp = newLevel * 150;
+                let levelUpOccurred = false;
+                if (newXp >= nextLevelXp) {
+                  newXp -= nextLevelXp;
+                  newLevel += 1;
+                  newStats.hp += 120;
+                  newStats.mp += 15;
+                  newStats.strength += 8;
+                  newStats.defense += 6;
+                  newStats.speed += 3;
+                  levelUpOccurred = true;
+                }
+
+                await db.update(characters)
+                  .set({ xp: newXp, level: newLevel, stats: newStats })
+                  .where(eq(characters.id, playerState.characterId));
+
+                if (levelUpOccurred) {
+                  this.state.logs.push(`⭐ ${char.name} subiu para o nível ${newLevel}!`);
+                }
+              }
+            } catch (err) {
+              console.error("[BattleRoom] Falha ao atualizar XP no banco:", err);
+            }
+
+            // Drop de loot para o vencedor (50% de chance de cristal)
+            if (isWinner && Math.random() < 0.5) {
+              try {
+                // stone eh um item_id verificado nas texturas e base_items
+                await db.insert(inventory).values({
+                  accountId,
+                  itemId: "stone",
+                  slot: -1, // Mochila
+                  quantity: 1,
+                  metadata: { type: "loot", name: "Cristal" }
+                });
+                this.state.logs.push(`🎁 ${playerState.username} recebeu um Cristal.`);
+              } catch (_) { /* fallback se constraint de itemsBase falhar */ }
+            }
+          }
+        }
       }
-      console.log(`[BattleRoom] Battle history saved for room ${this.roomId}`);
+      console.log(`[BattleRoom] Battle history and rewards processed for room ${this.roomId}`);
     } catch (err) {
       console.error('[BattleRoom] Error saving battle history:', err);
     }
