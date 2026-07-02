@@ -231,3 +231,8 @@
   }
 }
 
+.flash-hit {
+  filter: brightness(2.5) drop-shadow(0 0 15px #ff4444) !important;
+  transition: filter 0.05s ease-in-out;
+}
+

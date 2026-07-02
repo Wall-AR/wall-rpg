@@ -7,6 +7,7 @@ import './styles/confrontation.css';
 import './styles/results.css';
 import './styles/recruit.css';
 import { RecruitmentRevealScreen } from './RecruitmentRevealScreen';
+import { gsap } from 'gsap';
 
 interface BattleScreenProps {
   roomId: string | null;
@@ -230,6 +231,126 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     }, 3000);
 
     return () => clearInterval(interval);
+  }, [resolutionStep]);
+
+  // GSAP Turn Resolution Animations
+  useEffect(() => {
+    if (resolutionStep === -1) return;
+
+    if (resolutionStep === 0) {
+      // Lyria casts Nova Astral
+      // 1. Slide Lyria forward
+      gsap.to(".character-node-char-lyria", {
+        x: 40,
+        y: -10,
+        duration: 0.4,
+        yoyo: true,
+        repeat: 1,
+        ease: "power2.out"
+      });
+
+      // 2. Shake enemies and flash them red after 0.4s
+      gsap.delayedCall(0.4, () => {
+        const enemies = [".character-node-opp-korr", ".character-node-opp-lobo", ".character-node-opp-nyxara"];
+        enemies.forEach(el => {
+          gsap.to(el, {
+            x: "+=8",
+            yoyo: true,
+            repeat: 5,
+            duration: 0.05,
+            onStart: () => {
+              document.querySelector(el)?.classList.add("flash-hit");
+            },
+            onComplete: () => {
+              gsap.to(el, { x: 0, duration: 0.1 });
+              document.querySelector(el)?.classList.remove("flash-hit");
+            }
+          });
+        });
+      });
+    } else if (resolutionStep === 1) {
+      // Raven Shadow Strike
+      const ravenEl = document.querySelector(".character-node-char-raven") as HTMLElement;
+      const targetEl = document.querySelector(".character-node-opp-nyxara") as HTMLElement;
+      
+      if (ravenEl && targetEl) {
+        const dx = targetEl.offsetLeft - ravenEl.offsetLeft - 40;
+        const dy = targetEl.offsetTop - ravenEl.offsetTop;
+        
+        gsap.timeline()
+          .to(".character-node-char-raven", {
+            x: dx,
+            y: dy,
+            duration: 0.25,
+            ease: "power3.in"
+          })
+          .to(".character-node-opp-nyxara", {
+            x: "+=12",
+            yoyo: true,
+            repeat: 5,
+            duration: 0.04,
+            onStart: () => {
+              document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit");
+            },
+            onComplete: () => {
+              gsap.to(".character-node-opp-nyxara", { x: 0, duration: 0.1 });
+              document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit");
+            }
+          })
+          .to(".character-node-char-raven", {
+            x: 0,
+            y: 0,
+            duration: 0.3,
+            ease: "power2.out"
+          });
+      }
+    } else if (resolutionStep === 2) {
+      // Caelum Holy Barrier
+      gsap.to(".character-node-char-caelum", {
+        x: 30,
+        y: -10,
+        duration: 0.5,
+        yoyo: true,
+        repeat: 1,
+        ease: "power1.inOut"
+      });
+    } else if (resolutionStep === 3) {
+      // Korr Investida
+      const korrEl = document.querySelector(".character-node-opp-korr") as HTMLElement;
+      const targetEl = document.querySelector(".character-node-char-raven") as HTMLElement;
+      
+      if (korrEl && targetEl) {
+        const dx = targetEl.offsetLeft - korrEl.offsetLeft + 40;
+        const dy = targetEl.offsetTop - korrEl.offsetTop;
+        
+        gsap.timeline()
+          .to(".character-node-opp-korr", {
+            x: dx,
+            y: dy,
+            duration: 0.25,
+            ease: "power3.in"
+          })
+          .to(".character-node-char-raven", {
+            x: "-=12",
+            yoyo: true,
+            repeat: 5,
+            duration: 0.04,
+            onStart: () => {
+              document.querySelector(".character-node-char-raven")?.classList.add("flash-hit");
+            },
+            onComplete: () => {
+              gsap.to(".character-node-char-raven", { x: 0, duration: 0.1 });
+              document.querySelector(".character-node-char-raven")?.classList.remove("flash-hit");
+            }
+          })
+          .to(".character-node-opp-korr", {
+            x: 0,
+            y: 0,
+            duration: 0.3,
+            ease: "power2.out"
+          });
+      }
+    }
   }, [resolutionStep]);
 
   // Update stats dynamically in resolution
@@ -1264,7 +1385,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                       setActiveTeammateId(t.id);
                       setSelectedSpellId(t.spells[0]?.id || '');
                     }}
-                    className={`placement-circle circle-blue cursor-pointer ${isActive ? 'active' : ''}`}
+                    className={`placement-circle circle-blue cursor-pointer character-node-${t.id} ${isActive ? 'active' : ''}`}
                     style={{ left: coord.x, top: coord.y }}
                   >
                     <div className="arena-character-sprite group">
@@ -1304,7 +1425,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                       if (isResolution) return;
                       setSelectedTargetId(t.id);
                     }}
-                    className={`placement-circle circle-red cursor-pointer ${isTargeted ? 'active' : ''}`}
+                    className={`placement-circle circle-red cursor-pointer character-node-${t.id} ${isTargeted ? 'active' : ''}`}
                     style={{ left: coord.x, top: coord.y }}
                   >
                     <div className="arena-character-sprite group">
