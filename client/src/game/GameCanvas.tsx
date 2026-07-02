@@ -43,6 +43,77 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   const [narrationText, setNarrationText] = useState<string | null>(null);
   const [activeQuest, setActiveQuest] = useState<any>(null);
   const [showPortalMenu, setShowPortalMenu] = useState(false);
+
+  // League of Legends Mobile style Virtual Joystick states & handlers
+  const [joystickActive, setJoystickActive] = useState(false);
+  const [knobOffset, setKnobOffset] = useState({ x: 0, y: 0 });
+  const joystickBaseRef = useRef<HTMLDivElement>(null);
+
+  const handleJoystickStart = (e: React.TouchEvent | React.MouseEvent) => {
+    e.preventDefault();
+    setJoystickActive(true);
+  };
+
+  const handleJoystickMove = (e: any) => {
+    if (!joystickActive || !joystickBaseRef.current) return;
+
+    const baseRect = joystickBaseRef.current.getBoundingClientRect();
+    const centerX = baseRect.left + baseRect.width / 2;
+    const centerY = baseRect.top + baseRect.height / 2;
+
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    const maxRadius = 36; // max knob drag distance in px
+    const angle = Math.atan2(dy, dx);
+    let knobX = dx;
+    let knobY = dy;
+
+    if (distance > maxRadius) {
+      knobX = Math.cos(angle) * maxRadius;
+      knobY = Math.sin(angle) * maxRadius;
+    }
+
+    setKnobOffset({ x: knobX, y: knobY });
+
+    if (gameStateRef.current) {
+      const normalizedMagnitude = Math.min(1.0, distance / maxRadius);
+      gameStateRef.current.joystickDx = Math.cos(angle) * normalizedMagnitude;
+      gameStateRef.current.joystickDy = Math.sin(angle) * normalizedMagnitude;
+    }
+  };
+
+  const handleJoystickEnd = () => {
+    setJoystickActive(false);
+    setKnobOffset({ x: 0, y: 0 });
+    if (gameStateRef.current) {
+      gameStateRef.current.joystickDx = 0;
+      gameStateRef.current.joystickDy = 0;
+    }
+  };
+
+  useEffect(() => {
+    if (joystickActive) {
+      const onMove = (e: any) => handleJoystickMove(e);
+      const onEnd = () => handleJoystickEnd();
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onEnd);
+
+      return () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onEnd);
+      };
+    }
+  }, [joystickActive]);
   
   // NPC Dialogue Box states
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -318,6 +389,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         playerSprite.anchor.set(0.5, 1.0);
         playerContainer.addChild(playerSprite);
 
+        // Click-to-Move input listener (League of Legends PC style)
+        if (app) {
+          app.stage.eventMode = 'static';
+          app.stage.hitArea = app.screen;
+          app.stage.on('pointerdown', (e) => {
+            if (!app) return;
+            const target = e.target;
+            if (target && target !== app.stage) return;
+            
+            const state = gameStateRef.current;
+            const clickPos = e.getLocalPosition(worldContainer);
+            state.mouseTargetX = (2 * clickPos.y + clickPos.x) / 2;
+            state.mouseTargetY = (2 * clickPos.y - clickPos.x) / 2;
+            state.isMovingByMouse = true;
+          });
+        }
+
         // Sync other players sprites
         const otherPlayersMap = new Map<string, Sprite>();
         
@@ -426,7 +514,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           animationFrameId = requestAnimationFrame(gameLoop);
 
           const state = gameStateRef.current;
-          const delta = (time - lastTime) / 16.666; // normalizing target 60FPS
+          const dt = Math.min(0.1, (time - lastTime) / 1000); // normalized time step in seconds
           lastTime = time;
 
           // If menu open, freeze movement
@@ -438,6 +526,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           let dx = 0;
           let dy = 0;
 
+          // 1. Check Keyboard Inputs
           const up = keys['w'] || keys['arrowup'];
           const down = keys['s'] || keys['arrowdown'];
           const left = keys['a'] || keys['arrowleft'];
@@ -454,22 +543,56 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             dy *= 0.7071;
           }
 
+          // 2. Check Virtual Joystick Input (League of Legends Mobile style)
+          // If joystick is active, it overrides keyboard/mouse click navigation
+          const hasJoystickInput = state.joystickDx !== undefined && state.joystickDy !== undefined && (state.joystickDx !== 0 || state.joystickDy !== 0);
+          if (hasJoystickInput) {
+            dx = state.joystickDx;
+            dy = state.joystickDy;
+            state.isMovingByMouse = false;
+            state.mouseTargetX = null;
+            state.mouseTargetY = null;
+          }
+
+          // If keyboard is pressed, clear mouse click destination target
+          const hasKeyboardInput = up || down || left || right;
+          if (hasKeyboardInput) {
+            state.isMovingByMouse = false;
+            state.mouseTargetX = null;
+            state.mouseTargetY = null;
+          }
+
+          // 3. Check Mouse Click-to-Move (League of Legends PC style)
+          if (!hasKeyboardInput && !hasJoystickInput && state.isMovingByMouse && state.mouseTargetX !== null && state.mouseTargetY !== null) {
+            const mdx = state.mouseTargetX - state.flatX;
+            const mdy = state.mouseTargetY - state.flatY;
+            const dist = Math.sqrt(mdx * mdx + mdy * mdy);
+
+            if (dist > 4) {
+              dx = mdx / dist;
+              dy = mdy / dist;
+            } else {
+              // Target reached
+              state.isMovingByMouse = false;
+              state.mouseTargetX = null;
+              state.mouseTargetY = null;
+            }
+          }
+
           const isMovingInput = dx !== 0 || dy !== 0;
 
           if (isMovingInput) {
-            // Determine direction
+            // Determine direction based on movement vector
             let targetDir = 'down';
-            if (up && left) targetDir = 'left';
-            else if (up && right) targetDir = 'right';
-            else if (down && left) targetDir = 'left';
-            else if (down && right) targetDir = 'right';
-            else if (up) targetDir = 'up';
-            else if (down) targetDir = 'down';
-            else if (left) targetDir = 'left';
-            else if (right) targetDir = 'right';
+            const absX = Math.abs(dx);
+            const absY = Math.abs(dy);
+            if (absX > absY) {
+              targetDir = dx > 0 ? 'right' : 'left';
+            } else {
+              targetDir = dy > 0 ? 'down' : 'up';
+            }
 
             // Walk animation frame update
-            const dt = (time - lastTime) / 1000;
             state.animTimer = (state.animTimer || 0) + dt;
             if (state.animTimer > 0.12) {
               state.animFrame = ((state.animFrame || 0) + 1) % 4;
@@ -484,9 +607,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             playerSprite.texture = texs[state.animFrame || 0];
 
             // Free pixel movement with sliding collision check
-            const dtMove = (time - lastTime) / 1000;
-            const moveStepX = dx * state.speed * dtMove;
-            const moveStepY = dy * state.speed * dtMove;
+            const moveStepX = dx * state.speed * dt;
+            const moveStepY = dy * state.speed * dt;
 
             // Bounding collision helpers
             const isPixelWalkable = (px: number, py: number) => {
@@ -818,6 +940,35 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         {/* Footer shortcuts guidelines */}
         <div className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest leading-none">
           Esc: Menu | M: Missões | I: Mochila | P: Grupo | Tab: Jogadores
+        </div>
+      </div>
+
+      {/* 6.5. LEFT-BOTTOM: VIRTUAL TOUCHPAD JOYSTICK (League of Legends Mobile style) */}
+      <div className="absolute bottom-28 left-6 z-30 pointer-events-auto select-none touch-none">
+        <div
+          ref={joystickBaseRef}
+          onMouseDown={handleJoystickStart}
+          onTouchStart={handleJoystickStart}
+          className={`w-20 h-20 bg-[#121226]/40 backdrop-blur-sm border border-[#b59441]/40 rounded-full flex items-center justify-center relative shadow-lg ${
+            joystickActive ? 'border-yellow-400 ring-2 ring-yellow-400/20 scale-105' : ''
+          } transition-all`}
+        >
+          {/* Outer compass marks */}
+          <span className="absolute top-1 text-[6px] text-gray-500 font-bold leading-none font-mono">▲</span>
+          <span className="absolute bottom-1 text-[6px] text-gray-500 font-bold leading-none font-mono">▼</span>
+          <span className="absolute left-1 text-[6px] text-gray-500 font-bold leading-none font-mono">◀</span>
+          <span className="absolute right-1 text-[6px] text-gray-500 font-bold leading-none font-mono">▶</span>
+
+          {/* Inner Knob */}
+          <div
+            className="w-9 h-9 bg-gradient-to-b from-[#ffe082] to-[#c5a059] border border-[#b59441] rounded-full shadow-lg cursor-grab active:cursor-grabbing flex items-center justify-center"
+            style={{
+              transform: `translate(${knobOffset.x}px, ${knobOffset.y}px)`,
+              transition: joystickActive ? 'none' : 'transform 0.15s ease-out',
+            }}
+          >
+            <div className="w-2.5 h-2.5 bg-slate-950/50 rounded-full border border-yellow-300/30" />
+          </div>
         </div>
       </div>
 
