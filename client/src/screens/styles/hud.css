@@ -1,0 +1,88 @@
+/* 🗺️ exploration HUD Styles — megaColiseum 🗺️ */
+
+.hud-profile-frame {
+  background: linear-gradient(135deg, rgba(22, 22, 42, 0.9) 0%, rgba(12, 12, 22, 0.95) 100%);
+  border: 1px solid rgba(181, 148, 65, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+/* Master Narration Banner (Top Center) */
+.hud-narration-banner {
+  background: linear-gradient(180deg, rgba(16, 20, 38, 0.95) 0%, rgba(8, 10, 18, 0.98) 100%);
+  border: 1.5px solid rgba(181, 148, 65, 0.4);
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(181, 148, 65, 0.15);
+  animation: slideDownBanner 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+@keyframes slideDownBanner {
+  0% { transform: translate(-50%, -30px); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* Minimap & Quest cards (Top Right) */
+.hud-minimap {
+  background: rgba(12, 12, 22, 0.9);
+  border: 1.5px solid rgba(181, 148, 65, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+.minimap-placeholder {
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.25) 0%, rgba(6, 6, 12, 0.95) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.hud-quest-panel {
+  background: linear-gradient(180deg, rgba(22, 22, 42, 0.8) 0%, rgba(12, 12, 22, 0.9) 100%);
+  border: 1px solid rgba(181, 148, 65, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* MMO Style Chat Box (Bottom Left) */
+.hud-chat-box {
+  background: rgba(10, 10, 18, 0.65);
+  border: 1.5px solid rgba(181, 148, 65, 0.15);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+.hud-chat-tab.active {
+  color: #ffe082;
+  border-bottom: 2px solid #ffe082;
+  text-shadow: 0 0 6px rgba(255, 224, 130, 0.4);
+}
+
+/* Action Shortcut Bar (Bottom Center) */
+.hud-action-bar-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(181, 148, 65, 0.35);
+  background: radial-gradient(circle, #1a1a32 0%, #06060c 100%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #d1d5db;
+}
+.hud-action-bar-btn:hover {
+  border-color: #ffe082;
+  transform: translateY(-4px);
+  box-shadow: 0 6px 15px rgba(181, 148, 65, 0.3), 0 0 8px rgba(255, 224, 130, 0.3);
+  color: #ffffff;
+}
+
+/* Prompt dialog notification overlay */
+.hud-prompt-box {
+  background: linear-gradient(90deg, transparent 0%, rgba(22, 22, 42, 0.85) 15%, rgba(12, 12, 22, 0.95) 50%, rgba(22, 22, 42, 0.85) 85%, transparent 100%);
+  border-top: 1.5px solid rgba(181, 148, 65, 0.25);
+  border-bottom: 1.5px solid rgba(181, 148, 65, 0.25);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+  animation: pulsePrompt 2s ease-in-out infinite alternate;
+}
+
+/* Quick Backpack Shortcut with notifier indicator */
+.hud-bag-shortcut {
+  background: radial-gradient(circle, #1e1e38 0%, #0c0c16 100%);
+  border: 1.5px solid rgba(181, 148, 65, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  transition: all 0.2s ease-out;
+}
+.hud-bag-shortcut:hover {
+  border-color: #ffe082;
+  transform: scale(1.08);
+}
