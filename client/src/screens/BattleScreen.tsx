@@ -5,6 +5,7 @@ import { BattleTransition, EncounterContext } from '../game/BattleTransition';
 import './styles/battle.css';
 import './styles/confrontation.css';
 import './styles/results.css';
+import './styles/recruit.css';
 
 interface BattleScreenProps {
   roomId: string | null;
@@ -68,6 +69,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   // Transition overlay state
   const [playedTransition, setPlayedTransition] = useState<boolean>(false);
   const [triggerTransition, setTriggerTransition] = useState<boolean>(false);
+
+  // Character recruitment pós-combat state
+  const [showRecruitScreen, setShowRecruitScreen] = useState<boolean>(false);
+  const [characterToReplaceId, setCharacterToReplaceId] = useState<string>("");
 
   // Active planning states
   const [activeTeammateId, setActiveTeammateId] = useState<string>('char-lyria');
@@ -391,6 +396,236 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   };
 
   // ══════════════════════════════════════════════════════════════════════════
+  // TELA 4: NEW COMPANION RECRUITMENT SCREEN (recruiting)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (showRecruitScreen) {
+    const handleSubstitute = () => {
+      if (!characterToReplaceId) {
+        alert("Por favor, selecione um companheiro da sua equipe atual para substituir!");
+        return;
+      }
+      const replacedChar = PREP_ROSTER.find(c => c.id === characterToReplaceId);
+      alert(`Você substituiu ${replacedChar?.name} por Thorn! Thorn se juntou à sua equipe.`);
+      onFinishBattle();
+    };
+
+    return (
+      <div className="w-full bg-[#06060c] flex flex-col p-5 border border-[#b59441]/40 rounded-3xl overflow-hidden shadow-2xl min-h-[580px] recruit-container select-none">
+        
+        {/* Header (Wall vs Recruitment Title) */}
+        <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative">
+          <div className="flex flex-col text-left max-w-[200px]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">Wall</span>
+              <span className="text-[8px] text-gray-500 font-bold">Poder da Equipe 52.843</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-blue-955 text-blue-400 font-black px-2 py-0.5 rounded border border-blue-900 mt-1 block w-max uppercase tracking-wider text-[8px]">
+              Vencedor
+            </div>
+          </div>
+
+          <div className="text-center">
+            <h2 className="text-base font-black tracking-widest text-[#ffe082] uppercase leading-none font-sans">Novo Companheiro</h2>
+            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-1.5">
+              Recrutamento após combate
+            </p>
+            <p className="text-[7.5px] text-gray-400 font-semibold tracking-wide mt-2">
+              Um inimigo derrotado reconheceu sua força e deseja se juntar à sua jornada.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3.5 text-right max-w-[220px]">
+            <div className="flex flex-col">
+              <span className="text-[8px] text-gray-400 font-bold">Local: Arena das Fendas</span>
+              <span className="text-[8px] text-gray-500 font-bold mt-1">Origem: Pós-combate</span>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-indigo-950/60 border border-indigo-850 flex items-center justify-center text-lg animate-spin" style={{ animationDuration: '8s' }}>
+              🌀
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Columns */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4 min-h-0 relative">
+          
+          {/* Column 1: EQUIPE ATUAL (6/6) */}
+          <div className="lg:col-span-1 border-r border-indigo-950/30 pr-4 flex flex-col overflow-y-auto">
+            <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 pb-1 border-b border-indigo-950/40 leading-none">Equipe Atual (6/6)</h3>
+            <div className="confrontation-roster-grid">
+              {PREP_ROSTER.map(c => {
+                const isSelected = characterToReplaceId === c.id;
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => setCharacterToReplaceId(c.id)}
+                    className={`p-2.5 rounded-xl cursor-pointer text-left flex flex-col justify-between confrontation-char-card relative min-h-[110px] ${
+                      isSelected ? 'to-replace' : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-center leading-none">
+                      <span className="element-badge-mini" style={{ color: c.element === 'agua' ? '#60a5fa' : c.element === 'terra' ? '#34d399' : c.element === 'fogo' ? '#f87171' : '#a78bfa' }}>
+                        {getElementEmoji(c.element)}
+                      </span>
+                      <span className="text-[8px] text-gray-500 font-extrabold">👑</span>
+                    </div>
+                    
+                    <div className="text-center my-1.5">
+                      <span className={`rank-badge ${c.rank === 'S+' ? 'rank-S-plus' : c.rank === 'S' ? 'rank-S' : c.rank === 'A' ? 'rank-A' : 'rank-D'}`}>
+                        {c.rank}
+                      </span>
+                    </div>
+
+                    <div className="border-t border-indigo-950/40 pt-1">
+                      <span className="text-[7px] text-gray-400 font-bold block leading-none">Lv. {c.level}</span>
+                      <h5 className="font-extrabold text-[9px] text-white truncate leading-none mt-0.5">{c.name}</h5>
+                      <span className="text-[7px] text-gray-500 uppercase block mt-0.5">{c.class}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Column 2 & 3: Recruit Illustration (Thorn crouching on magic circle) */}
+          <div className="lg:col-span-2 flex flex-col justify-between items-center px-4 relative">
+            <div className="flex-1 flex flex-col justify-center items-center relative w-full">
+              {/* Magic Circle Backdrop */}
+              <div className="absolute w-64 h-64 rounded-full magic-circle-glow z-0 flex items-center justify-center border border-indigo-500/10">
+                <div className="w-52 h-52 rounded-full border border-indigo-500/20 border-dashed" />
+              </div>
+
+              {/* Character Crouching Silhouette / Emoji */}
+              <div className="z-10 flex flex-col items-center justify-center relative select-none">
+                <span className="text-6xl filter drop-shadow-[0_4px_15px_rgba(168,85,247,0.7)] animate-bounce" style={{ animationDuration: '3s' }}>
+                  🥷
+                </span>
+                <span className="text-2xl mt-4">🗡️</span>
+              </div>
+
+              {/* Text overlay below magic circle */}
+              <div className="z-10 bg-black/60 border border-indigo-950/60 rounded-full px-6 py-1.5 mt-8 shadow-inner">
+                <span className="text-[9px] font-black text-purple-300 uppercase tracking-widest leading-none">
+                  Thorn deseja se juntar à sua equipe.
+                </span>
+              </div>
+            </div>
+
+            {/* Alert Full Panel below */}
+            <div className="w-full recruit-warning-alert rounded-2xl p-3.5 flex gap-3.5 items-center text-left z-10 shrink-0">
+              <span className="text-2xl text-rose-500 animate-pulse">⚠️</span>
+              <div>
+                <span className="text-[9px] font-black text-rose-400 block uppercase tracking-wide leading-none">Equipe cheia: 6/6</span>
+                <p className="text-[8px] text-gray-400 leading-normal mt-1">
+                  Para aceitar Thorn, será necessário desencantar um companheiro atual. Companheiros desencantados serão enviados ao Livro de Memórias.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 4: Recruit Character Details */}
+          <div className="lg:col-span-1 border-l border-indigo-950/30 pl-4 flex flex-col justify-between">
+            <div className="text-left space-y-4">
+              <div className="flex gap-3 items-center border-b border-indigo-950/40 pb-2.5">
+                <div className="rank-badge-B-blue shadow-inner shrink-0">B</div>
+                <h3 className="font-extrabold text-white text-lg leading-none">Thorn</h3>
+              </div>
+
+              {/* Attributes block */}
+              <div className="space-y-2.5 text-[8.5px] font-bold">
+                <div className="flex justify-between items-center border-b border-indigo-950/10 pb-0.5">
+                  <span className="text-gray-500">Raridade:</span>
+                  <span className="text-blue-400 uppercase font-black">B</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-indigo-950/10 pb-0.5">
+                  <span className="text-gray-500">Elemento:</span>
+                  <span className="text-emerald-400 flex items-center gap-1">🌿 Terra</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-indigo-950/10 pb-0.5">
+                  <span className="text-gray-500">Função:</span>
+                  <span className="text-gray-300 flex items-center gap-1">🗡️ Lanceiro</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-indigo-950/10 pb-0.5">
+                  <span className="text-gray-500">Nível Inicial:</span>
+                  <span className="text-gray-300">18</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-indigo-950/10 pb-0.5">
+                  <span className="text-gray-550">Origem:</span>
+                  <span className="text-gray-300">Recrutado após combate</span>
+                </div>
+              </div>
+
+              {/* Trait & Skills block */}
+              <div className="space-y-2.5 text-[8.5px] font-bold pt-1">
+                <div className="flex justify-between items-center border-b border-indigo-950/10 pb-0.5">
+                  <span className="text-gray-500">Traço:</span>
+                  <span className="text-emerald-400 flex items-center gap-1">🟢 Instinto de Sobrevivência</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-550">Habilidade:</span>
+                  <span className="text-rose-400 flex items-center gap-1">🔴 Golpe Perfurante</span>
+                </div>
+              </div>
+
+              {/* Lore quote */}
+              <div className="bg-black/35 border border-indigo-950/60 p-3 rounded-xl shadow-inner text-[8px] text-gray-500 italic leading-relaxed">
+                "Derrotado, mas não quebrado. Thorn reconhece sua liderança e oferece sua lança à sua causa."
+              </div>
+            </div>
+
+            {/* Gold crest illustration */}
+            <div className="flex justify-center my-4 opacity-25">
+              <span className="text-3xl">🛡️</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer controls & Action buttons */}
+        <footer className="w-full bg-[#121226]/50 border border-indigo-950 rounded-2xl p-4 shrink-0 flex justify-end items-center gap-4">
+          <div className="flex gap-3">
+            <button
+              onClick={handleSubstitute}
+              className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider substitute-btn-glowing shadow-md flex items-center gap-2"
+            >
+              🔄 Substituir Companheiro
+            </button>
+            
+            <button
+              onClick={() => {
+                alert("Thorn foi convertido em 25 Orbes de Alma!");
+                onFinishBattle();
+              }}
+              className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2"
+            >
+              🔮 Converter em Orbes
+            </button>
+
+            <button
+              onClick={() => alert("Thorn: Dano base 450, alcance 2 tiles, recarga de habilidades rápida.")}
+              className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2"
+            >
+              📖 Ver Detalhes
+            </button>
+
+            <button
+              onClick={onFinishBattle}
+              className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-sub shadow-sm flex items-center gap-2 text-rose-400 border-rose-955/40 hover:bg-rose-950/15"
+            >
+              ❌ Cancelar
+            </button>
+          </div>
+        </footer>
+
+        {/* Footer shortcuts */}
+        <div className="w-full text-center text-[7.5px] text-gray-600 font-bold uppercase tracking-widest pt-2.5 mt-2.5 border-t border-indigo-950/30 shrink-0">
+          Enter: Confirmar | Tab: Inspecionar | Esc: Cancelar
+        </div>
+
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // TELA 3: BATTLE RESULTS SCREEN (finished)
   // ══════════════════════════════════════════════════════════════════════════
   if (battleState.status === "finished") {
@@ -699,7 +934,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           {/* Action buttons */}
           <div className="flex gap-3">
             <button
-              onClick={onFinishBattle}
+              onClick={() => setShowRecruitScreen(true)}
               className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider results-btn-main shadow-md flex items-center gap-2"
             >
               🧭 Voltar ao Mapa
