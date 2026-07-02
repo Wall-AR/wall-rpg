@@ -49,6 +49,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
   const [step, setStep] = useState<'reveal' | 'details'>('reveal');
   const [substituteMode, setSubstituteMode] = useState(false);
   const [selectedReplaceId, setSelectedReplaceId] = useState<string>('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Source context strings
   const getSourceConfig = (type: RecruitmentSource) => {
@@ -127,7 +128,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
       alert("Por favor, escolha um companheiro atual da sua equipe para substituir!");
       return;
     }
-    onReplace(selectedReplaceId);
+    setShowConfirmModal(true);
   };
 
   // Selected character from team to compare
@@ -484,6 +485,75 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
           )}
         </div>
       </footer>
+
+      {/* EMOTIONAL CONFIRMATION MODAL */}
+      {showConfirmModal && compareTarget && (
+        <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 z-50 animate-fadeIn">
+          <div className="bg-[#121226] border-2 border-[#b59441] rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col justify-between relative overflow-hidden text-gray-200">
+            
+            {/* Background glowing particles effect */}
+            <div className="absolute -top-12 -left-12 w-32 h-32 bg-rose-500/10 rounded-full filter blur-xl" />
+            <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-purple-500/10 rounded-full filter blur-xl" />
+
+            <div className="text-center mb-5 border-b border-indigo-950/40 pb-4">
+              <span className="text-2xl mb-2 block">🔔</span>
+              <h3 className="text-sm font-black text-rose-450 tracking-wider uppercase">Confirmar Desencantamento</h3>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Essa decisão é permanente</p>
+            </div>
+
+            <div className="space-y-4 text-left">
+              <p className="text-xs text-gray-300 leading-relaxed">
+                Você está prestes a desencantar <strong className="text-white">{compareTarget.name}</strong>.
+              </p>
+              
+              <p className="text-[10px] text-gray-400 leading-relaxed bg-black/30 p-3 rounded-xl border border-indigo-950/30">
+                Ele será registrado no <strong>Livro de Memórias</strong> com todo o seu histórico, mas <strong>não poderá mais retornar à equipe nem lutar novamente</strong>.
+              </p>
+
+              {/* Extra emotional warning for favorite or high bond (like Lobo Cinzento) */}
+              {(compareTarget.id === 'char-lobo' || compareTarget.level >= 120) && (
+                <div className="p-3 bg-rose-955/25 border border-rose-900/50 rounded-xl text-[9px] text-rose-300 font-bold leading-normal flex items-start gap-2 shadow-inner">
+                  <span>⚠️</span>
+                  <p>
+                    Atenção: <strong>{compareTarget.name}</strong> possui <strong>Vínculo Lendário/Alto</strong>. Este companheiro marcou sua jornada. Deseja mesmo desencantá-lo?
+                  </p>
+                </div>
+              )}
+
+              {/* Memory summary details preview */}
+              <div className="bg-[#1a1a35] border border-indigo-950/40 rounded-xl p-3 text-[9px] text-gray-400 space-y-1.5">
+                <span className="font-extrabold text-[8px] text-indigo-400 uppercase tracking-widest block mb-1">REGISTRO DE MEMÓRIA</span>
+                <div className="grid grid-cols-2 gap-2 text-[9px]">
+                  <p>Nível Final: <strong className="text-white">{compareTarget.level}</strong></p>
+                  <p>Tempo na Equipe: <strong className="text-white">{compareTarget.id === 'char-lobo' ? 'Início da Jornada' : 'Campanha 1'}</strong></p>
+                  <p>Batalhas: <strong className="text-white">{compareTarget.id === 'char-lobo' ? 418 : 120}</strong></p>
+                  <p>Substituído por: <strong className="text-white">Thorn</strong></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Buttons */}
+            <div className="flex gap-3 mt-6 border-t border-indigo-950/40 pt-4 justify-end">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/45 hover:bg-black/80 border border-gray-800 text-gray-400"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  onReplace(selectedReplaceId);
+                }}
+                className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-900 hover:bg-rose-800 text-white font-bold shadow-lg shadow-rose-950/50"
+              >
+                Confirmar Desencantamento
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };
