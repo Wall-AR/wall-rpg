@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "concurrently \"tsc --watch --preserveWatchOutput\" \"node --watch dist/index.js\"",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
