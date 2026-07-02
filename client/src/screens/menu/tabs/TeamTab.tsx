@@ -29,6 +29,74 @@ export const TeamTab: React.FC<TeamTabProps> = ({
 
   const selectedMember = [...activeTeam, ...reserveTeam].find(m => m.id === selectedMemberId) || activeTeam[0];
 
+  // 2D Grid navigation for team members (Arrow keys / WASD)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isTyping = document.activeElement?.tagName === 'INPUT' || 
+                       document.activeElement?.tagName === 'TEXTAREA';
+      if (isTyping) return;
+
+      const grid: (CompanionCharacter | null)[][] = [
+        [activeTeam[0] || null, activeTeam[1] || null, activeTeam[2] || null],
+        [activeTeam[3] || null, activeTeam[4] || null, activeTeam[5] || null],
+        [reserveTeam[0] || null, reserveTeam[1] || null, reserveTeam[2] || null]
+      ];
+
+      let curRow = -1;
+      let curCol = -1;
+
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (grid[r][c]?.id === selectedMemberId) {
+            curRow = r;
+            curCol = c;
+            break;
+          }
+        }
+      }
+
+      if (curRow === -1) {
+        curRow = 0;
+        curCol = 0;
+      }
+
+      let nextRow = curRow;
+      let nextCol = curCol;
+
+      const key = e.key.toLowerCase();
+      if (e.key === 'ArrowLeft' || key === 'a') {
+        nextCol = (curCol - 1 + 3) % 3;
+      } else if (e.key === 'ArrowRight' || key === 'd') {
+        nextCol = (curCol + 1) % 3;
+      } else if (e.key === 'ArrowUp' || key === 'w') {
+        nextRow = (curRow - 1 + 3) % 3;
+      } else if (e.key === 'ArrowDown' || key === 's') {
+        nextRow = (curRow + 1) % 3;
+      } else {
+        return;
+      }
+
+      let nextMember = grid[nextRow][nextCol];
+      if (!nextMember) {
+        for (let offset = 1; offset < 3; offset++) {
+          const checkCol = (nextCol + offset) % 3;
+          if (grid[nextRow][checkCol]) {
+            nextMember = grid[nextRow][checkCol];
+            break;
+          }
+        }
+      }
+
+      if (nextMember) {
+        e.preventDefault();
+        setSelectedMemberId(nextMember.id);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTeam, reserveTeam, selectedMemberId, setSelectedMemberId]);
+
   const getRankBadgeClass = (rank: string) => {
     if (rank === 'S+') return 'rank-S-plus';
     if (rank === 'S') return 'rank-S';

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuthStore } from './stores/auth';
 import { LoginScreen } from './screens/LoginScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
@@ -80,12 +80,29 @@ export const App: React.FC = () => {
     });
   }, [handleSimpleBattleTrigger]);
 
+  // Global Escape key down to toggle menu from Lobby or Game screen
+  useEffect(() => {
+    if (!token) return;
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const isTyping = document.activeElement?.tagName === 'INPUT' || 
+                         document.activeElement?.tagName === 'TEXTAREA';
+        if (!isTyping && (currentScreen === 'lobby' || currentScreen === 'game')) {
+          e.preventDefault();
+          setMenuOpen(prev => !prev);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [token, currentScreen]);
+
   if (!token) {
     return <LoginScreen />;
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-white flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-[#0f0f1a] text-white flex flex-col font-sans select-none relative">
 
       {/* ═══ Battle Transition Overlay ═══ */}
       {showTransition && encounter && (
@@ -94,6 +111,9 @@ export const App: React.FC = () => {
           onTransitionComplete={handleTransitionComplete}
         />
       )}
+
+      {/* ═══ Global GameMenu Overlay ═══ */}
+      {menuOpen && <GameMenu onClose={() => setMenuOpen(false)} />}
 
       {currentScreen === 'lobby' ? (
         <LobbyScreen 
@@ -168,7 +188,6 @@ export const App: React.FC = () => {
                   menuOpen={menuOpen} 
                   onToggleMenu={() => setMenuOpen(p => !p)} 
                 />
-                {menuOpen && <GameMenu onClose={() => setMenuOpen(false)} />}
               </div>
             </div>
           </main>
