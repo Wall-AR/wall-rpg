@@ -12,6 +12,48 @@ const MAP_WIDTH = 32;
 const MAP_HEIGHT = 24;
 const TILE_SIZE = 32;
 
+const LOBBY_GRID = [
+  [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 2],
+  [2, 0, 4, 4, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 2],
+  [2, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 2, 6, 6, 2, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 2, 6, 6, 2, 0, 0, 0, 5, 5, 0, 2],
+  [2, 0, 0, 0, 0, 2, 6, 6, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 6, 6, 2, 0, 0, 5, 5, 5, 0, 2],
+  [2, 0, 0, 0, 0, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 2, 2, 2, 2, 0, 0, 5, 5, 5, 0, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 5, 0, 0, 2],
+  [2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 2, 2, 2, 2, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 2, 6, 6, 2, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 2, 6, 6, 2, 0, 0, 7, 7, 7, 0, 2],
+  [2, 0, 0, 0, 0, 2, 6, 6, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 6, 6, 2, 0, 0, 7, 0, 7, 0, 2],
+  [2, 0, 0, 0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 2, 2, 2, 2, 0, 0, 7, 0, 7, 0, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 7, 0, 7, 0, 2],
+  [2, 0, 4, 4, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 0, 2],
+  [2, 0, 4, 4, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0, 2],
+  [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+  [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+];
+
+const isWalkable = (gridX: number, gridY: number): boolean => {
+  if (gridX < 0 || gridX >= MAP_WIDTH || gridY < 0 || gridY >= MAP_HEIGHT) return false;
+  const tile = LOBBY_GRID[gridY][gridX];
+  return tile !== 2 && tile !== 5 && tile !== 7;
+};
+
+const getMonsterElement = (type: string): string => {
+  const t = type.toLowerCase();
+  if (t === 'orc') return 'terra';
+  if (t === 'goblin') return 'fogo';
+  if (t === 'wolf') return 'vento';
+  if (t === 'gargoyle') return 'none';
+  return 'none';
+};
+
 export class GameRoom extends Room<{ state: MapState }> {
   private gmSessions = new Set<string>();
   override async onAuth(client: Client, options: any, request?: any) {
@@ -80,6 +122,20 @@ export class GameRoom extends Room<{ state: MapState }> {
       player.x = data.x;
       player.y = data.y;
       player.status = "moving";
+
+      // Collision check with roaming monsters
+      const playerGridX = Math.floor(player.x / TILE_SIZE);
+      const playerGridY = Math.floor(player.y / TILE_SIZE);
+
+      this.state.monsters.forEach(monster => {
+        if (!monster.active) return;
+        const monsterGridX = Math.floor(monster.x / TILE_SIZE);
+        const monsterGridY = Math.floor(monster.y / TILE_SIZE);
+        
+        if (playerGridX === monsterGridX && playerGridY === monsterGridY) {
+          this.triggerBattleForPlayer(client.sessionId, monster.id);
+        }
+      });
     });
 
     // Handle status change messages
@@ -299,6 +355,116 @@ export class GameRoom extends Room<{ state: MapState }> {
         }
       }
     });
+
+    // Start roaming interval for active monsters
+    this.clock.setInterval(() => {
+      this.roamMonsters();
+    }, 2000);
+  }
+
+  private roamMonsters() {
+    this.state.monsters.forEach(monster => {
+      if (!monster.active) return;
+
+      // 40% chance of staying in place
+      if (Math.random() < 0.4) return;
+
+      const directions = [
+        { dx: 0, dy: -1 }, // Up
+        { dx: 0, dy: 1 },  // Down
+        { dx: -1, dy: 0 }, // Left
+        { dx: 1, dy: 0 }   // Right
+      ];
+      const dir = directions[Math.floor(Math.random() * directions.length)];
+      
+      const currentGridX = Math.floor(monster.x / TILE_SIZE);
+      const currentGridY = Math.floor(monster.y / TILE_SIZE);
+      const targetGridX = currentGridX + dir.dx;
+      const targetGridY = currentGridY + dir.dy;
+
+      if (isWalkable(targetGridX, targetGridY)) {
+        monster.x = targetGridX * TILE_SIZE;
+        monster.y = targetGridY * TILE_SIZE;
+
+        // Check if any player collided with this monster after it moved
+        this.state.players.forEach((player, sessionId) => {
+          const playerGridX = Math.floor(player.x / TILE_SIZE);
+          const playerGridY = Math.floor(player.y / TILE_SIZE);
+          if (playerGridX === targetGridX && playerGridY === targetGridY) {
+            this.triggerBattleForPlayer(sessionId, monster.id);
+          }
+        });
+      }
+    });
+  }
+
+  private async triggerBattleForPlayer(sessionId: string, monsterId: string) {
+    const player = this.state.players.get(sessionId);
+    if (!player) return;
+
+    // Cooldown check to prevent duplicate battle room creations
+    const now = Date.now();
+    const lastTrigger = (player as any).__lastBattleTrigger || 0;
+    if (now - lastTrigger < 3000) return;
+    (player as any).__lastBattleTrigger = now;
+
+    const monster = this.state.monsters.get(monsterId);
+    if (monster && monster.active) {
+      monster.active = false; // Deactivate monster
+
+      const client = this.clients.find(c => c.sessionId === sessionId);
+      const encounterData = {
+        roomId: '',
+        type: 'wild' as const,
+        enemyName: monster.name,
+        enemyElement: getMonsterElement(monster.type),
+      };
+
+      try {
+        const battleRoom = await matchMaker.createRoom("battle", {});
+        encounterData.roomId = battleRoom.roomId;
+        
+        if (player.partyId) {
+          const members: string[] = [];
+          this.state.players.forEach((p, sid) => {
+            if (p.partyId === player.partyId) {
+              members.push(sid);
+            }
+          });
+
+          members.forEach(sid => {
+            const memberClient = this.clients.find(c => c.sessionId === sid);
+            if (memberClient) {
+              memberClient.send("startBattle", encounterData);
+            }
+          });
+        } else {
+          if (client) {
+            client.send("startBattle", encounterData);
+          }
+        }
+
+        // Respawn the monster after 15 seconds in a random walkable tile
+        this.clock.setTimeout(() => {
+          if (monster) {
+            let rx = 14;
+            let ry = 10;
+            do {
+              rx = Math.floor(Math.random() * MAP_WIDTH);
+              ry = Math.floor(Math.random() * MAP_HEIGHT);
+            } while (!isWalkable(rx, ry));
+            monster.x = rx * TILE_SIZE;
+            monster.y = ry * TILE_SIZE;
+            monster.active = true;
+            console.log(`[GameRoom] Respawned monster ${monster.name} at (${rx}, ${ry})`);
+          }
+        }, 15000);
+
+      } catch (err) {
+        console.error("Failed to trigger battle on collision:", err);
+        monster.active = true; // Reactivate
+      }
+    }
   }
 
   override onJoin(client: Client, options: any, auth: any) {
