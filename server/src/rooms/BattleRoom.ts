@@ -1,10 +1,19 @@
 import { Room, Client } from 'colyseus';
 import jwt from 'jsonwebtoken';
-import { BattleState, BattlePlayerState } from '../schemas/BattleState.js';
+import { BattleState, BattlePlayerState, BattleCombatantState } from '../schemas/BattleState.js';
 import { db } from '../db/index.js';
 import { characters, inventory, itemsBase, battleHistory } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { JWT_SECRET } from '../middleware/auth.js';
+
+const CHARACTER_DATABASE: Record<string, { name: string; class: string; level: number; hp: number; mp: number; speed: number; strength: number; intelligence: number; element: string }> = {
+  'char-caelum': { name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, mp: 210, speed: 95, strength: 120, intelligence: 80, element: 'agua' },
+  'char-lyria': { name: 'Lyria', class: 'Mago', level: 124, hp: 6215, mp: 420, speed: 105, strength: 65, intelligence: 180, element: 'none' },
+  'char-raven': { name: 'Raven', class: 'Assassino', level: 127, hp: 6085, mp: 200, speed: 140, strength: 145, intelligence: 60, element: 'terra' },
+  'char-seraphina': { name: 'Seraphina', class: 'Cleriga', level: 121, hp: 6500, mp: 180, speed: 98, strength: 80, intelligence: 120, element: 'none' },
+  'char-lobo': { name: 'Lobo Cinzento', class: 'Companheiro', level: 132, hp: 5980, mp: 160, speed: 115, strength: 110, intelligence: 70, element: 'vento' },
+  'char-korr': { name: 'Korr', class: 'Lanceiro', level: 119, hp: 8120, mp: 180, speed: 90, strength: 130, intelligence: 95, element: 'fogo' }
+};
 
 const getElementModifier = (attackerEl: string, defenderEl: string): number => {
   const el = attackerEl.toLowerCase();
@@ -52,30 +61,37 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   override onCreate(options: any) {
     this.setState(new BattleState());
 
-    // Action handling from active player
-    this.onMessage("action", (client, data: { action: string; spellId?: string }) => {
+    // Action planning handler for all 3 team combatants
+    this.onMessage("plan_actions", (client, data: { actions: Record<string, { action: string; spellId?: string; targetId?: string }> }) => {
       if (this.state.status !== "planning") {
-        client.send("error", "Not the action selection phase.");
+        client.send("error", "Não está na fase de planejamento de ações.");
         return;
       }
 
       const player = this.state.players.get(client.sessionId);
-      if (!player) {
-        client.send("error", "Player not found in battle.");
-        return;
+      if (!player) return;
+
+      let plannedCount = 0;
+      for (const combatantId in data.actions) {
+        const combatant = player.combatants.get(combatantId);
+        if (combatant && combatant.hp > 0) {
+          const plan = data.actions[combatantId];
+          combatant.selectedAction = plan.action;
+          combatant.selectedSpellId = plan.spellId || "";
+          combatant.selectedTargetId = plan.targetId || "";
+          combatant.hasSelectedAction = true;
+          plannedCount++;
+        }
       }
 
-      const allowedActions = ["attack", "defend", "spell", "item"];
-      if (!allowedActions.includes(data.action)) {
-        client.send("error", "Invalid action selection.");
-        return;
+      // Check if all alive combatants of this player have selected an action
+      let totalAlive = 0;
+      player.combatants.forEach(c => { if (c.hp > 0) totalAlive++; });
+
+      if (plannedCount >= totalAlive || totalAlive === 0) {
+        player.hasSelectedAction = true;
+        this.state.logs.push(`${player.username} planejou as ações táticas.`);
       }
-
-      player.selectedAction = data.action;
-      player.selectedSpellId = data.spellId || "";
-      player.hasSelectedAction = true;
-
-      this.state.logs.push(`${player.username} está pronto.`);
 
       // Check if both players have made their choices
       let allReady = true;
@@ -97,6 +113,36 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
+
+      // Popula combatentes ativos do time de 3 selecionados
+      const chosenLineup = data.lineup || [];
+      chosenLineup.forEach(charId => {
+        const combatant = new BattleCombatantState();
+        combatant.id = charId;
+        
+        // Carrega do dicionário CHARACTER_DATABASE ou cria mock padrão
+        const dbStats = CHARACTER_DATABASE[charId] || CHARACTER_DATABASE['char-caelum'];
+        combatant.name = dbStats.name;
+        combatant.class = dbStats.class;
+        combatant.level = dbStats.level;
+        combatant.hp = dbStats.hp;
+        combatant.maxHp = dbStats.hp;
+        combatant.mp = dbStats.mp;
+        combatant.maxMp = dbStats.mp;
+        combatant.speed = dbStats.speed;
+        combatant.strength = dbStats.strength;
+        combatant.intelligence = dbStats.intelligence;
+        combatant.element = dbStats.element;
+        combatant.position = data.positions[charId] || "mid";
+        combatant.hasSelectedAction = false;
+        
+        // Aplica modificadores das runas
+        if (data.runeId === 'runa-vinculo') {
+          combatant.speed += 10; // Runa do Vínculo concede iniciativa extra
+        }
+
+        player.combatants.set(charId, combatant);
+      });
 
       player.hasSelectedLineup = true;
       this.state.logs.push(`${player.username} confirmou a formação.`);
@@ -188,8 +234,29 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       this.state.players.forEach(p => {
         if (!p.hasSelectedLineup) {
+          // Auto-select lineup with fallbacks
+          const defaultLineup = ['char-caelum', 'char-lyria', 'char-raven'];
+          defaultLineup.forEach(charId => {
+            const combatant = new BattleCombatantState();
+            combatant.id = charId;
+            const dbStats = CHARACTER_DATABASE[charId];
+            combatant.name = dbStats.name;
+            combatant.class = dbStats.class;
+            combatant.level = dbStats.level;
+            combatant.hp = dbStats.hp;
+            combatant.maxHp = dbStats.hp;
+            combatant.mp = dbStats.mp;
+            combatant.maxMp = dbStats.mp;
+            combatant.speed = dbStats.speed;
+            combatant.strength = dbStats.strength;
+            combatant.intelligence = dbStats.intelligence;
+            combatant.element = dbStats.element;
+            combatant.position = charId === 'char-caelum' ? 'front' : charId === 'char-raven' ? 'mid' : 'back';
+            combatant.hasSelectedAction = false;
+            p.combatants.set(charId, combatant);
+          });
           p.hasSelectedLineup = true;
-          this.state.logs.push(`${p.username} não confirmou a tempo — formação selecionada automaticamente.`);
+          this.state.logs.push(`${p.username} não confirmou a tempo — formação padrão ativa.`);
         }
       });
 
@@ -204,17 +271,21 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.startPlanningTimeout();
   }
 
-  // Timeout de 30s para a fase de planejamento — auto-defende jogadores inativos
+  // Timeout de 30s para a fase de planejamento — auto-defende combatentes inativos
   private startPlanningTimeout() {
     this.clock.setTimeout(() => {
       if (this.state.status !== 'planning') return;
 
-      let allReady = true;
       this.state.players.forEach(p => {
         if (!p.hasSelectedAction) {
-          p.selectedAction = 'defend';
+          p.combatants.forEach(c => {
+            if (c.hp > 0 && !c.hasSelectedAction) {
+              c.selectedAction = 'defend';
+              c.hasSelectedAction = true;
+            }
+          });
           p.hasSelectedAction = true;
-          this.state.logs.push(`${p.username} não agiu a tempo — defesa automática.`);
+          this.state.logs.push(`${p.username} não agiu a tempo — defesa automática de sua equipe.`);
         }
       });
 
@@ -227,105 +298,154 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.state.logs.push(`--- Turno ${this.state.turn}: Fase de Resolução ---`);
 
     const sessions = Array.from(this.state.players.keys());
-    const playersList = sessions.map(id => ({ id, state: this.state.players.get(id)! }));
+    
+    interface CombatantActor {
+      state: BattleCombatantState;
+      ownerSessionId: string;
+      opponentSessionId: string;
+    }
 
-    // Sort by Speed descending
-    playersList.sort((a, b) => b.state.speed - a.state.speed);
+    const actors: CombatantActor[] = [];
+    this.state.players.forEach((player, sessionId) => {
+      const oppSessionId = sessions.find(id => id !== sessionId)!;
+      player.combatants.forEach(c => {
+        if (c.hp > 0) {
+          actors.push({
+            state: c,
+            ownerSessionId: sessionId,
+            opponentSessionId: oppSessionId
+          });
+        }
+      });
+    });
 
-    // Apply actions in speed order
-    for (let i = 0; i < playersList.length; i++) {
-      const actor = playersList[i];
-      const actorState = actor.state;
+    // Ordenar fila de combatentes por velocidade individual (Decrescente)
+    actors.sort((a, b) => b.state.speed - a.state.speed);
 
-      // Skip fainted players
-      if (actorState.hp <= 0) continue;
+    // Executa ação de cada combatente
+    for (let i = 0; i < actors.length; i++) {
+      const actor = actors[i];
+      const combatant = actor.state;
 
-      const targetId = sessions.find(id => id !== actor.id)!;
-      const targetState = this.state.players.get(targetId)!;
+      // Ignora se o combatente morreu antes de agir nesta rodada
+      if (combatant.hp <= 0) continue;
 
-      if (actorState.selectedAction === "defend") {
-        this.state.logs.push(`${actorState.username} assume postura defensiva.`);
+      const actorPlayer = this.state.players.get(actor.ownerSessionId)!;
+      const oppPlayer = this.state.players.get(actor.opponentSessionId)!;
+
+      if (combatant.selectedAction === "defend") {
+        this.state.logs.push(`${combatant.name} (${actorPlayer.username}) assumiu postura defensiva.`);
         continue;
       }
 
-      if (actorState.selectedAction === "attack") {
-        // Base damage formula based on strength
-        const baseDmg = Math.floor(actorState.strength * 0.8) + Math.floor(Math.random() * 5) + 3; // e.g. 10-18 dmg
-        
-        // Element calculation
-        const modifier = getElementModifier(actorState.weaponElement, targetState.weaponElement);
+      // Acha alvo vivo
+      let target = oppPlayer.combatants.get(combatant.selectedTargetId);
+      if (!target || target.hp <= 0) {
+        // Redireciona para o primeiro inimigo vivo
+        target = Array.from(oppPlayer.combatants.values()).find(c => c.hp > 0);
+      }
+
+      if (!target) continue; // Sem inimigos vivos
+
+      if (combatant.selectedAction === "attack") {
+        const baseDmg = Math.floor(combatant.strength * 0.85) + Math.floor(Math.random() * 8) + 5;
+        const modifier = getElementModifier(combatant.element, target.element);
         let finalDmg = Math.floor(baseDmg * modifier);
 
-        // Adjust if target is defending
-        if (targetState.selectedAction === "defend") {
+        if (target.selectedAction === "defend") {
           finalDmg = Math.floor(finalDmg * 0.5);
-          this.state.logs.push(`${targetState.username} defendeu parte do golpe.`);
         }
 
-        targetState.hp = Math.max(0, targetState.hp - finalDmg);
+        target.hp = Math.max(0, target.hp - finalDmg);
 
-        let elemComment = "";
-        if (modifier > 1) elemComment = " (Super Efetivo! 🔥)";
-        if (modifier < 1) elemComment = " (Resistido... 🛡️)";
+        let comment = "";
+        if (modifier > 1) comment = " (Super Efetivo! 🔥)";
+        if (modifier < 1) comment = " (Resistido... 🛡️)";
+        if (target.selectedAction === "defend") comment += " [Defendido]";
 
         this.state.logs.push(
-          `${actorState.username} atacou ${targetState.username} causando ${finalDmg} de dano${elemComment}.`
+          `${combatant.name} atacou ${target.name} causando ${finalDmg} de dano${comment}.`
         );
       }
 
-      if (actorState.selectedAction === "spell") {
-        if (actorState.selectedSpellId === "cure") {
+      if (combatant.selectedAction === "spell") {
+        if (combatant.selectedSpellId === "cure") {
           const mpCost = 10;
-          if (actorState.mp < mpCost) {
-            this.state.logs.push(`${actorState.username} tentou usar Cura mas não tem MP suficiente (${actorState.mp}/${mpCost}).`);
+          if (combatant.mp < mpCost) {
+            this.state.logs.push(`${combatant.name} tentou usar Cura mas não tem MP suficiente (${combatant.mp}/${mpCost}).`);
           } else {
-            actorState.mp -= mpCost;
-            const heal = Math.floor(actorState.intelligence * 1.5) + Math.floor(Math.random() * 5);
-            actorState.hp = Math.min(actorState.maxHp, actorState.hp + heal);
-            this.state.logs.push(`${actorState.username} usou Cura restaurando ${heal} de HP. (MP: ${actorState.mp}/${actorState.maxMp})`);
+            combatant.mp -= mpCost;
+            // Cura o aliado com menor HP
+            const allyTarget = Array.from(actorPlayer.combatants.values())
+              .filter(c => c.hp > 0)
+              .sort((a, b) => a.hp - b.hp)[0];
+            if (allyTarget) {
+              const heal = Math.floor(combatant.intelligence * 1.5) + Math.floor(Math.random() * 8);
+              allyTarget.hp = Math.min(allyTarget.maxHp, allyTarget.hp + heal);
+              this.state.logs.push(`${combatant.name} curou ${allyTarget.name} restaurando ${heal} de HP. (MP: ${combatant.mp}/${combatant.maxMp})`);
+            }
           }
         } else {
+          // Spell ofensiva
           const mpCost = 15;
-          if (actorState.mp < mpCost) {
-            this.state.logs.push(`${actorState.username} tentou lançar magia mas não tem MP suficiente (${actorState.mp}/${mpCost}).`);
+          if (combatant.mp < mpCost) {
+            this.state.logs.push(`${combatant.name} tentou lançar magia mas não tem MP suficiente (${combatant.mp}/${mpCost}).`);
           } else {
-            actorState.mp -= mpCost;
-            // Ataque mágico
-            const baseDmg = Math.floor(actorState.intelligence * 1.2) + Math.floor(Math.random() * 4) + 5;
-            const modifier = getElementModifier(actorState.weaponElement, targetState.weaponElement);
+            combatant.mp -= mpCost;
+            const baseDmg = Math.floor(combatant.intelligence * 1.3) + Math.floor(Math.random() * 10) + 8;
+            const modifier = getElementModifier(combatant.element, target.element);
             let finalDmg = Math.floor(baseDmg * modifier);
 
-            if (targetState.selectedAction === "defend") {
+            if (target.selectedAction === "defend") {
               finalDmg = Math.floor(finalDmg * 0.5);
             }
 
-            targetState.hp = Math.max(0, targetState.hp - finalDmg);
-            this.state.logs.push(`${actorState.username} lançou magia em ${targetState.username} causando ${finalDmg} de dano. (MP: ${actorState.mp}/${actorState.maxMp})`);
+            target.hp = Math.max(0, target.hp - finalDmg);
+
+            let comment = "";
+            if (modifier > 1) comment = " (Super Efetivo! 🔥)";
+            if (modifier < 1) comment = " (Resistido... 🛡️)";
+            if (target.selectedAction === "defend") comment += " [Defendido]";
+
+            this.state.logs.push(
+              `${combatant.name} lançou Magia em ${target.name} causando ${finalDmg} de dano${comment}. (MP: ${combatant.mp}/${combatant.maxMp})`
+            );
           }
         }
       }
 
-      // Check win condition immediately
-      if (targetState.hp <= 0) {
-        this.state.logs.push(`${targetState.username} desmaiou.`);
-        this.state.status = "finished";
-        this.state.winnerSessionId = actor.id;
-        this.state.logs.push(`--- Batalha Encerrada. Vencedor: ${actorState.username}! ---`);
-        this.saveBattleHistory();
-        return;
+      if (target.hp <= 0) {
+        this.state.logs.push(`💀 ${target.name} desmaiou.`);
+        
+        // Verifica se a equipe do oponente foi totalmente aniquilada
+        let oppAliveCount = 0;
+        oppPlayer.combatants.forEach(c => { if (c.hp > 0) oppAliveCount++; });
+
+        if (oppAliveCount === 0) {
+          this.state.logs.push(`🎉 A equipe de ${oppPlayer.username} foi totalmente derrotada!`);
+          this.state.status = "finished";
+          this.state.winnerSessionId = actor.ownerSessionId;
+          this.state.logs.push(`--- Batalha Encerrada. Vencedor: ${actorPlayer.username}! ---`);
+          this.saveBattleHistory();
+          return;
+        }
       }
     }
 
-    // Reset planning actions for next round
+    // Reset de escolhas para o próximo round
     this.state.players.forEach(p => {
       p.hasSelectedAction = false;
-      p.selectedAction = "none";
-      p.selectedSpellId = "";
+      p.combatants.forEach(c => {
+        c.hasSelectedAction = false;
+        c.selectedAction = "none";
+        c.selectedSpellId = "";
+        c.selectedTargetId = "";
+      });
     });
 
     this.state.turn += 1;
     this.state.status = "planning";
-    this.state.logs.push("Novo turno iniciado. Selecionem suas ações.");
+    this.state.logs.push(`--- Turno ${this.state.turn}: Fase de Planejamento ---`);
     this.startPlanningTimeout();
   }
 
