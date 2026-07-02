@@ -189,23 +189,62 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
             const tileType = LOBBY_MAP.grid[r][c];
-            let tex = textures.grass;
-            if (tileType === 1) tex = textures.stone;
-            if (tileType === 2) tex = textures.brick;
-            if (tileType === 3) tex = textures.portal;
-            if (tileType === 4) tex = textures.flowers;
-            if (tileType === 5) tex = textures.water;
-            if (tileType === 6) tex = textures.woodFloor;
-            if (tileType === 7) tex = textures.fence;
-
-            const tileSprite = new Sprite(tex);
             const iso = toIsometric(c * size, r * size);
-            tileSprite.x = iso.x;
-            tileSprite.y = iso.y;
-            tileSprite.anchor.set(0.5, 0.0); // anchor at top center of diamond
-            tileSprite.width = 64;
-            tileSprite.height = 32;
-            mapContainer.addChild(tileSprite);
+
+            if (tileType === 2 || tileType === 7) {
+              // Obstacle (Brick wall / Fence)
+              // Draw ground underneath first
+              const groundSprite = new Sprite(textures.grass);
+              groundSprite.x = iso.x;
+              groundSprite.y = iso.y;
+              groundSprite.anchor.set(0.5, 0.0);
+              groundSprite.width = 64;
+              groundSprite.height = 32;
+              mapContainer.addChild(groundSprite);
+
+              // Spawn vertical sprite on sorted container
+              const obstacleSprite = new Sprite(tileType === 2 ? textures.brick : textures.fence);
+              obstacleSprite.x = iso.x;
+              obstacleSprite.y = iso.y + 16; // base center on tile
+              obstacleSprite.anchor.set(0.5, 1.0);
+              obstacleSprite.width = 32;
+              obstacleSprite.height = tileType === 2 ? 64 : 40; // brick pillars are taller
+              playerContainer.addChild(obstacleSprite);
+            } else if (tileType === 3) {
+              // Portal
+              // Draw stone tile underneath first
+              const groundSprite = new Sprite(textures.stone);
+              groundSprite.x = iso.x;
+              groundSprite.y = iso.y;
+              groundSprite.anchor.set(0.5, 0.0);
+              groundSprite.width = 64;
+              groundSprite.height = 32;
+              mapContainer.addChild(groundSprite);
+
+              // Large vertical portal arch on sorted container
+              const portalSprite = new Sprite(textures.portal);
+              portalSprite.x = iso.x;
+              portalSprite.y = iso.y + 16;
+              portalSprite.anchor.set(0.5, 1.0);
+              portalSprite.width = 64;
+              portalSprite.height = 96; // Nice tall arch
+              playerContainer.addChild(portalSprite);
+            } else {
+              // Flat ground tile
+              let tex = textures.grass;
+              if (tileType === 1) tex = textures.stone;
+              if (tileType === 4) tex = textures.flowers;
+              if (tileType === 5) tex = textures.water;
+              if (tileType === 6) tex = textures.woodFloor;
+
+              const tileSprite = new Sprite(tex);
+              tileSprite.x = iso.x;
+              tileSprite.y = iso.y;
+              tileSprite.anchor.set(0.5, 0.0);
+              tileSprite.width = 64;
+              tileSprite.height = 32;
+              mapContainer.addChild(tileSprite);
+            }
           }
         }
 
@@ -469,6 +508,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             worldContainer.x = app.screen.width / 2 - playerSprite.x;
             worldContainer.y = app.screen.height / 2 - playerSprite.y;
           }
+
+          // 2.5D depth sorting (Y-Sorting) for all vertical sprites
+          playerContainer.children.sort((a, b) => a.y - b.y);
         };
 
         // Start render ticker
