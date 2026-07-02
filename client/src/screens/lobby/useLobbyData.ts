@@ -5,7 +5,7 @@ import { client } from '../../game/colyseus';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
-export type TabType = 'home' | 'profile' | 'inventory' | 'friends' | 'battles' | 'quests' | 'gm' | 'settings';
+export type TabType = 'home' | 'profile' | 'inventory' | 'friends' | 'battles' | 'quests' | 'gm' | 'settings' | 'memories';
 
 export interface ChatMessage {
   sender: string;
@@ -214,7 +214,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
   }, [token]);
 
   useEffect(() => {
-    if (activeTab === 'profile') {
+    if (activeTab === 'profile' || activeTab === 'memories') {
       const fetchRetired = async () => {
         try {
           const res = await fetch('/character/retired', {

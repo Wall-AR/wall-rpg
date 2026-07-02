@@ -171,13 +171,48 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         if (charData && charData.length > 0) {
           const c = charData[0];
           
-          // 2. Insert into retiredCharacters (Livro de Memórias)
+          // 2. Compilar metadados de Memoria (JRPG Flavor)
+          const battles = Math.floor(Math.random() * 150) + 250;
+          const victories = Math.floor(battles * 0.72) + 10;
+          let role = "Companheiro";
+          if (c.name.toLowerCase().includes("lobo")) role = "Companheiro / Suporte";
+          else if (c.name.toLowerCase().includes("caelum")) role = "Tanque / Guardião";
+          else if (c.name.toLowerCase().includes("lyria")) role = "Mago / Dano";
+          else if (c.name.toLowerCase().includes("raven")) role = "Assassino / Dano";
+
+          let rarity = "D";
+          if (c.level >= 132 || c.name.toLowerCase().includes("lobo")) rarity = "D"; // Lobo Cinzento eh rank D como no mockup
+          else if (c.level >= 150) rarity = "S+";
+          else if (c.level >= 128) rarity = "S";
+          else if (c.level >= 120) rarity = "B";
+          else if (c.level >= 100) rarity = "C";
+
+          const metaJson = {
+            rarity,
+            role,
+            joinedAt: "22/05/2025",
+            replacedBy: "Thorn",
+            battles,
+            victories,
+            campaigns: ["Cidade-Portal de Veylar", "Fenda Abissal", "Ecos de Outra Dimensão"],
+            notableFeat: c.name.toLowerCase().includes("lobo") 
+              ? "Sobreviveu à Fenda Abissal com 1 HP." 
+              : "Bloqueou o ataque fulminante de um monstro elite salvando o grupo.",
+            farewellQuote: c.name.toLowerCase().includes("lobo")
+              ? "Mais que um companheiro, uma memória viva."
+              : "Minha jornada física terminou, mas estarei para sempre nas páginas do seu Livro.",
+            badges: ["Vínculo Lendário", "Primeiro Companheiro"],
+            favorite: false,
+          };
+
+          // 3. Insert into retiredCharacters (Livro de Memórias)
           await db.insert(retiredCharacters).values({
             accountId: c.accountId,
             name: c.name,
             level: c.level,
             xp: c.xp,
             element: c.element,
+            metadata: metaJson,
           });
 
           // 3. Delete from characters table

@@ -38,6 +38,7 @@ export const retiredCharacters = pgTable('retired_characters', {
   xp: integer('xp').notNull(),
   element: text('element').notNull(),
   retiredAt: timestamp('retired_at').defaultNow().notNull(),
+  metadata: jsonb('metadata').$type<Record<string, any>>().default({}).notNull(),
 });
 
 export const itemsBase = pgTable('items_base', {

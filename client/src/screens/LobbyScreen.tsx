@@ -2,7 +2,7 @@ import React from 'react';
 import {
   useLobbyData, TabType,
   HomeTab, ProfileTab, InventoryTab, FriendsTab,
-  BattlesTab, QuestsTab, GMTab, SettingsTab,
+  BattlesTab, QuestsTab, GMTab, SettingsTab, MemoriesTab,
 } from './lobby';
 
 interface LobbyScreenProps {
@@ -17,6 +17,7 @@ const TAB_CONFIG: { key: TabType; icon: string; label: string }[] = [
   { key: 'friends', icon: '👥', label: 'Amigos' },
   { key: 'battles', icon: '⚔️', label: 'Batalhas' },
   { key: 'quests', icon: '📜', label: 'Missões' },
+  { key: 'memories', icon: '📖', label: 'Memórias' },
   { key: 'gm', icon: '🧙‍♂️', label: 'Painel do Mestre' },
   { key: 'settings', icon: '⚙️', label: 'Ajustes' },
 ];
@@ -69,6 +70,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onStartGame, onStartBa
         return <BattlesTab />;
       case 'quests':
         return <QuestsTab />;
+      case 'memories':
+        return <MemoriesTab retiredList={lobby.retiredList} setActiveTab={lobby.setActiveTab} />;
       case 'gm':
         return <GMTab {...lobby} />;
       case 'settings':

@@ -6,5 +6,6 @@ export { BattlesTab } from './BattlesTab';
 export { QuestsTab } from './QuestsTab';
 export { GMTab } from './GMTab';
 export { SettingsTab } from './SettingsTab';
+export { MemoriesTab } from './MemoriesTab';
 export { useLobbyData } from './useLobbyData';
 export type { TabType, LobbyData } from './useLobbyData';
