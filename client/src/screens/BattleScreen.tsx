@@ -79,6 +79,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   const [activeTeammateId, setActiveTeammateId] = useState<string>('char-lyria');
   const [selectedSpellId, setSelectedSpellId] = useState<string>('nova-astral');
   const [selectedTargetId, setSelectedTargetId] = useState<string>('opp-nyxara');
+  const [plannedActions, setPlannedActions] = useState<Record<string, { action: string; spellId?: string; targetId?: string }>>({});
   const [timerSeconds, setTimerSeconds] = useState(12);
 
   // Resolution simulation state
@@ -184,6 +185,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     }, 1000);
     return () => clearInterval(timer);
   }, [resolutionStep, battleState?.status]);
+
+  // Initialize plannedActions with default actions when entering planning phase
+  useEffect(() => {
+    if (battleState?.status === 'planning') {
+      const initial: Record<string, any> = {};
+      blueTeam.forEach(t => {
+        initial[t.id] = { action: 'attack', targetId: 'opp-nyxara' };
+      });
+      setPlannedActions(initial);
+    }
+  }, [battleState?.status, blueTeam]);
 
   // Trigger battle transition when status changes from confrontation_prep to planning
   useEffect(() => {
@@ -306,13 +318,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   const activeSpell = currentTeammate.spells.find(s => s.id === selectedSpellId) || currentTeammate.spells[0];
 
   const handleConfirmStrategy = () => {
-    if (resolutionStep === -1) {
-      setResolutionStep(0);
-    }
-    if (activeSpell?.id === 'cure') {
-      room.send("action", { action: "spell", spellId: "cure" });
-    } else {
-      room.send("action", { action: "attack" });
+    if (room) {
+      room.send("plan_actions", { actions: plannedActions });
     }
   };
 
@@ -1401,6 +1408,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                 <span className={`text-[8px] uppercase px-1 rounded-sm ${getElementColorClass(currentTeammate.element)} font-black`}>
                   {currentTeammate.element}
                 </span>
+                {plannedActions[currentTeammate.id] && (
+                  <span className="text-[7.5px] bg-[#121226]/80 text-[#ffe082] font-black px-1.5 py-0.5 rounded border border-[#b59441]/40 uppercase tracking-wider">
+                    {plannedActions[currentTeammate.id].action === 'attack' ? '⚔️ Atacar' :
+                     plannedActions[currentTeammate.id].action === 'defend' ? '🛡️ Defender' : '✨ Feitiço'}
+                  </span>
+                )}
               </h4>
               <span className="text-[8px] text-indigo-400 uppercase font-black tracking-wider block mt-1">Lv. {currentTeammate.level} • {currentTeammate.class}</span>
               <div className="flex gap-2 text-[8px] mt-1.5 font-bold text-gray-500">
@@ -1480,7 +1493,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
               <>
                 <div className="grid grid-cols-4 gap-2">
                   <button
-                    onClick={handleMovePosition}
+                    onClick={() => {
+                      handleMovePosition();
+                      setPlannedActions(prev => ({
+                        ...prev,
+                        [activeTeammateId]: { action: 'defend' }
+                      }));
+                    }}
                     className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
                   >
                     Mover
@@ -1488,14 +1507,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                   <button
                     onClick={() => {
                       setSelectedSpellId('attack');
-                      setActionLog(prev => [`${currentTeammate.name}: Atacou Nyxara`, ...prev.slice(0, 5)]);
+                      setActionLog(prev => [`${currentTeammate.name}: Planejou atacar Nyxara`, ...prev.slice(0, 5)]);
+                      setPlannedActions(prev => ({
+                        ...prev,
+                        [activeTeammateId]: { action: 'attack', targetId: selectedTargetId }
+                      }));
                     }}
                     className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
                   >
                     Atacar
                   </button>
                   <button
-                    onClick={() => setActionLog(prev => [`${currentTeammate.name}: Defender Postura`, ...prev.slice(0, 5)])}
+                    onClick={() => {
+                      setActionLog(prev => [`${currentTeammate.name}: Planejou defender postura`, ...prev.slice(0, 5)]);
+                      setPlannedActions(prev => ({
+                        ...prev,
+                        [activeTeammateId]: { action: 'defend' }
+                      }));
+                    }}
                     className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
                   >
                     Defender
@@ -1503,7 +1532,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                   <button
                     onClick={() => {
                       if (currentTeammate.spells.length > 0) {
-                        setSelectedSpellId(currentTeammate.spells[0].id);
+                        const spell = currentTeammate.spells[0];
+                        setSelectedSpellId(spell.id);
+                        setActionLog(prev => [`${currentTeammate.name}: Planejou feitiço ${spell.name}`, ...prev.slice(0, 5)]);
+                        setPlannedActions(prev => ({
+                          ...prev,
+                          [activeTeammateId]: { action: 'spell', spellId: spell.id, targetId: selectedTargetId }
+                        }));
                       }
                     }}
                     className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
