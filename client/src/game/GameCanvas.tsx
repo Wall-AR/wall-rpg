@@ -309,17 +309,32 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             let dx = 0;
             let dy = 0;
 
-            if (keys['w'] || keys['arrowup']) {
-              dy = -1;
-              playerSprite.texture = textures.playerUp[0];
-            } else if (keys['s'] || keys['arrowdown']) {
-              dy = 1;
-              playerSprite.texture = textures.playerDown[0];
-            } else if (keys['a'] || keys['arrowleft']) {
-              dx = -1;
+            const up = keys['w'] || keys['arrowup'];
+            const down = keys['s'] || keys['arrowdown'];
+            const left = keys['a'] || keys['arrowleft'];
+            const right = keys['d'] || keys['arrowright'];
+
+            if (up) dy = -1;
+            if (down) dy = 1;
+            if (left) dx = -1;
+            if (right) dx = 1;
+
+            // Set sprite texture based on facing direction (with diagonal fallbacks)
+            if (up && left) {
               playerSprite.texture = textures.playerLeft[0];
-            } else if (keys['d'] || keys['arrowright']) {
-              dx = 1;
+            } else if (up && right) {
+              playerSprite.texture = textures.playerRight[0];
+            } else if (down && left) {
+              playerSprite.texture = textures.playerLeft[0];
+            } else if (down && right) {
+              playerSprite.texture = textures.playerRight[0];
+            } else if (up) {
+              playerSprite.texture = textures.playerUp[0];
+            } else if (down) {
+              playerSprite.texture = textures.playerDown[0];
+            } else if (left) {
+              playerSprite.texture = textures.playerLeft[0];
+            } else if (right) {
               playerSprite.texture = textures.playerRight[0];
             }
 
@@ -362,8 +377,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
                   return;
                 }
 
-                // Solid tile collision check
-                if (isWalkable(targetX, targetY)) {
+                // Solid tile collision check (with diagonal corner-cutting prevention)
+                const diagonalWalkable = dx !== 0 && dy !== 0
+                  ? isWalkable(state.gridX + dx, state.gridY) || isWalkable(state.gridX, state.gridY + dy)
+                  : true;
+
+                if (isWalkable(targetX, targetY) && diagonalWalkable) {
                   state.targetGridX = targetX;
                   state.targetGridY = targetY;
                   state.isMoving = true;
