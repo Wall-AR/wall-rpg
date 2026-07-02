@@ -144,11 +144,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
 
         // Setup PIXI Application
         app = new Application();
+        const rect = canvasContainerRef.current!.getBoundingClientRect();
         await app.init({
-          width: 800,
-          height: 600,
+          width: rect.width || 800,
+          height: rect.height || 600,
           backgroundColor: 0x07070f,
-          antialias: true
+          antialias: true,
+          resizeTo: canvasContainerRef.current!
         });
 
         if (isDestroyed) {
@@ -463,8 +465,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           playerSprite.y = playerIsoPos.y;
 
           // Camera follow: offset worldContainer to center local player
-          worldContainer.x = 400 - playerSprite.x;
-          worldContainer.y = 300 - playerSprite.y;
+          if (app) {
+            worldContainer.x = app.screen.width / 2 - playerSprite.x;
+            worldContainer.y = app.screen.height / 2 - playerSprite.y;
+          }
         };
 
         // Start render ticker
