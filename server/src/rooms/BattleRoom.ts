@@ -42,7 +42,7 @@ const getElementModifier = (attackerEl: string, defenderEl: string): number => {
   return 1.0;
 };
 
-export class BattleRoom extends Room<{ state: BattleState }> {
+export class BattleRoom extends Room<BattleState> {
   override maxClients = 2;
   private sessionAccounts = new Map<string, string>();
 

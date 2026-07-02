@@ -54,7 +54,7 @@ const getMonsterElement = (type: string): string => {
   return 'none';
 };
 
-export class GameRoom extends Room<{ state: MapState }> {
+export class GameRoom extends Room<MapState> {
   private gmSessions = new Set<string>();
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;

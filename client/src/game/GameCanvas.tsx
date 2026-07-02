@@ -363,7 +363,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
                 }
 
                 // Solid tile collision check
-                if (targetTile !== 1 && targetTile !== 2) {
+                if (isWalkable(targetX, targetY)) {
                   state.targetGridX = targetX;
                   state.targetGridY = targetY;
                   state.isMoving = true;
