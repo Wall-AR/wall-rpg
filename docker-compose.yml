@@ -9,8 +9,10 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/coliseum
-      - JWT_SECRET=mudar-para-uma-chave-segura-rpg
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-coliseum}
+      - JWT_SECRET=${JWT_SECRET:-mudar-para-uma-chave-segura-rpg}
+      - COLYSEUS_MONITOR_USER=${COLYSEUS_MONITOR_USER:-admin}
+      - COLYSEUS_MONITOR_PASS=${COLYSEUS_MONITOR_PASS:-admin-pass}
     depends_on:
       - db
 
@@ -18,9 +20,9 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=coliseum
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-coliseum}
     ports:
       - "5432:5432"
     volumes:

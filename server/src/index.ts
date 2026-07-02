@@ -48,8 +48,43 @@ const gameServer = new Server({
 gameServer.define("game", GameRoom);
 gameServer.define("battle", BattleRoom);
 
-// Register Colyseus monitor panel route
-app.use("/colyseus", monitor());
+// Register basic auth protection for Colyseus monitor
+const colyseusMonitorAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Colyseus Monitor"');
+    res.sendStatus(401);
+    return;
+  }
+
+  try {
+    const credentials = Buffer.from(authHeader.split(' ')[1] || '', 'base64').toString().split(':');
+    const user = credentials[0];
+    const pass = credentials[1];
+
+    const expectedUser = process.env.COLYSEUS_MONITOR_USER || 'admin';
+    const expectedPass = process.env.COLYSEUS_MONITOR_PASS;
+
+    if (!expectedPass && process.env.NODE_ENV === 'production') {
+      res.status(403).send("Monitor disabled: password not configured in production");
+      return;
+    }
+
+    const checkPass = expectedPass || 'admin-pass';
+
+    if (user === expectedUser && pass === checkPass) {
+      next();
+    } else {
+      res.setHeader('WWW-Authenticate', 'Basic realm="Colyseus Monitor"');
+      res.sendStatus(401);
+    }
+  } catch (_) {
+    res.sendStatus(400);
+  }
+};
+
+// Register Colyseus monitor panel route protected by basic auth
+app.use("/colyseus", colyseusMonitorAuth, monitor());
 
 // Serve static client assets in production
 const __filename = fileURLToPath(import.meta.url);
