@@ -85,6 +85,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
   // Resolution simulation state
   const [resolutionStep, setResolutionStep] = useState<number>(-1);
+  const [showQte, setShowQte] = useState(false);
+  const [qteScale, setQteScale] = useState(3.0);
+  const [qteResult, setQteResult] = useState<'idle' | 'perfect' | 'fail' | 'miss'>('idle');
+  const qteTimerRef = useRef<number | null>(null);
 
   // Character positions on isometric arena
   const [positions, setPositions] = useState<Record<string, 'front' | 'mid' | 'back'>>({
@@ -214,13 +218,20 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     }
   }, [battleState?.turn]);
 
-  // Resolution step timer sequencer (3s per step)
+  // Resolution step timer sequencer (3s per step - paused during QTE at step 1)
   useEffect(() => {
-    if (resolutionStep === -1 || resolutionStep >= 6) return;
+    if (resolutionStep === -1 || resolutionStep >= 6 || showQte) return;
 
     const interval = setInterval(() => {
       setResolutionStep(prev => {
         const next = prev + 1;
+        
+        // If next step is 1 (Raven's attack), trigger interactive QTE combo!
+        if (next === 1) {
+          setShowQte(true);
+          return next;
+        }
+
         if (next >= 6) {
           setTimeout(() => {
             setResolutionStep(-1);
@@ -231,7 +242,107 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [resolutionStep]);
+  }, [resolutionStep, showQte]);
+
+  // QTE Evaluation & Resolution logic (Legend of Dragoon style)
+  const triggerQteResolution = (result: 'perfect' | 'fail' | 'miss') => {
+    if (qteTimerRef.current) cancelAnimationFrame(qteTimerRef.current);
+    setQteResult(result);
+
+    // Dynamic Combat Slash GSAP effects based on QTE precision
+    if (result === 'perfect') {
+      // Screen flash
+      gsap.to(".qte-flash-overlay", { opacity: 0.75, duration: 0.1, yoyo: true, repeat: 1 });
+      
+      // Fast triple strike
+      gsap.timeline()
+        .to(".character-node-char-raven", { x: 380, y: -70, duration: 0.12, ease: "power2.out" })
+        .to(".character-node-opp-nyxara", {
+          x: "+=22",
+          yoyo: true,
+          repeat: 9,
+          duration: 0.02,
+          onStart: () => document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit")
+        })
+        .to(".character-node-char-raven", { x: 0, y: 0, duration: 0.18, ease: "power1.inOut", delay: 0.15,
+          onComplete: () => document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit")
+        });
+    } else {
+      // Normal strike on failure/miss
+      gsap.timeline()
+        .to(".character-node-char-raven", { x: 300, y: -80, duration: 0.22, ease: "power2.out" })
+        .to(".character-node-opp-nyxara", {
+          x: "+=12",
+          yoyo: true,
+          repeat: 3,
+          duration: 0.04,
+          onStart: () => document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit")
+        })
+        .to(".character-node-char-raven", { x: 0, y: 0, duration: 0.28, ease: "power1.inOut",
+          onComplete: () => document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit")
+        });
+    }
+
+    // Schedule advancing the turn sequence
+    setTimeout(() => {
+      setShowQte(false);
+      setResolutionStep(2);
+    }, 1600);
+  };
+
+  const evaluateQtePress = () => {
+    if (qteResult !== 'idle') return;
+
+    // Sweet spot: Golden zone scale is around 0.95 to 1.25
+    if (qteScale >= 0.95 && qteScale <= 1.25) {
+      triggerQteResolution('perfect');
+    } else {
+      triggerQteResolution('fail');
+    }
+  };
+
+  // Run the shrinking ring QTE loop when active
+  useEffect(() => {
+    if (!showQte) return;
+
+    setQteScale(3.0);
+    setQteResult('idle');
+
+    const start = performance.now();
+    const duration = 1200; // 1.2 seconds to reach the target size
+
+    const qteLoop = (time: number) => {
+      const elapsed = time - start;
+      const progress = Math.min(1.0, elapsed / duration);
+      const currentScale = 3.0 - (progress * 2.5); // shrinks from 3.0 to 0.5
+      setQteScale(currentScale);
+
+      if (progress < 1.0) {
+        qteTimerRef.current = requestAnimationFrame(qteLoop);
+      } else {
+        triggerQteResolution('miss');
+      }
+    };
+
+    qteTimerRef.current = requestAnimationFrame(qteLoop);
+
+    return () => {
+      if (qteTimerRef.current) cancelAnimationFrame(qteTimerRef.current);
+    };
+  }, [showQte]);
+
+  // Spacebar keypress detection for QTE timing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showQte || qteResult !== 'idle') return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        evaluateQtePress();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showQte, qteScale, qteResult]);
 
   // GSAP Turn Resolution Animations
   useEffect(() => {
@@ -269,41 +380,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
         });
       });
     } else if (resolutionStep === 1) {
-      // Raven Shadow Strike
-      const ravenEl = document.querySelector(".character-node-char-raven") as HTMLElement;
-      const targetEl = document.querySelector(".character-node-opp-nyxara") as HTMLElement;
-      
-      if (ravenEl && targetEl) {
-        const dx = targetEl.offsetLeft - ravenEl.offsetLeft - 40;
-        const dy = targetEl.offsetTop - ravenEl.offsetTop;
-        
-        gsap.timeline()
-          .to(".character-node-char-raven", {
-            x: dx,
-            y: dy,
-            duration: 0.25,
-            ease: "power3.in"
-          })
-          .to(".character-node-opp-nyxara", {
-            x: "+=12",
-            yoyo: true,
-            repeat: 5,
-            duration: 0.04,
-            onStart: () => {
-              document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit");
-            },
-            onComplete: () => {
-              gsap.to(".character-node-opp-nyxara", { x: 0, duration: 0.1 });
-              document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit");
-            }
-          })
-          .to(".character-node-char-raven", {
-            x: 0,
-            y: 0,
-            duration: 0.3,
-            ease: "power2.out"
-          });
-      }
+      // Handled interactively by triggerQteResolution during Addition QTE sequence
     } else if (resolutionStep === 2) {
       // Caelum Holy Barrier
       gsap.to(".character-node-char-caelum", {
@@ -1323,6 +1400,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 via-transparent to-transparent pointer-events-none" />
             
             <div className="battle-arena-grid w-full h-full border-none bg-transparent">
+              <div className="qte-flash-overlay absolute inset-0 bg-white opacity-0 pointer-events-none z-50" />
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-5">
                 {!isResolution && (
                   <>
@@ -1448,9 +1526,55 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                     )}
 
                     {resolutionStep === 1 && t.id === 'opp-nyxara' && (
-                      <div className="floating-damage text-blue-400" style={{ color: '#60a5fa' }}>
-                        -612
-                        <span className="block text-[7px] uppercase font-black text-blue-300 text-center leading-none mt-0.5">Perfuração</span>
+                      <div 
+                        className={`floating-damage ${qteResult === 'perfect' ? 'text-yellow-400 scale-125 font-black' : 'text-blue-400'}`} 
+                        style={{ color: qteResult === 'perfect' ? '#fbbf24' : '#60a5fa' }}
+                      >
+                        {qteResult === 'perfect' ? '-918' : '-612'}
+                        <span className="block text-[7px] uppercase font-black text-center leading-none mt-0.5" style={{ color: qteResult === 'perfect' ? '#ffe082' : '#93c5fd' }}>
+                          {qteResult === 'perfect' ? '🔥 CRÍTICO!' : 'Perfuração'}
+                        </span>
+                      </div>
+                    )}
+
+                    {showQte && t.id === 'opp-nyxara' && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-50">
+                        {/* QTE ADDITION COMPASS (The Legend of Dragoon style) */}
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            evaluateQtePress();
+                          }}
+                          className="relative w-28 h-28 flex items-center justify-center cursor-pointer select-none"
+                        >
+                          {/* Target Center Circle (Blue) */}
+                          <div className="w-8 h-8 rounded-full border-2 border-cyan-400 bg-cyan-950/70 flex items-center justify-center shadow-[0_0_10px_#22d3ee]">
+                            <span className="text-[6px] font-black text-cyan-300 tracking-tighter">GOLPE!</span>
+                          </div>
+
+                          {/* Golden Sweet Spot Ring (Target zone guide) */}
+                          <div className="absolute w-12 h-12 rounded-full border border-dashed border-[#ffe082]/60 animate-pulse" />
+
+                          {/* Shrinking Outer Ring (Gold) */}
+                          <div 
+                            className="absolute rounded-full border-2 border-yellow-400 shadow-[0_0_15px_#facc15] pointer-events-none"
+                            style={{
+                              width: `${qteScale * 32}px`,
+                              height: `${qteScale * 32}px`,
+                            }}
+                          />
+
+                          {/* Result Text Banner */}
+                          {qteResult !== 'idle' && (
+                            <div className="absolute -top-6 bg-black/80 px-2 py-0.5 rounded border border-[#b59441] animate-bounce whitespace-nowrap z-50">
+                              <span className={`text-[8px] font-black uppercase tracking-widest ${
+                                qteResult === 'perfect' ? 'text-yellow-400' : 'text-rose-400'
+                              }`}>
+                                {qteResult === 'perfect' ? '⚡ PERFEITO!' : 'FALHA...'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1463,6 +1587,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                 <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 border border-purple-500/40 px-6 py-2.5 rounded-full text-center shadow-2xl z-20 animate-bounce">
                   <span className="block text-xs font-black text-purple-300 uppercase tracking-widest leading-none">Nova Astral</span>
                   <span className="text-[8px] text-gray-400 mt-1 block">Todos os inimigos recebem dano mágico!</span>
+                </div>
+              )}
+
+              {showQte && (
+                <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/85 border border-[#b59441] px-6 py-3 rounded-2xl text-center shadow-[0_0_20px_rgba(252,211,77,0.25)] z-25 max-w-xs pointer-events-none">
+                  <span className="block text-[9px] font-black text-yellow-400 uppercase tracking-widest leading-none">💥 APRESTE-SE (COMBO)</span>
+                  <span className="text-[7.5px] text-gray-200 mt-2 block leading-relaxed font-semibold">
+                    Aperte <span className="bg-gray-800 border border-gray-600 px-1 py-0.5 rounded text-[7px] text-yellow-300 font-mono">ESPAÇO</span> ou toque no alvo quando o anel externo encolher até a borda interna!
+                  </span>
                 </div>
               )}
             </div>

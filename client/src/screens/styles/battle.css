@@ -236,3 +236,9 @@
   transition: filter 0.05s ease-in-out;
 }
 
+.qte-flash-overlay {
+  mix-blend-mode: overlay;
+  background-color: #ffffff;
+  transition: opacity 0.05s ease-out;
+}
+
