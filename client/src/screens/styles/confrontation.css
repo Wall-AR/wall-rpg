@@ -1,0 +1,82 @@
+/* 🔮 Preparação de Confronto Styles 🔮 */
+
+.confrontation-container {
+  background-color: #06060c;
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.95);
+  font-family: 'Inter', 'Cinzel', sans-serif;
+  color: #d1d5db;
+}
+
+/* Character grid on left */
+.confrontation-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.confrontation-char-card {
+  background: linear-gradient(135deg, rgba(22, 22, 42, 0.6) 0%, rgba(12, 12, 22, 0.8) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.confrontation-char-card:hover {
+  border-color: #ffe082;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 224, 130, 0.15);
+}
+.confrontation-char-card.selected {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(12, 12, 22, 0.9) 100%);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+/* Slots area in center */
+.confrontation-slot {
+  height: 85px;
+  background: radial-gradient(circle at center, rgba(18, 18, 38, 0.6) 0%, rgba(6, 6, 12, 0.9) 100%);
+  border: 2px dashed rgba(99, 102, 241, 0.2);
+  transition: all 0.3s ease;
+}
+.confrontation-slot.has-char {
+  border-style: solid;
+  border-color: #3b82f6;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1) 0%, rgba(6, 6, 12, 0.95) 100%);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+}
+.confrontation-slot:hover:not(.has-char) {
+  border-color: #ffe082;
+  background: rgba(255, 224, 130, 0.03);
+}
+
+/* Opponent anonymous panel */
+.opponent-anon-card {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(6, 6, 12, 0.95) 100%);
+  border: 1px dashed rgba(239, 68, 68, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 85px;
+}
+.opponent-anon-card.confirmed {
+  border-style: solid;
+  border-color: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+/* Runes selection grid */
+.rune-card {
+  background: linear-gradient(180deg, #16162a 0%, #0c0c16 100%);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+}
+.rune-card:hover {
+  border-color: #ffe082;
+  transform: translateY(-1px);
+}
+.rune-card.selected {
+  border-color: #ffe082;
+  background: linear-gradient(180deg, rgba(255, 224, 130, 0.15) 0%, rgba(12, 12, 22, 0.9) 100%);
+  box-shadow: 0 0 10px rgba(255, 224, 130, 0.25);
+}

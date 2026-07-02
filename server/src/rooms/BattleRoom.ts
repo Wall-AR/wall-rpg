@@ -87,6 +87,30 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         this.resolveRound();
       }
     });
+
+    // Confrontation Prep Selection: Choose 3 of 6 combatants + runes
+    this.onMessage("choose_lineup", (client, data: { lineup: string[]; positions: Record<string, string>; runeId: string }) => {
+      if (this.state.status !== "confrontation_prep") {
+        client.send("error", "Não está na fase de Preparação de Confronto.");
+        return;
+      }
+
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+
+      player.hasSelectedLineup = true;
+      this.state.logs.push(`${player.username} confirmou a formação.`);
+
+      // Check if both players are ready
+      let allReady = true;
+      this.state.players.forEach(p => {
+        if (!p.hasSelectedLineup) allReady = false;
+      });
+
+      if (allReady) {
+        this.startBattle();
+      }
+    });
   }
 
   override async onJoin(client: Client, options: any, auth: any) {
@@ -142,15 +166,35 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     player.intelligence = charIntelligence;
     player.weaponElement = weaponEl;
     player.hasSelectedAction = false;
+    player.hasSelectedLineup = false;
 
     this.state.players.set(client.sessionId, player);
-    this.state.logs.push(`${player.username} (Nível/Atributos carregados) entrou no combate elemental (${weaponEl.toUpperCase()}).`);
+    this.state.logs.push(`${player.username} entrou na sala de combate.`);
 
     console.log(`[BattleRoom] Player ${player.username} joined Battle ${this.roomId}`);
 
     if (this.state.players.size === 2) {
-      this.startBattle();
+      this.startConfrontationPrep();
     }
+  }
+
+  private startConfrontationPrep() {
+    this.state.status = "confrontation_prep";
+    this.state.logs.push("Preparação de Confronto: Escolham 3 de seus 6 combatentes e suas runas.");
+    
+    // 20-second timeout for pre-battle setup
+    this.clock.setTimeout(() => {
+      if (this.state.status !== "confrontation_prep") return;
+
+      this.state.players.forEach(p => {
+        if (!p.hasSelectedLineup) {
+          p.hasSelectedLineup = true;
+          this.state.logs.push(`${p.username} não confirmou a tempo — formação selecionada automaticamente.`);
+        }
+      });
+
+      this.startBattle();
+    }, 20000);
   }
 
   private startBattle() {

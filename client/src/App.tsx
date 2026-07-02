@@ -39,21 +39,10 @@ export const App: React.FC = () => {
    */
   const handleEncounter = useCallback((ctx: EncounterContext) => {
     setEncounter(ctx);
-    setShowTransition(true);
+    setBattleRoomId(ctx.roomId);
+    setCurrentScreen('battle');
   }, []);
 
-  /**
-   * handleTransitionComplete — Chamado quando a animação de transição termina.
-   * Efetua a troca real de tela para o BattleScreen.
-   */
-  const handleTransitionComplete = useCallback(() => {
-    if (encounter) {
-      setBattleRoomId(encounter.roomId);
-      setCurrentScreen('battle');
-    }
-    setShowTransition(false);
-    setEncounter(null);
-  }, [encounter]);
 
   /**
    * Backwards-compatible trigger para uso simples com roomId.
@@ -104,13 +93,7 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0f0f1a] text-white flex flex-col font-sans select-none relative">
 
-      {/* ═══ Battle Transition Overlay ═══ */}
-      {showTransition && encounter && (
-        <BattleTransition
-          encounter={encounter}
-          onTransitionComplete={handleTransitionComplete}
-        />
-      )}
+
 
       {/* ═══ Global GameMenu Overlay ═══ */}
       {menuOpen && <GameMenu onClose={() => setMenuOpen(false)} />}
