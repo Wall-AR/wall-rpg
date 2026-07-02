@@ -26,6 +26,9 @@ export interface GameTextures {
   playerLeft: Texture[];
   playerRight: Texture[];
   monster: Texture;
+  lightYellow: Texture;
+  lightBlue: Texture;
+  lightCyan: Texture;
 }
 
 export const generateTextures = async (): Promise<GameTextures> => {
@@ -430,6 +433,27 @@ export const generateTextures = async (): Promise<GameTextures> => {
     return Texture.from(canvas);
   })();
 
+  // 7. Ambient Glow Light Generator
+  const drawLightGlow = (color: string, radius: number): Texture => {
+    const canvas = document.createElement('canvas');
+    canvas.width = radius * 2;
+    canvas.height = radius * 2;
+    const ctx = canvas.getContext('2d')!;
+    
+    const grad = ctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+    grad.addColorStop(0, color);
+    grad.addColorStop(0.4, color.replace('0.6)', '0.2)').replace('0.5)', '0.15)').replace('0.4)', '0.12)'));
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, radius * 2, radius * 2);
+    return Texture.from(canvas);
+  };
+
+  const lightYellow = drawLightGlow('rgba(253, 224, 71, 0.4)', 64);
+  const lightBlue = drawLightGlow('rgba(59, 130, 246, 0.45)', 96);
+  const lightCyan = drawLightGlow('rgba(6, 182, 212, 0.55)', 128);
+
   return {
     grass,
     stone,
@@ -444,5 +468,8 @@ export const generateTextures = async (): Promise<GameTextures> => {
     playerLeft,
     playerRight,
     monster,
+    lightYellow,
+    lightBlue,
+    lightCyan,
   };
 };

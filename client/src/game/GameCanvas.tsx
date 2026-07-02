@@ -28,8 +28,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
     targetFlatX: 14 * 32,
     targetFlatY: 10 * 32,
     isMoving: false,
-    speed: 240, // pixels per second
+    speed: 180, // pixels per second (speed adjusted for smooth feel)
     keys: {},
+    animTimer: 0,
+    animFrame: 0,
+    lastSentX: 14 * 32,
+    lastSentY: 10 * 32,
+    lastSentTime: 0,
   });
 
   // HUD states
@@ -221,6 +226,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
               groundSprite.height = 32;
               mapContainer.addChild(groundSprite);
 
+              // Add cyan glow underneath the portal
+              const glow = new Sprite(textures.lightCyan);
+              glow.anchor.set(0.5, 0.5);
+              glow.x = iso.x;
+              glow.y = iso.y + 16;
+              glow.blendMode = 'add';
+              glow.alpha = 0.85;
+              mapContainer.addChild(glow);
+
               // Large vertical portal arch on sorted container
               const portalSprite = new Sprite(textures.portal);
               portalSprite.x = iso.x;
@@ -257,6 +271,45 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         chestSprite.width = size;
         chestSprite.height = size;
         playerContainer.addChild(chestSprite);
+
+        // Helper to spawn a lamppost prop and its light glow
+        const spawnLamppost = (gridX: number, gridY: number) => {
+          const iso = toIsometric(gridX * size, gridY * size);
+          
+          // Add light yellow glow on the floor (behind player, inside mapContainer)
+          const glow = new Sprite(textures.lightYellow);
+          glow.anchor.set(0.5, 0.5);
+          glow.x = iso.x;
+          glow.y = iso.y + 16;
+          glow.blendMode = 'add';
+          glow.alpha = 0.65;
+          mapContainer.addChild(glow);
+
+          // Add vertical lamppost on sorted playerContainer
+          const post = new Sprite(textures.fence);
+          post.x = iso.x;
+          post.y = iso.y + 16;
+          post.anchor.set(0.5, 1.0);
+          post.width = 12;
+          post.height = 44;
+          playerContainer.addChild(post);
+
+          // Glowing lantern dot at the top of the post
+          const lightDot = new Sprite(textures.lightYellow);
+          lightDot.anchor.set(0.5, 0.5);
+          lightDot.x = iso.x;
+          lightDot.y = iso.y - 28;
+          lightDot.width = 16;
+          lightDot.height = 16;
+          lightDot.blendMode = 'add';
+          playerContainer.addChild(lightDot);
+        };
+
+        // Spawn 4 lanterns framing the central plaza
+        spawnLamppost(9, 8);
+        spawnLamppost(22, 8);
+        spawnLamppost(9, 13);
+        spawnLamppost(22, 13);
 
         // Spawning player sprite
         const playerSprite = new Sprite(textures.playerDown[0]);
@@ -378,124 +431,136 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
 
           // If menu open, freeze movement
           if (menuOpenRef.current) return;
+          const isTyping = document.activeElement?.tagName === 'INPUT' || 
+                           document.activeElement?.tagName === 'TEXTAREA';
+          if (isTyping) return;
 
-          if (!state.isMoving) {
-            let dx = 0;
-            let dy = 0;
+          let dx = 0;
+          let dy = 0;
 
-            const up = keys['w'] || keys['arrowup'];
-            const down = keys['s'] || keys['arrowdown'];
-            const left = keys['a'] || keys['arrowleft'];
-            const right = keys['d'] || keys['arrowright'];
+          const up = keys['w'] || keys['arrowup'];
+          const down = keys['s'] || keys['arrowdown'];
+          const left = keys['a'] || keys['arrowleft'];
+          const right = keys['d'] || keys['arrowright'];
 
-            if (up) dy = -1;
-            if (down) dy = 1;
-            if (left) dx = -1;
-            if (right) dx = 1;
+          if (up) dy = -1;
+          if (down) dy = 1;
+          if (left) dx = -1;
+          if (right) dx = 1;
 
-            // Set sprite texture based on facing direction (with diagonal fallbacks)
-            if (up && left) {
-              playerSprite.texture = textures.playerLeft[0];
-            } else if (up && right) {
-              playerSprite.texture = textures.playerRight[0];
-            } else if (down && left) {
-              playerSprite.texture = textures.playerLeft[0];
-            } else if (down && right) {
-              playerSprite.texture = textures.playerRight[0];
-            } else if (up) {
-              playerSprite.texture = textures.playerUp[0];
-            } else if (down) {
-              playerSprite.texture = textures.playerDown[0];
-            } else if (left) {
-              playerSprite.texture = textures.playerLeft[0];
-            } else if (right) {
-              playerSprite.texture = textures.playerRight[0];
-            }
-
-            if (dx !== 0 || dy !== 0) {
-              const targetX = state.gridX + dx;
-              const targetY = state.gridY + dy;
-
-              // Grid limits
-              if (targetX >= 0 && targetX < cols && targetY >= 0 && targetY < rows) {
-                const targetTile = LOBBY_MAP.grid[targetY][targetX];
-                
-                // Portal collision menu trigger
-                if (targetTile === 3) {
-                  setShowPortalMenu(true);
-                  keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
-                  keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
-                  return;
-                }
-
-                // Guide NPC collision
-                if (targetX === 12 && targetY === 9) {
-                  triggerNPCConversation([
-                    "Saudações, Nobre Guerreiro! Bem-vindo à Cidade-Portal de Veylar.",
-                    "O Portal Dimensional à esquerda conecta locais de combate por todo o Coliseu.",
-                    "Explore o Coliseu, derrote feras e forje sua lenda na Arena Dimensional!"
-                  ]);
-                  keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
-                  keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
-                  return;
-                }
-
-                // Chest interaction
-                if (targetX === 24 && targetY === 5) {
-                  triggerNPCConversation([
-                    "Você encontrou o Baú de Memórias da Taverna!",
-                    "Consumíveis e Itens Especiais de fusão podem ser resgatados no menu Mochila."
-                  ]);
-                  keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
-                  keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
-                  return;
-                }
-
-                // Solid tile collision check (with diagonal corner-cutting prevention)
-                const diagonalWalkable = dx !== 0 && dy !== 0
-                  ? isWalkable(state.gridX + dx, state.gridY) || isWalkable(state.gridX, state.gridY + dy)
-                  : true;
-
-                if (isWalkable(targetX, targetY) && diagonalWalkable) {
-                  state.targetGridX = targetX;
-                  state.targetGridY = targetY;
-                  state.targetFlatX = targetX * size;
-                  state.targetFlatY = targetY * size;
-                  state.isMoving = true;
-                }
-              }
-            }
+          // Normalize diagonal vector to prevent moving faster diagonally
+          if (dx !== 0 && dy !== 0) {
+            dx *= 0.7071;
+            dy *= 0.7071;
           }
 
-          // Move player coordinates flat-wise towards target
-          if (state.isMoving) {
-            let step = (state.speed * (time - lastTime)) / 1000;
-            
-            if (state.flatX < state.targetFlatX) {
-              state.flatX = Math.min(state.targetFlatX, state.flatX + step);
-            } else if (state.flatX > state.targetFlatX) {
-              state.flatX = Math.max(state.targetFlatX, state.flatX - step);
+          const isMovingInput = dx !== 0 || dy !== 0;
+
+          if (isMovingInput) {
+            // Determine direction
+            let targetDir = 'down';
+            if (up && left) targetDir = 'left';
+            else if (up && right) targetDir = 'right';
+            else if (down && left) targetDir = 'left';
+            else if (down && right) targetDir = 'right';
+            else if (up) targetDir = 'up';
+            else if (down) targetDir = 'down';
+            else if (left) targetDir = 'left';
+            else if (right) targetDir = 'right';
+
+            // Walk animation frame update
+            const dt = (time - lastTime) / 1000;
+            state.animTimer = (state.animTimer || 0) + dt;
+            if (state.animTimer > 0.12) {
+              state.animFrame = ((state.animFrame || 0) + 1) % 4;
+              state.animTimer = 0;
             }
 
-            if (state.flatY < state.targetFlatY) {
-              state.flatY = Math.min(state.targetFlatY, state.flatY + step);
-            } else if (state.flatY > state.targetFlatY) {
-              state.flatY = Math.max(state.targetFlatY, state.flatY - step);
+            let texs = textures.playerDown;
+            if (targetDir === 'up') texs = textures.playerUp;
+            else if (targetDir === 'left') texs = textures.playerLeft;
+            else if (targetDir === 'right') texs = textures.playerRight;
+
+            playerSprite.texture = texs[state.animFrame || 0];
+
+            // Free pixel movement with sliding collision check
+            const dtMove = (time - lastTime) / 1000;
+            const moveStepX = dx * state.speed * dtMove;
+            const moveStepY = dy * state.speed * dtMove;
+
+            // Bounding collision helpers
+            const isPixelWalkable = (px: number, py: number) => {
+              const colIdx = Math.floor(px / size);
+              const rowIdx = Math.floor(py / size);
+              if (colIdx < 0 || colIdx >= cols || rowIdx < 0 || rowIdx >= rows) return false;
+              return isWalkable(colIdx, rowIdx);
+            };
+
+            const isPositionValid = (x: number, y: number) => {
+              const r = 8; // Bounding radius
+              return isPixelWalkable(x - r, y - r) &&
+                     isPixelWalkable(x + r, y - r) &&
+                     isPixelWalkable(x - r, y + r) &&
+                     isPixelWalkable(x + r, y + r);
+            };
+
+            // Slide collision check: try moving horizontally and vertically separately
+            let finalX = state.flatX;
+            let finalY = state.flatY;
+
+            if (isPositionValid(state.flatX + moveStepX, state.flatY)) {
+              finalX += moveStepX;
+            }
+            if (isPositionValid(state.flatX, state.flatY + moveStepY)) {
+              finalY += moveStepY;
             }
 
-            // Target reached
-            if (state.flatX === state.targetFlatX && state.flatY === state.targetFlatY) {
-              state.gridX = state.targetGridX;
-              state.gridY = state.targetGridY;
-              state.isMoving = false;
+            const positionChanged = finalX !== state.flatX || finalY !== state.flatY;
+            if (positionChanged) {
+              state.flatX = finalX;
+              state.flatY = finalY;
+              state.gridX = Math.floor(state.flatX / size);
+              state.gridY = Math.floor(state.flatY / size);
 
-              // Send coordinates updates to Colyseus server
-              room.send("move", { x: state.flatX, y: state.flatY });
+              // Throttled Netcode: Send coordinate updates to server
+              const distanceMoved = Math.abs(state.flatX - (state.lastSentX || 0)) + Math.abs(state.flatY - (state.lastSentY || 0));
+              const now = performance.now();
+              if (distanceMoved > 4 || now - (state.lastSentTime || 0) > 100) {
+                room.send("move", { x: state.flatX, y: state.flatY });
+                state.lastSentX = state.flatX;
+                state.lastSentY = state.flatY;
+                state.lastSentTime = now;
+              }
+            }
+
+            // Special checks for NPC/Portal triggers (calculated at grid coordinate)
+            const playerGridX = Math.floor(state.flatX / size);
+            const playerGridY = Math.floor(state.flatY / size);
+            const currentTile = LOBBY_MAP.grid[playerGridY]?.[playerGridX];
+
+            if (currentTile === 3) {
+              setShowPortalMenu(true);
+              keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+              keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
+            } else if (playerGridX === 12 && playerGridY === 9) {
+              triggerNPCConversation([
+                "Saudações, Nobre Guerreiro! Bem-vindo à Cidade-Portal de Veylar.",
+                "O Portal Dimensional à esquerda conecta locais de combate por todo o Coliseu.",
+                "Explore o Coliseu, derrote feras e forje sua lenda na Arena Dimensional!"
+              ]);
+              keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+              keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
+            } else if (playerGridX === 24 && playerGridY === 5) {
+              triggerNPCConversation([
+                "Você encontrou o Baú de Memórias da Taverna!",
+                "Consumíveis e Itens Especiais de fusão podem ser resgatados no menu Mochila."
+              ]);
+              keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+              keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
             }
           } else {
-            // Static flat position
-            state.flatX = state.gridX * size;
-            state.flatY = state.gridY * size;
+            // Idle stance
+            playerSprite.texture = textures.playerDown[0];
           }
 
           // Update player sprite visual isometric position
