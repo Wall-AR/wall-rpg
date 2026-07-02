@@ -11,72 +11,152 @@
 .confrontation-roster-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
 .confrontation-char-card {
   background: linear-gradient(135deg, rgba(22, 22, 42, 0.6) 0%, rgba(12, 12, 22, 0.8) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(181, 148, 65, 0.2);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.confrontation-char-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(181, 148, 65, 0.4), transparent);
 }
 .confrontation-char-card:hover {
-  border-color: #ffe082;
+  border-color: #b59441;
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255, 224, 130, 0.15);
+  box-shadow: 0 4px 15px rgba(181, 148, 65, 0.15);
 }
 .confrontation-char-card.selected {
   border-color: #3b82f6;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(12, 12, 22, 0.9) 100%);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(12, 12, 22, 0.9) 100%);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
 }
 
-/* Slots area in center */
+/* Element badges */
+.element-badge-mini {
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* Rank letters S+, S, A, D */
+.rank-badge {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 14px;
+  text-shadow: 0 0 8px currentColor;
+}
+.rank-S-plus { color: #a855f7; }
+.rank-S { color: #3b82f6; }
+.rank-A { color: #f59e0b; }
+.rank-D { color: #6b7280; }
+
+/* Formation Slots in Center */
 .confrontation-slot {
-  height: 85px;
-  background: radial-gradient(circle at center, rgba(18, 18, 38, 0.6) 0%, rgba(6, 6, 12, 0.9) 100%);
-  border: 2px dashed rgba(99, 102, 241, 0.2);
+  height: 180px;
+  background: radial-gradient(circle at center, rgba(18, 18, 38, 0.6) 0%, rgba(6, 6, 12, 0.95) 100%);
+  border: 1.5px solid rgba(181, 148, 65, 0.15);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8);
+  position: relative;
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 .confrontation-slot.has-char {
-  border-style: solid;
-  border-color: #3b82f6;
-  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.1) 0%, rgba(6, 6, 12, 0.95) 100%);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+  border-color: #ffe082;
+  box-shadow: 0 0 15px rgba(181, 148, 65, 0.15), inset 0 0 10px rgba(0,0,0,0.9);
 }
 .confrontation-slot:hover:not(.has-char) {
   border-color: #ffe082;
-  background: rgba(255, 224, 130, 0.03);
+  background: rgba(181, 148, 65, 0.03);
 }
 
-/* Opponent anonymous panel */
+/* Opponent slots (anonymous silhouettes) */
 .opponent-anon-card {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(6, 6, 12, 0.95) 100%);
-  border: 1px dashed rgba(239, 68, 68, 0.2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 85px;
+  height: 180px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.03) 0%, rgba(6, 6, 12, 0.98) 100%);
+  border: 1.5px solid rgba(239, 68, 68, 0.12);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.opponent-anon-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
 }
 .opponent-anon-card.confirmed {
-  border-style: solid;
-  border-color: #ef4444;
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
 }
 
-/* Runes selection grid */
-.rune-card {
-  background: linear-gradient(180deg, #16162a 0%, #0c0c16 100%);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  cursor: pointer;
+/* Connectors arrows */
+.connector-arrow {
+  color: #b59441;
+  font-size: 14px;
+  text-shadow: 0 0 8px rgba(181, 148, 65, 0.5);
+  animation: pulseConnector 1.5s ease-in-out infinite alternate;
+}
+@keyframes pulseConnector {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Gold frame confirm button (Mockup matched) */
+.confirm-btn-glowing {
+  background: radial-gradient(circle at center, #1b3d6d 0%, #0d1e37 100%);
+  border: 2px solid #b59441;
+  box-shadow: 0 0 15px rgba(27, 61, 109, 0.6), inset 0 0 10px rgba(181, 148, 65, 0.3);
+  color: #ffe082;
+  text-shadow: 0 0 8px rgba(255, 224, 130, 0.5);
+  transition: all 0.2s ease-out;
+  font-family: 'Cinzel', serif;
+}
+.confirm-btn-glowing:hover:not(:disabled) {
+  background: radial-gradient(circle at center, #245191 0%, #11284a 100%);
+  border-color: #ffe082;
+  box-shadow: 0 0 25px rgba(36, 81, 145, 0.8), inset 0 0 12px rgba(255, 224, 130, 0.5);
+  transform: scale(1.03);
+}
+.confirm-btn-glowing:disabled {
+  background: #11111a;
+  border-color: #2e2e38;
+  color: #4a4a55;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Runes bottom slot panels */
+.runes-container-box {
+  background: rgba(18, 18, 38, 0.2);
+  border: 1.5px solid rgba(181, 148, 65, 0.15);
+  border-radius: 16px;
+}
+.rune-circle-plate {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(181, 148, 65, 0.3);
+  background: radial-gradient(circle, #16162a 0%, #06060c 100%);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
   transition: all 0.2s ease-out;
 }
-.rune-card:hover {
+.rune-circle-plate:hover {
   border-color: #ffe082;
-  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(181, 148, 65, 0.4);
 }
-.rune-card.selected {
+.rune-circle-plate.selected {
   border-color: #ffe082;
-  background: linear-gradient(180deg, rgba(255, 224, 130, 0.15) 0%, rgba(12, 12, 22, 0.9) 100%);
-  box-shadow: 0 0 10px rgba(255, 224, 130, 0.25);
+  background: radial-gradient(circle, rgba(181, 148, 65, 0.2) 0%, #06060c 100%);
+  box-shadow: 0 0 15px rgba(181, 148, 65, 0.6), inset 0 0 8px rgba(181, 148, 65, 0.3);
 }

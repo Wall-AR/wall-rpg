@@ -23,6 +23,7 @@ interface Teammate {
   element: 'fogo' | 'agua' | 'terra' | 'vento' | 'none';
   position: 'front' | 'mid' | 'back';
   portrait: string;
+  rank: 'S+' | 'S' | 'A' | 'D';
   spells: { id: string; name: string; cost: number; desc: string }[];
 }
 
@@ -34,21 +35,18 @@ interface Rune {
 }
 
 const RUNES_LIST: Rune[] = [
-  { id: 'runa-guarda', name: 'Runa da Guarda', desc: 'Primeiro personagem da linha de frente recebe escudo inicial.', icon: '🛡️' },
-  { id: 'runa-furia', name: 'Runa da Fúria', desc: 'Primeiro ataque da equipe causa +10% de dano.', icon: '🔥' },
-  { id: 'runa-vinculo', name: 'Runa do Vínculo', desc: 'Companheiros com afinidade recebem bônus de iniciativa.', icon: '🔗' },
-  { id: 'runa-astral', name: 'Runa Astral', desc: 'Aumenta alcance de feitiços no primeiro turno.', icon: '✨' },
-  { id: 'runa-retorno', name: 'Runa de Retorno', desc: 'Uma vez por batalha, evita morte fatal e deixa com 1 HP.', icon: '⏳' },
-  { id: 'runa-cacada', name: 'Runa da Caçada', desc: 'Marca automaticamente o inimigo de menor HP no turno 1.', icon: '🎯' },
+  { id: 'runa-guarda', name: 'Runa da Guarda', desc: 'Escudo inicial na linha de frente.', icon: '🛡️' },
+  { id: 'runa-astral', name: 'Runa Astral', desc: '+ alcance de feitiço no 1º turno.', icon: '✨' },
+  { id: 'runa-vinculo', name: 'Runa do Vínculo', desc: '+ iniciativa para aliados com afinidade.', icon: '🔗' },
 ];
 
 const PREP_ROSTER: Teammate[] = [
-  { id: 'char-caelum', name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, maxHp: 8645, mp: 210, maxMp: 280, element: 'fogo', position: 'front', portrait: '🛡️', spells: [{ id: 'holy-barrier', name: 'Barreira Sagrada', cost: 10, desc: 'Dobra a defesa de aliados na mesma linha por 1 turno.' }] },
-  { id: 'char-lyria', name: 'Lyria', class: 'Mago', level: 124, hp: 6215, maxHp: 6215, mp: 420, maxMp: 650, element: 'none', position: 'back', portrait: '🧙‍♀️', spells: [{ id: 'nova-astral', name: 'Nova Astral', cost: 4, desc: 'Causa 215% de dano mágico a todos os inimigos e aplica Vulnerável por 2 turnos. Recarga: 3 turnos.' }, { id: 'cure', name: 'Chama Curativa', cost: 10, desc: 'Restaura HP de um companheiro ferido.' }] },
-  { id: 'char-raven', name: 'Raven', class: 'Assassino', level: 127, hp: 6085, maxHp: 6085, mp: 200, maxMp: 260, element: 'terra', position: 'mid', portrait: '🥷', spells: [{ id: 'shadow-strike', name: 'Golpe Sombrio', cost: 15, desc: 'Ataca ignorando 30% da armadura do oponente.' }] },
-  { id: 'char-lobo', name: 'Lobo Cinzento', class: 'Companheiro', level: 132, hp: 5980, maxHp: 5980, mp: 160, maxMp: 240, element: 'vento', position: 'mid', portrait: '🐺', spells: [{ id: 'wolf-bite', name: 'Mordida Voraz', cost: 10, desc: 'Ataca sangrando o alvo por 2 turnos.' }] },
-  { id: 'char-seraphina', name: 'Seraphina', class: 'Guerreira', level: 120, hp: 6500, maxHp: 6500, mp: 180, maxMp: 220, element: 'terra', position: 'front', portrait: '🧝‍♀️', spells: [{ id: 'earth-smash', name: 'Impacto Sísmico', cost: 12, desc: 'Ataca atordoando o alvo no turno atual.' }] },
-  { id: 'char-korr', name: 'Korr', class: 'Lanceiro', level: 119, hp: 8120, maxHp: 8120, mp: 180, maxMp: 250, element: 'fogo', position: 'front', portrait: '🦁', spells: [{ id: 'fire-charge', name: 'Investida Ígnea', cost: 12, desc: 'Avança causando dano com chance de aplicar queimadura.' }] }
+  { id: 'char-caelum', name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, maxHp: 8645, mp: 210, maxMp: 280, element: 'agua', position: 'front', portrait: '👤', rank: 'S', spells: [{ id: 'holy-barrier', name: 'Barreira Sagrada', cost: 10, desc: 'Dobra a defesa de aliados na mesma linha por 1 turno.' }] },
+  { id: 'char-lyria', name: 'Lyria', class: 'Mago', level: 124, hp: 6215, maxHp: 6215, mp: 420, maxMp: 650, element: 'none', position: 'back', portrait: '🧙‍♀️', rank: 'S+', spells: [{ id: 'nova-astral', name: 'Nova Astral', cost: 4, desc: 'Causa 215% de dano mágico a todos os inimigos e aplica Vulnerável por 2 turnos. Recarga: 3 turnos.' }, { id: 'cure', name: 'Chama Curativa', cost: 10, desc: 'Restaura HP de um companheiro ferido.' }] },
+  { id: 'char-raven', name: 'Raven', class: 'Assassino', level: 127, hp: 6085, maxHp: 6085, mp: 200, maxMp: 260, element: 'terra', position: 'mid', portrait: '🥷', rank: 'S', spells: [{ id: 'shadow-strike', name: 'Golpe Sombrio', cost: 15, desc: 'Ataca ignorando 30% da armadura do oponente.' }] },
+  { id: 'char-seraphina', name: 'Seraphina', class: 'Clériga', level: 121, hp: 6500, maxHp: 6500, mp: 180, maxMp: 220, element: 'none', position: 'front', portrait: '🧝‍♀️', rank: 'A', spells: [{ id: 'earth-smash', name: 'Impacto Sísmico', cost: 12, desc: 'Ataca atordoando o alvo no turno atual.' }] },
+  { id: 'char-lobo', name: 'Lobo Cinzento', class: 'Companheiro', level: 132, hp: 5980, maxHp: 5980, mp: 160, maxMp: 240, element: 'vento', position: 'mid', portrait: '🐺', rank: 'D', spells: [{ id: 'wolf-bite', name: 'Mordida Voraz', cost: 10, desc: 'Ataca sangrando o alvo por 2 turnos.' }] },
+  { id: 'char-korr', name: 'Korr', class: 'Lanceiro', level: 119, hp: 8120, maxHp: 8120, mp: 180, maxMp: 250, element: 'fogo', position: 'front', portrait: '🦁', rank: 'A', spells: [{ id: 'fire-charge', name: 'Investida Ígnea', cost: 12, desc: 'Avança causando dano com chance de aplicar queimadura.' }] }
 ];
 
 export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBattle }) => {
@@ -287,7 +285,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-[#06060c] text-[#ffe082] p-6 min-h-[500px] border border-indigo-955 rounded-2xl">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#ffe082] mb-4"></div>
-        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest animate-pulse">Entrando na Batalha Dimensional...</p>
+        <p className="text-xs text-gray-550 font-bold uppercase tracking-widest animate-pulse">Entrando na Batalha Dimensional...</p>
       </div>
     );
   }
@@ -344,7 +342,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     });
   };
 
-  // Confrontation pre-battle lineup selection toggle
   const handleToggleLineupCharacter = (char: Teammate) => {
     if (confrontationConfirmed) return;
     if (selectedLineup.includes(char.id)) {
@@ -357,7 +354,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     } else {
       if (selectedLineup.length >= 3) return;
       setSelectedLineup(prev => [...prev, char.id]);
-      // Auto assign empty starting positions slots
       setLineupPositions(prev => {
         const slots: ('front' | 'mid' | 'back')[] = ['front', 'mid', 'back'];
         const occupied = Object.values(prev);
@@ -367,14 +363,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     }
   };
 
-  // Confirm pre-battle selection
   const handleConfirmLineup = () => {
     if (selectedLineup.length !== 3) return;
     setConfrontationConfirmed(true);
-    // Dynamic load chosen team to battle blueTeam state
     const chosen = PREP_ROSTER.filter(c => selectedLineup.includes(c.id));
     setBlueTeam(chosen);
-    // Align starting positions mapped
     setPositions(prev => {
       const newPos = { ...prev };
       selectedLineup.forEach(id => {
@@ -390,181 +383,252 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     });
   };
 
+  const handleResetLineup = () => {
+    if (confrontationConfirmed) return;
+    setSelectedLineup([]);
+    setLineupPositions({});
+  };
+
   // ══════════════════════════════════════════════════════════════════════════
   // TELA 1: PREPARAÇÃO DE CONFRONTO (confrontation_prep)
   // ══════════════════════════════════════════════════════════════════════════
   if (battleState.status === "confrontation_prep") {
-    const selectedRune = RUNES_LIST.find(r => r.id === selectedRuneId) || RUNES_LIST[0];
-    
+    // Header team values
+    const myTeamHpText = "18.945 / 18.945 (100%)";
+    const rivalTeamHpText = "18.320 / 18.320 (100%)";
+
     return (
-      <div className="w-full bg-[#06060c] flex flex-col p-6 border border-[#b59441]/40 rounded-3xl overflow-hidden shadow-2xl min-h-[580px] confrontation-container select-none">
+      <div className="w-full bg-[#06060c] flex flex-col p-5 border border-[#b59441]/40 rounded-3xl overflow-hidden shadow-2xl min-h-[580px] confrontation-container select-none">
         
-        {/* Top Header */}
-        <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-5">
-          <div>
-            <h2 className="text-base font-black tracking-widest text-[#ffe082] uppercase leading-none">Preparação de Confronto</h2>
-            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block mt-1">Escolha 3 de seus 6 combatentes</span>
+        {/* Header (Wall vs Isaac) */}
+        <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative">
+          <div className="flex flex-col text-left max-w-[200px]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">Wall</span>
+              <span className="text-[8px] text-gray-500 font-bold">Poder da Equipe 52.843</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-32 h-2 bg-slate-950 border border-indigo-950 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500" style={{ width: '100%' }}></div>
+              </div>
+              <span className="text-[8px] font-bold text-blue-400">{myTeamHpText}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] px-2 py-0.5 bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-bold rounded-full">
-              Lobby de Duelo
-            </span>
-            <span className="text-xl font-black text-rose-500 font-mono tracking-widest animate-pulse">
-              00:{confrontationTimer < 10 ? `0${confrontationTimer}` : confrontationTimer}
-            </span>
-            <span className="text-[9px] text-gray-600 font-bold">/ 20s</span>
+          <div className="text-center">
+            <h2 className="text-base font-black tracking-widest text-[#ffe082] uppercase leading-none font-sans">Preparação de Confronto</h2>
+            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-1.5">
+              Escolha 3 de 6 combatentes e configure runas antes da batalha.
+            </p>
+            <div className="flex justify-center items-center gap-2 mt-2">
+              <span className="text-[9px] px-2 py-0.5 bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-bold rounded-full">
+                Lobby de Duelo
+              </span>
+              <span className="text-lg font-black text-rose-500 font-mono tracking-widest animate-pulse">
+                00:{confrontationTimer < 10 ? `0${confrontationTimer}` : confrontationTimer}
+              </span>
+              <span className="text-[8px] text-gray-600 font-bold">/ 20s</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col text-right max-w-[200px]">
+            <div className="flex items-center gap-1.5 justify-end">
+              <span className="text-[8px] text-gray-500 font-bold">Poder da Equipe 51.276</span>
+              <span className="text-rose-400 text-sm font-black uppercase red-glow-text">Isaac</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1 justify-end">
+              <span className="text-[8px] font-bold text-rose-400">{rivalTeamHpText}</span>
+              <div className="w-32 h-2 bg-slate-950 border border-rose-950 rounded-full overflow-hidden">
+                <div className="h-full bg-rose-500" style={{ width: '100%' }}></div>
+              </div>
+            </div>
           </div>
         </header>
 
-        {/* Core selection columns */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 mb-5 min-h-0">
+        {/* Core Layout Columns */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4 min-h-0 relative">
           
-          {/* Left: 6 Characters roster list */}
-          <div className="lg:col-span-1 border-r border-indigo-950/30 pr-5 flex flex-col gap-2.5 overflow-y-auto">
-            <h3 className="text-[9px] font-bold text-[#ffe082] uppercase tracking-widest mb-1 leading-none">Seus Combatentes (6)</h3>
-            <div className="confrontation-roster-grid">
-              {PREP_ROSTER.map(c => {
-                const isSelected = selectedLineup.includes(c.id);
-                return (
-                  <div
-                    key={c.id}
-                    onClick={() => handleToggleLineupCharacter(c)}
-                    className={`p-3 rounded-2xl cursor-pointer text-left flex flex-col gap-1 confrontation-char-card ${
-                      isSelected ? 'selected' : ''
-                    } ${confrontationConfirmed ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    <div className="flex justify-between text-[7px] text-gray-500 font-bold leading-none">
-                      <span>Lv. {c.level}</span>
-                      <span className="text-blue-400 capitalize">{c.element}</span>
-                    </div>
-                    <span className="text-2xl mt-1 block">{c.portrait}</span>
-                    <h5 className="font-extrabold text-[10px] text-white truncate leading-none mt-1">{c.name}</h5>
-                    <span className="text-[8px] text-gray-400">{c.class}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Center: Selected starting slots formation (3 slots) */}
-          <div className="lg:col-span-1 flex flex-col gap-4 justify-between">
-            <h3 className="text-[9px] font-bold text-[#ffe082] uppercase tracking-widest text-center leading-none">Alocação de Linhas</h3>
-            
-            {(['front', 'mid', 'back'] as const).map(slot => {
-              const charId = Object.keys(lineupPositions).find(k => lineupPositions[k] === slot);
-              const char = charId ? PREP_ROSTER.find(c => c.id === charId) : null;
-              
-              return (
-                <div
-                  key={slot}
-                  className={`rounded-2xl p-4 flex items-center justify-between transition-all confrontation-slot ${
-                    char ? 'has-char' : ''
-                  }`}
-                >
-                  <div className="text-left">
-                    <span className="text-[8px] text-gray-500 uppercase font-black tracking-widest block leading-none">Linha de</span>
-                    <span className="text-[10px] font-extrabold text-indigo-300 capitalize">{slot === 'back' ? 'Retaguarda' : slot === 'mid' ? 'Meio' : 'Frente'}</span>
-                  </div>
-
-                  {char ? (
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">{char.portrait}</span>
-                      <div className="text-right">
-                        <span className="text-[9px] font-black text-white">{char.name}</span>
-                        <span className="text-[7px] text-gray-400 block uppercase">{char.class}</span>
-                      </div>
-                      {!confrontationConfirmed && (
-                        <button
-                          onClick={() => handleToggleLineupCharacter(char)}
-                          className="text-xs text-rose-500 hover:text-rose-400 font-bold ml-1"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[8px] text-gray-600 font-bold uppercase italic">Vazio</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Right: Opponent Anonymous status panel */}
-          <div className="lg:col-span-1 border-l border-indigo-950/30 pl-5 flex flex-col gap-4 justify-between">
+          {/* Column 1: SUA EQUIPE (6) */}
+          <div className="lg:col-span-1 border-r border-indigo-950/30 pr-4 flex flex-col justify-between overflow-y-auto">
             <div>
-              <h3 className="text-[9px] font-bold text-[#ffe082] uppercase tracking-widest leading-none mb-1">Rival</h3>
-              <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider block mt-1">Formação Secreta</span>
+              <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 pb-1 border-b border-indigo-950/40 leading-none">Sua Equipe (6)</h3>
+              <div className="confrontation-roster-grid">
+                {PREP_ROSTER.map(c => {
+                  const isSelected = selectedLineup.includes(c.id);
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => handleToggleLineupCharacter(c)}
+                      className={`p-2.5 rounded-xl cursor-pointer text-left flex flex-col justify-between confrontation-char-card relative min-h-[110px] ${
+                        isSelected ? 'selected' : ''
+                      } ${confrontationConfirmed ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <div className="flex justify-between items-center leading-none">
+                        <span className="element-badge-mini" style={{ color: c.element === 'agua' ? '#60a5fa' : c.element === 'terra' ? '#34d399' : c.element === 'fogo' ? '#f87171' : '#a78bfa' }}>
+                          {getElementEmoji(c.element)}
+                        </span>
+                        <span className="text-[8px] text-gray-500 font-extrabold">👑</span>
+                      </div>
+                      
+                      <div className="text-center my-1.5">
+                        <span className={`rank-badge ${c.rank === 'S+' ? 'rank-S-plus' : c.rank === 'S' ? 'rank-S' : c.rank === 'A' ? 'rank-A' : 'rank-D'}`}>
+                          {c.rank}
+                        </span>
+                      </div>
+
+                      <div className="border-t border-indigo-950/40 pt-1">
+                        <span className="text-[7px] text-gray-400 font-bold block leading-none">Lv. {c.level}</span>
+                        <h5 className="font-extrabold text-[9px] text-white truncate leading-none mt-0.5">{c.name}</h5>
+                        <span className="text-[7px] text-gray-500 uppercase block mt-0.5">{c.class}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="text-[7px] text-gray-500 italic mt-2">Apenas 3 combatentes podem ser enviados para o confronto.</p>
+          </div>
+
+          {/* Column 2 & 3: SUA FORMAÇÃO (3/3) & RUNAS */}
+          <div className="lg:col-span-2 flex flex-col justify-between px-2 gap-4">
+            
+            {/* Sua Formação area */}
+            <div>
+              <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 text-center leading-none">Sua Formação (3/3)</h3>
+              
+              <div className="flex justify-between items-center gap-2">
+                {(['front', 'mid', 'back'] as const).map((slot, index) => {
+                  const charId = Object.keys(lineupPositions).find(k => lineupPositions[k] === slot);
+                  const char = charId ? PREP_ROSTER.find(c => c.id === charId) : null;
+                  
+                  return (
+                    <React.Fragment key={slot}>
+                      {index > 0 && <span className="connector-arrow">⬌</span>}
+                      
+                      <div
+                        className={`flex-1 rounded-xl p-3 flex flex-col justify-between confrontation-slot ${
+                          char ? 'has-char' : ''
+                        }`}
+                      >
+                        <div className="text-center border-b border-indigo-950/40 pb-1">
+                          <span className="text-[7px] text-gray-500 uppercase font-black block leading-none">
+                            {slot === 'back' ? 'Retaguarda' : slot === 'mid' ? 'Meio' : 'Frente'}
+                          </span>
+                        </div>
+
+                        {char ? (
+                          <div className="flex flex-col items-center justify-center text-center my-2 gap-1">
+                            <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(59,130,246,0.4)]">{char.portrait}</span>
+                            <span className={`rank-badge text-[10px] ${char.rank === 'S+' ? 'rank-S-plus' : char.rank === 'S' ? 'rank-S' : char.rank === 'A' ? 'rank-A' : 'rank-D'}`}>{char.rank}</span>
+                            <span className="text-[8px] font-black text-white leading-none mt-0.5">{char.name}</span>
+                            <span className="text-[6.5px] text-gray-500 uppercase leading-none">{char.class}</span>
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex items-center justify-center">
+                            <span className="text-[7px] text-gray-600 font-bold uppercase italic">Vazio</span>
+                          </div>
+                        )}
+                        
+                        <div className="text-center pt-1 border-t border-indigo-950/20">
+                          <span className="text-[6px] text-gray-500 font-bold leading-none">
+                            {char ? `Lv. ${char.level}` : 'Sem guerreiro'}
+                          </span>
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              {/* Status indicators */}
+              <div className="flex justify-between items-center mt-3 bg-black/25 px-3 py-1.5 rounded-lg border border-indigo-950/40 text-[8px] font-bold text-gray-400">
+                <span>👥 {selectedLineup.length}/3 selecionados</span>
+                <span>🔒 Equipamentos bloqueados nesta etapa</span>
+              </div>
             </div>
 
-            <div className="space-y-3.5 my-auto">
-              {Array.from({ length: 3 }).map((_, idx) => {
-                const rivalConfirmed = opponent?.hasSelectedLineup;
-                return (
-                  <div
-                    key={idx}
-                    className={`opponent-anon-card rounded-2xl ${rivalConfirmed ? 'confirmed' : ''}`}
-                  >
-                    <span className="text-xl animate-pulse">❓</span>
-                    <span className="text-[7px] text-gray-600 font-bold uppercase mt-1">Oculto</span>
-                  </div>
-                );
-              })}
+            {/* Runas de Batalha box layout */}
+            <div className="runes-container-box p-3 flex flex-col gap-2">
+              <div className="text-left border-b border-indigo-950/40 pb-1 flex justify-between items-center leading-none">
+                <span className="text-[8px] font-black text-[#ffe082] uppercase tracking-widest">Runas de Batalha</span>
+                <span className="text-[7px] text-gray-500 font-bold uppercase">Configure suas runas. Elas ficarão ativas durante toda a batalha.</span>
+              </div>
+
+              <div className="flex justify-around items-center gap-3 py-1">
+                {RUNES_LIST.map(r => {
+                  const isSelected = selectedRuneId === r.id;
+                  return (
+                    <div
+                      key={r.id}
+                      onClick={() => !confrontationConfirmed && setSelectedRuneId(r.id)}
+                      className={`flex items-center gap-3.5 p-2 rounded-xl cursor-pointer transition-all flex-1 ${
+                        isSelected ? 'bg-indigo-950/40 border border-indigo-850 shadow-inner' : 'border border-transparent'
+                      }`}
+                    >
+                      <div className={`rune-circle-plate flex items-center justify-center shrink-0 ${isSelected ? 'selected' : ''}`}>
+                        <span className="text-base">{r.icon}</span>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <span className="text-[8px] font-black text-white block truncate leading-none">{r.name}</span>
+                        <span className="text-[6.5px] text-gray-400 block mt-0.5 leading-snug">{r.desc}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="text-center bg-black/35 p-3.5 rounded-2xl border border-indigo-950/40">
-              <span className="text-[9px] font-bold text-gray-400 block leading-none">
-                {opponent?.hasSelectedLineup ? "Isaac confirmou a formação! ✔" : "Isaac está escolhendo..."}
-              </span>
+          </div>
+
+          {/* Column 4: FORMAÇÃO DO OPONENTE */}
+          <div className="lg:col-span-1 border-l border-indigo-950/30 pl-4 flex flex-col justify-between">
+            <div>
+              <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 pb-1 border-b border-indigo-950/40 leading-none text-right">Formação do Oponente</h3>
+              
+              <div className="grid grid-cols-3 gap-2">
+                {Array.from({ length: 3 }).map((_, idx) => {
+                  const rivalConfirmed = opponent?.hasSelectedLineup;
+                  return (
+                    <div
+                      key={idx}
+                      className={`opponent-anon-card rounded-xl p-2 flex flex-col items-center justify-around ${
+                        rivalConfirmed ? 'confirmed' : ''
+                      }`}
+                    >
+                      <span className="text-lg font-black text-rose-500 animate-pulse z-10">?</span>
+                      <div className="text-center z-10">
+                        <span className="text-[6px] text-gray-500 font-bold uppercase block leading-none">Combatente</span>
+                        <span className="text-[6px] text-gray-500 font-bold uppercase block leading-none mt-0.5">oculto</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              <div className="text-center bg-rose-950/20 p-2.5 rounded-xl border border-rose-900/30">
+                <span className="text-[8px] font-black text-rose-300 block leading-none uppercase tracking-wide">
+                  {opponent?.hasSelectedLineup ? " Isaac confirmou a formação! ✔" : "⚔️ Isaac confirmou 2/3"}
+                </span>
+              </div>
+
+              {/* Glowing Confirm Button (Mockup matched compass blue button) */}
+              <button
+                onClick={handleConfirmLineup}
+                disabled={selectedLineup.length !== 3 || confrontationConfirmed}
+                className="w-full py-3 rounded-full text-xs font-black uppercase tracking-widest confirm-btn-glowing shadow-lg disabled:opacity-40"
+              >
+                {confrontationConfirmed ? "Confirmado" : "Confirmar"}
+              </button>
             </div>
           </div>
 
         </div>
 
-        {/* Bottom Runes Selector Panel */}
-        <footer className="border-t border-indigo-950/40 pt-4 flex flex-col gap-3.5 shrink-0">
-          <div className="flex justify-between items-center">
-            <div className="text-left">
-              <span className="text-[9px] font-bold text-[#ffe082] uppercase tracking-widest leading-none">Runas de Batalha</span>
-              <span className="text-[7px] text-gray-500 block uppercase mt-0.5">Selecione 1 modificador tático travado</span>
-            </div>
-            <span className="text-[9px] text-[#ffe082] font-extrabold max-w-[400px] text-right truncate">
-              {selectedRune.name}: <span className="text-gray-400 font-medium lowercase">{selectedRune.desc}</span>
-            </span>
-          </div>
-
-          <div className="grid grid-cols-6 gap-3.5">
-            {RUNES_LIST.map(r => {
-              const isSelected = selectedRuneId === r.id;
-              return (
-                <div
-                  key={r.id}
-                  onClick={() => !confrontationConfirmed && setSelectedRuneId(r.id)}
-                  className={`p-3 rounded-2xl text-center flex flex-col items-center gap-1.5 rune-card ${
-                    isSelected ? 'selected' : ''
-                  } ${confrontationConfirmed ? 'opacity-50 pointer-events-none' : ''}`}
-                >
-                  <span className="text-xl">{r.icon}</span>
-                  <span className="text-[8px] font-black text-white truncate max-w-full leading-none">{r.name}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex justify-end gap-3 mt-1 pt-1 border-t border-indigo-950/20">
-            <button
-              onClick={handleConfirmLineup}
-              disabled={selectedLineup.length !== 3 || confrontationConfirmed}
-              className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all select-none ${
-                confrontationConfirmed ? 'bg-indigo-950 text-indigo-400 border border-indigo-800/40 opacity-70' :
-                selectedLineup.length === 3 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black shadow-lg font-black active:translate-y-0.5' :
-                'bg-gray-900 text-gray-600 cursor-not-allowed border border-gray-800'
-              }`}
-            >
-              {confrontationConfirmed ? "Aguardando Oponente..." : "Confirmar Formação"}
-            </button>
-          </div>
+        {/* Footer shortcuts matching mockup */}
+        <footer className="w-full text-center text-[7px] text-gray-600 font-bold uppercase tracking-widest pt-3 border-t border-indigo-950/30 shrink-0">
+          Enter: Confirmar Formação | R: Resetar | Q / E: Alternar Personagem | Tab: Ver Regras | Esc: Cancelar
         </footer>
 
       </div>
@@ -574,6 +638,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   // ══════════════════════════════════════════════════════════════════════════
   // TELA 2: ACTIVE BATTLE SCREEN (planning, resolving)
   // ══════════════════════════════════════════════════════════════════════════
+  const blueHpSum = blueTeam.reduce((acc, t) => acc + t.hp, 0);
+  const redHpSum = redTeam.reduce((acc, t) => acc + t.hp, 0);
+  const isResolution = resolutionStep !== -1;
+
   const encounterContext: EncounterContext = {
     type: opponent ? 'duel' : 'wild',
     enemyName: opponent?.username || "Guerreiro Rival",
@@ -582,14 +650,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     roomId: roomId || "unknown",
   };
 
-  const blueHpSum = blueTeam.reduce((acc, t) => acc + t.hp, 0);
-  const redHpSum = redTeam.reduce((acc, t) => acc + t.hp, 0);
-  const isResolution = resolutionStep !== -1;
-
   return (
     <div className="w-full h-full relative">
       
-      {/* Cinematic shatter transition trigger */}
       {triggerTransition && (
         <div className="absolute inset-0 z-50">
           <BattleTransition
@@ -604,7 +667,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
       <div className="w-full h-full bg-[#06060c] flex flex-col p-5 border border-[#b59441]/40 rounded-3xl overflow-hidden shadow-2xl min-h-[580px] battle-container select-none">
         
-        {/* Header (Wall vs Isaac) */}
+        {/* Header */}
         <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative">
           <div className="flex flex-col text-left max-w-[200px]">
             <div className="flex items-center gap-1.5">
@@ -685,10 +748,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           </div>
         </header>
 
-        {/* Main Grid content */}
+        {/* Main Grid */}
         <div className="flex-1 flex gap-5 min-h-0 relative mb-4">
           
-          {/* Left Column: Teammates roster cards */}
           <div className="w-52 flex flex-col gap-3 shrink-0 overflow-y-auto pr-1">
             <h4 className="text-[9px] uppercase font-bold text-[#ffe082] border-b border-indigo-950/60 pb-1 mb-1">Guerreiros</h4>
             
@@ -737,7 +799,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
             })}
           </div>
 
-          {/* Center Arena */}
           <div className="flex-1 min-w-0 bg-black/35 rounded-3xl border border-indigo-950/40 relative overflow-hidden flex items-center justify-center shadow-inner">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 via-transparent to-transparent pointer-events-none" />
             
@@ -933,7 +994,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
         </div>
 
-        {/* Footer actions */}
+        {/* Footer */}
         <footer className="w-full bg-[#121226]/50 border border-indigo-950 rounded-2xl p-4 shrink-0 grid grid-cols-1 lg:grid-cols-4 gap-4 items-center">
           <div className="flex items-center gap-3.5 border-r border-indigo-950/60 pr-4">
             <div className="w-14 h-14 bg-black/40 border border-indigo-900/60 rounded-full flex items-center justify-center text-3xl shadow-inner relative shrink-0">
