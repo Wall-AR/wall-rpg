@@ -75,174 +75,117 @@ export const generateTextures = async (): Promise<GameTextures> => {
     console.log("🌸 RPG Maker tileset loaded successfully from '/assets/tilesets/tileset.png'!");
   } catch (err) {
     console.log("ℹ️ Local RPG Maker tileset image not found, using programmatic canvas fallbacks.");
-    // 1. Grass Tile Fallback
-    grass = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#488b49';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      ctx.fillStyle = '#5fb460';
-      for (let i = 0; i < 6; i++) {
-        const x = (i * 5 + 3) % tileSize;
-        const y = (i * 7 + 4) % tileSize;
+    
+    // Helper to draw isometric diamond tiles
+    const drawIsometricDiamond = (color: string, drawDecorations?: (ctx: CanvasRenderingContext2D) => void) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 32;
+      const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+
+      // Draw Diamond path
+      ctx.beginPath();
+      ctx.moveTo(32, 0);
+      ctx.lineTo(64, 16);
+      ctx.lineTo(32, 32);
+      ctx.lineTo(0, 16);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Border outline (subtle overlay)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      if (drawDecorations) {
+        drawDecorations(ctx);
+      }
+
+      return Texture.from(canvas);
+    };
+
+    // 1. Grass Tile Fallback (Green Diamond)
+    grass = drawIsometricDiamond('#2d6a4f', (ctx) => {
+      ctx.fillStyle = '#40916c';
+      for (let i = 0; i < 5; i++) {
+        const x = 12 + (i * 9) % 36;
+        const y = 6 + (i * 4) % 18;
         ctx.fillRect(x, y, 1, 3);
         ctx.fillRect(x - 1, y + 1, 3, 1);
       }
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(5, 5, 3, 3);
-      ctx.fillRect(20, 20, 3, 3);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(6, 6, 1, 1);
-      ctx.fillRect(21, 21, 1, 1);
-      ctx.fillStyle = '#f87171';
-      ctx.fillRect(15, 8, 2, 2);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(15, 8, 1, 1);
-      return Texture.from(canvas);
-    })();
+    });
 
-    // 2. Stone Tile Fallback
-    stone = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      const drawStone = (x: number, y: number, w: number, h: number) => {
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(x + 1, y + 1, w - 2, 1);
-        ctx.fillRect(x + 1, y + 1, 1, h - 2);
-      };
-      drawStone(1, 1, 14, 6);
-      drawStone(16, 1, 15, 6);
-      drawStone(1, 8, 10, 7);
-      drawStone(12, 8, 19, 7);
-      drawStone(1, 16, 15, 7);
-      drawStone(17, 16, 14, 7);
-      drawStone(1, 24, 12, 7);
-      drawStone(14, 24, 17, 7);
-      return Texture.from(canvas);
-    })();
-
-    // 3. Brick Tile Fallback
-    brick = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#451a03';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      const drawBrick = (x: number, y: number, w: number, h: number) => {
-        ctx.fillStyle = '#78350f';
-        ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = '#b45309';
-        ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(x + 1, y + 1, w - 2, 1);
-      };
-      drawBrick(0, 0, 15, 7);
-      drawBrick(16, 0, 16, 7);
-      drawBrick(0, 8, 32, 7);
-      drawBrick(0, 16, 11, 7);
-      drawBrick(12, 16, 20, 7);
-      drawBrick(0, 24, 22, 7);
-      drawBrick(23, 24, 9, 7);
-      return Texture.from(canvas);
-    })();
-
-    // 4. Portal Tile Fallback
-    portal = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      ctx.fillStyle = '#475569';
+    // 2. Stone Tile Fallback (Grey cobblestones)
+    stone = drawIsometricDiamond('#475569', (ctx) => {
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(tileSize / 2, tileSize / 2, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#1e293b';
+      ctx.moveTo(32, 8); ctx.lineTo(16, 16); ctx.lineTo(32, 24); ctx.lineTo(48, 16); ctx.closePath();
+      ctx.moveTo(32, 0); ctx.lineTo(32, 32);
+      ctx.moveTo(0, 16); ctx.lineTo(64, 16);
+      ctx.stroke();
+    });
+
+    // 3. Brick Tile Fallback (Blocked walls)
+    brick = drawIsometricDiamond('#581c0c', (ctx) => {
+      ctx.strokeStyle = '#7f1d1d';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(tileSize / 2, tileSize / 2, 11, 0, Math.PI * 2);
+      ctx.moveTo(32, 4); ctx.lineTo(8, 16); ctx.lineTo(32, 28); ctx.lineTo(56, 16); ctx.closePath();
+      ctx.stroke();
+    });
+
+    // 4. Portal Tile Fallback (Glowing blue)
+    portal = drawIsometricDiamond('#0f172a', (ctx) => {
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.4)';
+      ctx.beginPath();
+      ctx.ellipse(32, 16, 18, 9, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#06b6d4';
       ctx.beginPath();
-      ctx.arc(tileSize / 2, tileSize / 2, 9, 0, Math.PI * 2);
+      ctx.ellipse(32, 16, 12, 6, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#a855f7';
-      ctx.fillRect(13, 13, 6, 6);
-      ctx.fillStyle = '#e9d5ff';
-      ctx.fillRect(15, 15, 2, 2);
-      return Texture.from(canvas);
-    })();
+      ctx.fillRect(30, 14, 4, 4);
+    });
 
     // 5. Flowers Tile Fallback
-    flowers = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#3f7d3f';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      const flowerColors = ['#f472b6', '#fb923c', '#facc15', '#a78bfa', '#ffffff'];
-      for (let i = 0; i < 12; i++) {
-        const fx = (i * 7 + 2) % (tileSize - 2);
-        const fy = (i * 5 + 3) % (tileSize - 2);
-        ctx.fillStyle = flowerColors[i % flowerColors.length];
+    flowers = drawIsometricDiamond('#1b4332', (ctx) => {
+      const colors = ['#f472b6', '#fb923c', '#facc15', '#a78bfa'];
+      for (let i = 0; i < 8; i++) {
+        const fx = 12 + (i * 7) % 36;
+        const fy = 6 + (i * 3) % 18;
+        ctx.fillStyle = colors[i % colors.length];
         ctx.fillRect(fx, fy, 2, 2);
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(fx, fy, 1, 1);
       }
-      return Texture.from(canvas);
-    })();
+    });
 
-    // 6. Water Tile Fallback
-    water = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#1e3a5f';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      ctx.fillStyle = '#2563eb';
-      ctx.fillRect(2, 8, 10, 2);
-      ctx.fillRect(14, 16, 12, 2);
-      ctx.fillRect(6, 24, 8, 2);
-      ctx.fillStyle = '#93c5fd';
-      ctx.fillRect(5, 7, 3, 1);
-      ctx.fillRect(18, 15, 4, 1);
-      ctx.fillRect(8, 23, 2, 1);
-      return Texture.from(canvas);
-    })();
+    // 6. Water Tile Fallback (Dark blue diamond)
+    water = drawIsometricDiamond('#0c4a6e', (ctx) => {
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(20, 12, 24, 1);
+      ctx.fillRect(12, 18, 16, 1);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(28, 11, 8, 1);
+    });
 
     // 7. Wood Floor Tile Fallback
-    woodFloor = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#92400e';
-      ctx.fillRect(0, 0, tileSize, tileSize);
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(0, 7, tileSize, 1);
-      ctx.fillRect(0, 15, tileSize, 1);
-      ctx.fillRect(0, 23, tileSize, 1);
-      ctx.fillStyle = '#b45309';
-      ctx.fillRect(3, 2, 6, 1);
-      ctx.fillRect(18, 10, 8, 1);
-      ctx.fillRect(5, 18, 10, 1);
-      ctx.fillRect(20, 26, 6, 1);
-      ctx.fillStyle = '#451a03';
-      ctx.fillRect(2, 7, 1, 1);
-      ctx.fillRect(16, 7, 1, 1);
-      ctx.fillRect(8, 15, 1, 1);
-      ctx.fillRect(24, 15, 1, 1);
-      return Texture.from(canvas);
-    })();
+    woodFloor = drawIsometricDiamond('#78350f', (ctx) => {
+      ctx.strokeStyle = '#451a03';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(32, 0); ctx.lineTo(32, 32);
+      ctx.moveTo(16, 8); ctx.lineTo(48, 24);
+      ctx.stroke();
+    });
 
-    // 8. Fence Tile Fallback
-    fence = (() => {
-      const { canvas, ctx } = createCanvas(tileSize, tileSize);
-      ctx.fillStyle = '#488b49';
-      ctx.fillRect(0, 0, tileSize, tileSize);
+    // 8. Fence Fallback
+    fence = drawIsometricDiamond('#451a03', (ctx) => {
       ctx.fillStyle = '#78350f';
-      ctx.fillRect(4, 4, 4, 24);
-      ctx.fillRect(24, 4, 4, 24);
-      ctx.fillStyle = '#92400e';
-      ctx.fillRect(0, 8, tileSize, 4);
-      ctx.fillRect(0, 20, tileSize, 4);
-      ctx.fillStyle = '#b45309';
-      ctx.fillRect(0, 8, tileSize, 1);
-      ctx.fillRect(0, 20, tileSize, 1);
-      return Texture.from(canvas);
-    })();
+      ctx.fillRect(30, 4, 4, 12);
+    });
   }
 
   // 5. High-Quality Retro Walk Animation Frame Generator

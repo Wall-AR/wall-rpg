@@ -23,8 +23,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
     gridY: 10,
     targetGridX: 14,
     targetGridY: 10,
+    flatX: 14 * 32,
+    flatY: 10 * 32,
+    targetFlatX: 14 * 32,
+    targetFlatY: 10 * 32,
     isMoving: false,
-    speed: 4,
+    speed: 240, // pixels per second
     keys: {},
   });
 
@@ -153,15 +157,32 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         }
 
         canvasContainerRef.current!.appendChild(app.canvas);
-
         const textures = await generateTextures();
-        const mapContainer = new Container();
-        app.stage.addChild(mapContainer);
+        const size = LOBBY_MAP.tileSize;
 
-        // Render Tilemap
+        // 2.5D Isometric projection helper
+        const toIsometric = (flatX: number, flatY: number) => {
+          const col = flatX / size;
+          const row = flatY / size;
+          // Scale size is doubled for isometric diamond widths (64x32)
+          const isoX = (col - row) * 32;
+          const isoY = (col + row) * 16;
+          return { x: isoX, y: isoY };
+        };
+
+        // World container to allow dynamic camera follow
+        const worldContainer = new Container();
+        app.stage.addChild(worldContainer);
+
+        const mapContainer = new Container();
+        worldContainer.addChild(mapContainer);
+
+        const playerContainer = new Container();
+        worldContainer.addChild(playerContainer);
+
+        // Render Tilemap isometrically
         const cols = LOBBY_MAP.width;
         const rows = LOBBY_MAP.height;
-        const size = LOBBY_MAP.tileSize;
 
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
@@ -176,29 +197,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             if (tileType === 7) tex = textures.fence;
 
             const tileSprite = new Sprite(tex);
-            tileSprite.x = c * size;
-            tileSprite.y = r * size;
-            tileSprite.width = size;
-            tileSprite.height = size;
+            const iso = toIsometric(c * size, r * size);
+            tileSprite.x = iso.x;
+            tileSprite.y = iso.y;
+            tileSprite.anchor.set(0.5, 0.0); // anchor at top center of diamond
+            tileSprite.width = 64;
+            tileSprite.height = 32;
             mapContainer.addChild(tileSprite);
           }
         }
 
         // Add visual overlays for portals/chests
         const chestSprite = new Sprite(textures.flowers);
-        chestSprite.x = 24 * size;
-        chestSprite.y = 5 * size;
+        const chestIso = toIsometric(24 * size, 5 * size);
+        chestSprite.x = chestIso.x;
+        chestSprite.y = chestIso.y;
+        chestSprite.anchor.set(0.5, 1.0);
         chestSprite.width = size;
         chestSprite.height = size;
-        mapContainer.addChild(chestSprite);
+        playerContainer.addChild(chestSprite);
 
         // Spawning player sprite
-        const playerContainer = new Container();
-        app.stage.addChild(playerContainer);
-
         const playerSprite = new Sprite(textures.playerDown[0]);
         playerSprite.width = size;
         playerSprite.height = size;
+        playerSprite.anchor.set(0.5, 1.0);
         playerContainer.addChild(playerSprite);
 
         // Sync other players sprites
@@ -209,14 +232,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           const otherSprite = new Sprite(textures.playerDown[0]);
           otherSprite.width = size;
           otherSprite.height = size;
-          otherSprite.x = otherPlayer.x;
-          otherSprite.y = otherPlayer.y;
+          otherSprite.anchor.set(0.5, 1.0);
+          
+          const iso = toIsometric(otherPlayer.x, otherPlayer.y);
+          otherSprite.x = iso.x;
+          otherSprite.y = iso.y;
+          
           playerContainer.addChild(otherSprite);
           otherPlayersMap.set(sessionId, otherSprite);
 
           otherPlayer.onChange = () => {
-            otherSprite.x = otherPlayer.x;
-            otherSprite.y = otherPlayer.y;
+            const isoPos = toIsometric(otherPlayer.x, otherPlayer.y);
+            otherSprite.x = isoPos.x;
+            otherSprite.y = isoPos.y;
           };
         };
 
@@ -234,14 +262,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           const monSprite = new Sprite(textures.monster);
           monSprite.width = size;
           monSprite.height = size;
-          monSprite.x = monster.x;
-          monSprite.y = monster.y;
+          monSprite.anchor.set(0.5, 1.0);
+          
+          const iso = toIsometric(monster.x, monster.y);
+          monSprite.x = iso.x;
+          monSprite.y = iso.y;
+          
           playerContainer.addChild(monSprite);
           monsterSpritesMap.set(key, monSprite);
 
           monster.onChange = () => {
-            monSprite.x = monster.x;
-            monSprite.y = monster.y;
+            const isoPos = toIsometric(monster.x, monster.y);
+            monSprite.x = isoPos.x;
+            monSprite.y = isoPos.y;
           };
         };
 
@@ -385,45 +418,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
                 if (isWalkable(targetX, targetY) && diagonalWalkable) {
                   state.targetGridX = targetX;
                   state.targetGridY = targetY;
+                  state.targetFlatX = targetX * size;
+                  state.targetFlatY = targetY * size;
                   state.isMoving = true;
                 }
               }
             }
           }
 
-          // Move player sprite towards grid target position
+          // Move player coordinates flat-wise towards target
           if (state.isMoving) {
-            const targetPixelX = state.targetGridX * size;
-            const targetPixelY = state.targetGridY * size;
-
-            let step = state.speed * delta;
+            let step = (state.speed * (time - lastTime)) / 1000;
             
-            if (playerSprite.x < targetPixelX) {
-              playerSprite.x = Math.min(targetPixelX, playerSprite.x + step);
-            } else if (playerSprite.x > targetPixelX) {
-              playerSprite.x = Math.max(targetPixelX, playerSprite.x - step);
+            if (state.flatX < state.targetFlatX) {
+              state.flatX = Math.min(state.targetFlatX, state.flatX + step);
+            } else if (state.flatX > state.targetFlatX) {
+              state.flatX = Math.max(state.targetFlatX, state.flatX - step);
             }
 
-            if (playerSprite.y < targetPixelY) {
-              playerSprite.y = Math.min(targetPixelY, playerSprite.y + step);
-            } else if (playerSprite.y > targetPixelY) {
-              playerSprite.y = Math.max(targetPixelY, playerSprite.y - step);
+            if (state.flatY < state.targetFlatY) {
+              state.flatY = Math.min(state.targetFlatY, state.flatY + step);
+            } else if (state.flatY > state.targetFlatY) {
+              state.flatY = Math.max(state.targetFlatY, state.flatY - step);
             }
 
             // Target reached
-            if (playerSprite.x === targetPixelX && playerSprite.y === targetPixelY) {
+            if (state.flatX === state.targetFlatX && state.flatY === state.targetFlatY) {
               state.gridX = state.targetGridX;
               state.gridY = state.targetGridY;
               state.isMoving = false;
 
               // Send coordinates updates to Colyseus server
-              room.send("move", { x: playerSprite.x, y: playerSprite.y });
+              room.send("move", { x: state.flatX, y: state.flatY });
             }
           } else {
-            // Static position
-            playerSprite.x = state.gridX * size;
-            playerSprite.y = state.gridY * size;
+            // Static flat position
+            state.flatX = state.gridX * size;
+            state.flatY = state.gridY * size;
           }
+
+          // Update player sprite visual isometric position
+          const playerIsoPos = toIsometric(state.flatX, state.flatY);
+          playerSprite.x = playerIsoPos.x;
+          playerSprite.y = playerIsoPos.y;
+
+          // Camera follow: offset worldContainer to center local player
+          worldContainer.x = 400 - playerSprite.x;
+          worldContainer.y = 300 - playerSprite.y;
         };
 
         // Start render ticker
