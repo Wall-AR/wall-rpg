@@ -424,9 +424,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           otherPlayersMap.set(sessionId, otherSprite);
 
           otherPlayer.onChange = () => {
-            const isoPos = toIsometric(otherPlayer.x, otherPlayer.y);
-            otherSprite.x = isoPos.x;
-            otherSprite.y = isoPos.y;
+            // Decoupled coordinates update: gameLoop handles smooth slide transition
           };
         };
 
@@ -454,9 +452,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           monsterSpritesMap.set(key, monSprite);
 
           monster.onChange = () => {
-            const isoPos = toIsometric(monster.x, monster.y);
-            monSprite.x = isoPos.x;
-            monSprite.y = isoPos.y;
+            // Decoupled coordinates update: gameLoop handles smooth slide transition
           };
         };
 
@@ -695,6 +691,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             worldContainer.x = app.screen.width / 2 - playerSprite.x;
             worldContainer.y = app.screen.height / 2 - playerSprite.y;
           }
+
+          // Smooth glide/lerp for other players sprites
+          otherPlayersMap.forEach((sprite, sessionId) => {
+            const pState = room.state.players.get(sessionId);
+            if (pState) {
+              const targetIso = toIsometric(pState.x, pState.y);
+              sprite.x += (targetIso.x - sprite.x) * 0.12;
+              sprite.y += (targetIso.y - sprite.y) * 0.12;
+            }
+          });
+
+          // Smooth glide/lerp for roaming monsters sprites
+          monsterSpritesMap.forEach((sprite, key) => {
+            const mState = room.state.monsters.get(key);
+            if (mState) {
+              const targetIso = toIsometric(mState.x, mState.y);
+              sprite.x += (targetIso.x - sprite.x) * 0.08;
+              sprite.y += (targetIso.y - sprite.y) * 0.08;
+              sprite.visible = mState.active;
+            }
+          });
 
           // 2.5D depth sorting (Y-Sorting) for all vertical sprites
           playerContainer.children.sort((a, b) => a.y - b.y);
