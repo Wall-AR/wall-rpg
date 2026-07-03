@@ -54,7 +54,7 @@ const getMonsterElement = (type: string): string => {
   return 'none';
 };
 
-export class GameRoom extends Room<MapState> {
+export class GameRoom extends Room<{ state: MapState }> {
   private gmSessions = new Set<string>();
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;
@@ -127,7 +127,7 @@ export class GameRoom extends Room<MapState> {
       const playerGridX = Math.floor(player.x / TILE_SIZE);
       const playerGridY = Math.floor(player.y / TILE_SIZE);
 
-      this.state.monsters.forEach(monster => {
+      this.state.monsters.forEach((monster: any) => {
         if (!monster.active) return;
         const monsterGridX = Math.floor(monster.x / TILE_SIZE);
         const monsterGridY = Math.floor(monster.y / TILE_SIZE);
@@ -333,7 +333,7 @@ export class GameRoom extends Room<MapState> {
           // If in a party, pull everyone into the same battle room!
           if (player.partyId) {
             const members: string[] = [];
-            this.state.players.forEach((p, sid) => {
+            this.state.players.forEach((p: any, sid: string) => {
               if (p.partyId === player.partyId) {
                 members.push(sid);
               }
@@ -363,7 +363,7 @@ export class GameRoom extends Room<MapState> {
   }
 
   private roamMonsters() {
-    this.state.monsters.forEach(monster => {
+    this.state.monsters.forEach((monster: any) => {
       if (!monster.active) return;
 
       // 40% chance of staying in place
@@ -387,7 +387,7 @@ export class GameRoom extends Room<MapState> {
         monster.y = targetGridY * TILE_SIZE;
 
         // Check if any player collided with this monster after it moved
-        this.state.players.forEach((player, sessionId) => {
+        this.state.players.forEach((player: any, sessionId: string) => {
           const playerGridX = Math.floor(player.x / TILE_SIZE);
           const playerGridY = Math.floor(player.y / TILE_SIZE);
           if (playerGridX === targetGridX && playerGridY === targetGridY) {
@@ -426,7 +426,7 @@ export class GameRoom extends Room<MapState> {
         
         if (player.partyId) {
           const members: string[] = [];
-          this.state.players.forEach((p, sid) => {
+          this.state.players.forEach((p: any, sid: string) => {
             if (p.partyId === player.partyId) {
               members.push(sid);
             }

@@ -42,7 +42,7 @@ const getElementModifier = (attackerEl: string, defenderEl: string): number => {
   return 1.0;
 };
 
-export class BattleRoom extends Room<BattleState> {
+export class BattleRoom extends Room<{ state: BattleState }> {
   override maxClients = 2;
   private sessionAccounts = new Map<string, string>();
 
@@ -87,7 +87,7 @@ export class BattleRoom extends Room<BattleState> {
 
       // Check if all alive combatants of this player have selected an action
       let totalAlive = 0;
-      player.combatants.forEach(c => { if (c.hp > 0) totalAlive++; });
+      player.combatants.forEach((c: any) => { if (c.hp > 0) totalAlive++; });
 
       if (plannedCount >= totalAlive || totalAlive === 0) {
         player.hasSelectedAction = true;
@@ -96,7 +96,7 @@ export class BattleRoom extends Room<BattleState> {
 
       // Check if both players have made their choices
       let allReady = true;
-      this.state.players.forEach(p => {
+      this.state.players.forEach((p: any) => {
         if (!p.hasSelectedAction) allReady = false;
       });
 
@@ -150,7 +150,7 @@ export class BattleRoom extends Room<BattleState> {
 
       // Check if both players are ready
       let allReady = true;
-      this.state.players.forEach(p => {
+      this.state.players.forEach((p: any) => {
         if (!p.hasSelectedLineup) allReady = false;
       });
 
@@ -346,7 +346,7 @@ export class BattleRoom extends Room<BattleState> {
     this.clock.setTimeout(() => {
       if (this.state.status !== "confrontation_prep") return;
 
-      this.state.players.forEach(p => {
+      this.state.players.forEach((p: any) => {
         if (!p.hasSelectedLineup) {
           // Auto-select lineup with fallbacks
           const defaultLineup = ['char-caelum', 'char-lyria', 'char-raven'];
@@ -390,9 +390,9 @@ export class BattleRoom extends Room<BattleState> {
     this.clock.setTimeout(() => {
       if (this.state.status !== 'planning') return;
 
-      this.state.players.forEach(p => {
+      this.state.players.forEach((p: any) => {
         if (!p.hasSelectedAction) {
-          p.combatants.forEach(c => {
+          p.combatants.forEach((c: any) => {
             if (c.hp > 0 && !c.hasSelectedAction) {
               c.selectedAction = 'defend';
               c.hasSelectedAction = true;
@@ -411,7 +411,7 @@ export class BattleRoom extends Room<BattleState> {
     this.state.status = "resolving";
     this.state.logs.push(`--- Turno ${this.state.turn}: Fase de Resolução ---`);
 
-    const sessions = Array.from(this.state.players.keys());
+    const sessions = Array.from(this.state.players.keys()) as string[];
     
     interface CombatantActor {
       state: BattleCombatantState;
@@ -420,9 +420,9 @@ export class BattleRoom extends Room<BattleState> {
     }
 
     const actors: CombatantActor[] = [];
-    this.state.players.forEach((player, sessionId) => {
+    this.state.players.forEach((player: any, sessionId: string) => {
       const oppSessionId = sessions.find(id => id !== sessionId)!;
-      player.combatants.forEach(c => {
+      player.combatants.forEach((c: any) => {
         if (c.hp > 0) {
           actors.push({
             state: c,
@@ -456,7 +456,7 @@ export class BattleRoom extends Room<BattleState> {
       let target = oppPlayer.combatants.get(combatant.selectedTargetId);
       if (!target || target.hp <= 0) {
         // Redireciona para o primeiro inimigo vivo
-        target = Array.from(oppPlayer.combatants.values()).find(c => c.hp > 0);
+        target = (Array.from(oppPlayer.combatants.values()) as any[]).find(c => c.hp > 0);
       }
 
       if (!target) continue; // Sem inimigos vivos
@@ -490,7 +490,7 @@ export class BattleRoom extends Room<BattleState> {
           } else {
             combatant.mp -= mpCost;
             // Cura o aliado com menor HP
-            const allyTarget = Array.from(actorPlayer.combatants.values())
+            const allyTarget = (Array.from(actorPlayer.combatants.values()) as any[])
               .filter(c => c.hp > 0)
               .sort((a, b) => a.hp - b.hp)[0];
             if (allyTarget) {
@@ -533,7 +533,7 @@ export class BattleRoom extends Room<BattleState> {
         
         // Verifica se a equipe do oponente foi totalmente aniquilada
         let oppAliveCount = 0;
-        oppPlayer.combatants.forEach(c => { if (c.hp > 0) oppAliveCount++; });
+        oppPlayer.combatants.forEach((c: any) => { if (c.hp > 0) oppAliveCount++; });
 
         if (oppAliveCount === 0) {
           this.state.logs.push(`🎉 A equipe de ${oppPlayer.username} foi totalmente derrotada!`);
@@ -547,9 +547,9 @@ export class BattleRoom extends Room<BattleState> {
     }
 
     // Reset de escolhas para o próximo round
-    this.state.players.forEach(p => {
+    this.state.players.forEach((p: any) => {
       p.hasSelectedAction = false;
-      p.combatants.forEach(c => {
+      p.combatants.forEach((c: any) => {
         c.hasSelectedAction = false;
         c.selectedAction = "none";
         c.selectedSpellId = "";
@@ -566,7 +566,7 @@ export class BattleRoom extends Room<BattleState> {
   private async saveBattleHistory() {
     try {
       if (db) {
-        const playerIds = Array.from(this.state.players.keys());
+        const playerIds = Array.from(this.state.players.keys()) as string[];
         const logs = Array.from(this.state.logs);
         await db.insert(battleHistory).values({
           playerIds,
