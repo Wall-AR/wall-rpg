@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CompanionCharacter } from '../useMenuData';
+import { CompanionDetailScreen } from '../../CompanionDetailScreen';
 
 interface TeamTabProps {
   activeTeam: CompanionCharacter[];
@@ -28,6 +29,7 @@ export const TeamTab: React.FC<TeamTabProps> = ({
 }) => {
 
   const selectedMember = [...activeTeam, ...reserveTeam].find(m => m.id === selectedMemberId) || activeTeam[0];
+  const [detailedCharId, setDetailedCharId] = useState<string | null>(null);
 
   // 2D Grid navigation for team members (Arrow keys / WASD)
   React.useEffect(() => {
@@ -467,6 +469,23 @@ export const TeamTab: React.FC<TeamTabProps> = ({
             "{selectedMember.lore}"
           </div>
 
+          {/* Detailed companion sheet button */}
+          <button
+            onClick={() => setDetailedCharId(selectedMember.id)}
+            className="w-full py-2 bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black font-extrabold text-[9px] uppercase tracking-wider rounded-xl transition-all shadow-md mt-1 shrink-0"
+          >
+            🔎 Ficha de Companheiro
+          </button>
+
+        </div>
+      )}
+
+      {detailedCharId && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-6">
+          <CompanionDetailScreen
+            characterId={detailedCharId}
+            onClose={() => setDetailedCharId(null)}
+          />
         </div>
       )}
     </div>
