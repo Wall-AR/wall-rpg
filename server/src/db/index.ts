@@ -23,14 +23,22 @@ if (!databaseUrl) {
   try {
     pool = new pg.Pool({
       connectionString: databaseUrl,
+      connectionTimeoutMillis: 2000,
     });
     pool.on('error', (err) => {
       console.error('Unexpected error on idle database client', err);
     });
+    
+    // Test connection immediately
+    const client = await pool.connect();
+    client.release();
+    
     db = drizzle(pool, { schema });
-    console.log("🔌 Database pool initialized.");
-  } catch (error) {
-    console.error("❌ Failed to initialize database pool:", error);
+    console.log("🔌 Database pool initialized and verified.");
+  } catch (error: any) {
+    console.warn("⚠️ WARNING: Database connection failed. Falling back to in-memory mode.", error.message);
+    db = null;
+    pool = null;
   }
 }
 
