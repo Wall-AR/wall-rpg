@@ -48,7 +48,7 @@ const RUNES_LIST: Rune[] = [
 const PREP_ROSTER: Teammate[] = [
   { id: 'char-caelum', name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, maxHp: 8645, mp: 210, maxMp: 280, element: 'agua', position: 'front', portrait: '👤', rank: 'S', spells: [{ id: 'holy-barrier', name: 'Barreira Sagrada', cost: 10, desc: 'Dobra a defesa de aliados na mesma linha por 1 turno.' }] },
   { id: 'char-lyria', name: 'Lyria', class: 'Mago', level: 124, hp: 6215, maxHp: 6215, mp: 420, maxMp: 650, element: 'none', position: 'back', portrait: '🧙‍♀️', rank: 'S+', spells: [{ id: 'nova-astral', name: 'Nova Astral', cost: 4, desc: 'Causa 215% de dano mágico a todos os inimigos e aplica Vulnerável por 2 turnos. Recarga: 3 turnos.' }, { id: 'cure', name: 'Chama Curativa', cost: 10, desc: 'Restaura HP de um companheiro ferido.' }] },
-  { id: 'char-raven', name: 'Raven', class: 'Assassino', level: 127, hp: 6085, maxHp: 6085, mp: 200, maxMp: 260, element: 'terra', position: 'mid', portrait: '🥷', rank: 'S', spells: [{ id: 'shadow-strike', name: 'Golpe Sombrio', cost: 15, desc: 'Ataca ignorando 30% da armadura do oponente.' }] },
+  { id: 'char-raven', name: 'Raven', class: 'Assassino', level: 127, hp: 6085, maxHp: 6085, mp: 200, maxMp: 260, element: 'terra', position: 'mid', portrait: '/assets/characters/frogue_face.png', rank: 'S', spells: [{ id: 'shadow-strike', name: 'Golpe Sombrio', cost: 15, desc: 'Ataca ignorando 30% da armadura do oponente.' }] },
   { id: 'char-seraphina', name: 'Seraphina', class: 'Clériga', level: 121, hp: 6500, maxHp: 6500, mp: 180, maxMp: 220, element: 'none', position: 'front', portrait: '🧝‍♀️', rank: 'A', spells: [{ id: 'earth-smash', name: 'Impacto Sísmico', cost: 12, desc: 'Ataca atordoando o alvo no turno atual.' }] },
   { id: 'char-lobo', name: 'Lobo Cinzento', class: 'Companheiro', level: 132, hp: 5980, maxHp: 5980, mp: 160, maxMp: 240, element: 'vento', position: 'mid', portrait: '🐺', rank: 'D', spells: [{ id: 'wolf-bite', name: 'Mordida Voraz', cost: 10, desc: 'Ataca sangrando o alvo por 2 turnos.' }] },
   { id: 'char-korr', name: 'Korr', class: 'Lanceiro', level: 119, hp: 8120, maxHp: 8120, mp: 180, maxMp: 250, element: 'fogo', position: 'front', portrait: '🦁', rank: 'A', spells: [{ id: 'fire-charge', name: 'Investida Ígnea', cost: 12, desc: 'Avança causando dano com chance de aplicar queimadura.' }] }
@@ -1205,7 +1205,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
                         {char ? (
                           <div className="flex flex-col items-center justify-center text-center my-2 gap-1">
-                            <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(59,130,246,0.4)]">{char.portrait}</span>
+                            {char.portrait && (char.portrait.startsWith('/') || char.portrait.endsWith('.png')) ? (
+                              <img src={char.portrait} alt={char.name} className="w-10 h-10 object-contain filter drop-shadow-[0_2px_4px_rgba(59,130,246,0.4)]" />
+                            ) : (
+                              <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(59,130,246,0.4)]">{char.portrait}</span>
+                            )}
                             <span className={`rank-badge text-[10px] ${char.rank === 'S+' ? 'rank-S-plus' : char.rank === 'S' ? 'rank-S' : char.rank === 'A' ? 'rank-A' : 'rank-D'}`}>{char.rank}</span>
                             <span className="text-[8px] font-black text-white leading-none mt-0.5">{char.name}</span>
                             <span className="text-[6.5px] text-gray-500 uppercase leading-none">{char.class}</span>
@@ -1459,8 +1463,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                     <span>Lv. {t.level}</span>
                     <span className="capitalize text-indigo-300 font-black">{t.class}</span>
                   </div>
-                  <h5 className="font-extrabold text-[10px] text-white flex items-center gap-1.5 leading-none">
-                    <span>{t.portrait}</span>
+                  <h5 className="font-extrabold text-[10px] text-white flex items-center gap-2 leading-none">
+                    {t.portrait && (t.portrait.startsWith('/') || t.portrait.endsWith('.png')) ? (
+                      <img src={t.portrait} alt={t.name} className="w-5 h-5 rounded object-cover border border-indigo-900" />
+                    ) : (
+                      <span>{t.portrait}</span>
+                    )}
                     <span className="truncate">{t.name}</span>
                   </h5>
 
@@ -1557,9 +1565,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                     style={{ left: coord.x, top: coord.y }}
                   >
                     <div className="arena-character-sprite group">
-                      <span className="text-3xl filter drop-shadow-[0_2px_6px_rgba(59,130,246,0.6)] group-hover:scale-110 transition-transform">
-                        {t.portrait}
-                      </span>
+                      {t.portrait && (t.portrait.startsWith('/') || t.portrait.endsWith('.png')) ? (
+                        <img 
+                          src={t.portrait} 
+                          alt={t.name} 
+                          className="w-12 h-12 object-contain filter drop-shadow-[0_2px_6px_rgba(59,130,246,0.6)] group-hover:scale-110 transition-transform" 
+                        />
+                      ) : (
+                        <span className="text-3xl filter drop-shadow-[0_2px_6px_rgba(59,130,246,0.6)] group-hover:scale-110 transition-transform">
+                          {t.portrait}
+                        </span>
+                      )}
                       {t.id === 'char-caelum' && resolutionStep === 2 && (
                         <div className="shield-bubble" />
                       )}
@@ -1597,9 +1613,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                     style={{ left: coord.x, top: coord.y }}
                   >
                     <div className="arena-character-sprite group">
-                      <span className={`text-3xl filter drop-shadow-[0_2px_6px_rgba(239,68,68,0.6)] group-hover:scale-110 transition-transform ${isTargeted && !isResolution ? 'pulse-target-indicator' : ''}`}>
-                        {t.portrait}
-                      </span>
+                      {t.portrait && (t.portrait.startsWith('/') || t.portrait.endsWith('.png')) ? (
+                        <img 
+                          src={t.portrait} 
+                          alt={t.name} 
+                          className={`w-12 h-12 object-contain filter drop-shadow-[0_2px_6px_rgba(239,68,68,0.6)] group-hover:scale-110 transition-transform ${isTargeted && !isResolution ? 'pulse-target-indicator' : ''}`} 
+                        />
+                      ) : (
+                        <span className={`text-3xl filter drop-shadow-[0_2px_6px_rgba(239,68,68,0.6)] group-hover:scale-110 transition-transform ${isTargeted && !isResolution ? 'pulse-target-indicator' : ''}`}>
+                          {t.portrait}
+                        </span>
+                      )}
                       <span className="text-[7px] font-black text-rose-200 bg-black/60 px-1 py-0.5 rounded leading-none mt-1 uppercase border border-rose-955/60 shadow-md">
                         {t.name}
                       </span>
