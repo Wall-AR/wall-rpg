@@ -323,7 +323,7 @@ export class GameRoom extends Room<{ state: MapState }> {
           roomId: '',  // preenchido abaixo
           type: 'wild' as const,
           enemyName: monster.name,
-          enemyElement: (monster as any).element || 'none',
+          enemyElement: getMonsterElement(monster.type),
         };
 
         try {

@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { BattleState, BattlePlayerState, BattleCombatantState } from '../schemas/BattleState.js';
 import { db } from '../db/index.js';
 import { characters, inventory, itemsBase, battleHistory, accounts, retiredCharacters } from '../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { JWT_SECRET } from '../middleware/auth.js';
 
 const CHARACTER_DATABASE: Record<string, { name: string; class: string; level: number; hp: number; mp: number; speed: number; strength: number; intelligence: number; element: string }> = {
@@ -45,6 +45,7 @@ const getElementModifier = (attackerEl: string, defenderEl: string): number => {
 export class BattleRoom extends Room<{ state: BattleState }> {
   override maxClients = 2;
   private sessionAccounts = new Map<string, string>();
+  private planningTimeout: any = null;
 
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;
@@ -167,7 +168,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
       const charId = data.substituteCharacterId;
       try {
         // 1. Fetch character to replace
-        const charData = await db.select().from(characters).where(eq(characters.id, charId)).limit(1);
+        const charData = await db.select().from(characters).where(and(eq(characters.id, charId), eq(characters.accountId, accountId))).limit(1);
         if (charData && charData.length > 0) {
           const c = charData[0];
           
@@ -181,11 +182,21 @@ export class BattleRoom extends Room<{ state: BattleState }> {
           else if (c.name.toLowerCase().includes("raven")) role = "Assassino / Dano";
 
           let rarity = "D";
-          if (c.level >= 132 || c.name.toLowerCase().includes("lobo")) rarity = "D"; // Lobo Cinzento eh rank D como no mockup
-          else if (c.level >= 150) rarity = "S+";
-          else if (c.level >= 128) rarity = "S";
-          else if (c.level >= 120) rarity = "B";
-          else if (c.level >= 100) rarity = "C";
+          if (c.name.toLowerCase().includes("lobo")) {
+            rarity = "D"; // Lobo Cinzento eh rank D como no mockup
+          } else if (c.level >= 150) {
+            rarity = "S+";
+          } else if (c.level >= 128) {
+            rarity = "S";
+          } else if (c.level >= 120) {
+            rarity = "B";
+          } else if (c.level >= 105) {
+            rarity = "A";
+          } else if (c.level >= 95) {
+            rarity = "C";
+          } else {
+            rarity = "D";
+          }
 
           const metaJson = {
             rarity,
@@ -254,17 +265,13 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       try {
         // Increment soulOrbs in accounts table
-        const userAccounts = await db.select().from(accounts).where(eq(accounts.id, accountId)).limit(1);
-        if (userAccounts && userAccounts.length > 0) {
-          const currentOrbs = userAccounts[0].soulOrbs || 0;
-          await db.update(accounts)
-            .set({ soulOrbs: currentOrbs + 25 })
-            .where(eq(accounts.id, accountId));
+        await db.update(accounts)
+          .set({ soulOrbs: sql`${accounts.soulOrbs} + 25` })
+          .where(eq(accounts.id, accountId));
 
-          const username = this.state.players.get(client.sessionId)?.username || "Player";
-          this.state.logs.push(`${username} converteu Thorn em 25 Orbes de Alma.`);
-          client.send("recruit_success", { message: "Convertido com sucesso! +25 Orbes de Alma adicionados." });
-        }
+        const username = this.state.players.get(client.sessionId)?.username || "Player";
+        this.state.logs.push(`${username} converteu Thorn em 25 Orbes de Alma.`);
+        client.send("recruit_success", { message: "Convertido com sucesso! +25 Orbes de Alma adicionados." });
       } catch (err) {
         console.error("[BattleRoom] Error converting Thorn to Orbs:", err);
         client.send("recruit_error", { message: "Erro ao converter no banco de dados." });
@@ -387,7 +394,10 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
   // Timeout de 30s para a fase de planejamento — auto-defende combatentes inativos
   private startPlanningTimeout() {
-    this.clock.setTimeout(() => {
+    if (this.planningTimeout) {
+      this.planningTimeout.clear();
+    }
+    this.planningTimeout = this.clock.setTimeout(() => {
       if (this.state.status !== 'planning') return;
 
       this.state.players.forEach((p: any) => {
@@ -408,6 +418,10 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   }
 
   private resolveRound() {
+    if (this.planningTimeout) {
+      this.planningTimeout.clear();
+      this.planningTimeout = null;
+    }
     this.state.status = "resolving";
     this.state.logs.push(`--- Turno ${this.state.turn}: Fase de Resolução ---`);
 
@@ -566,7 +580,9 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   private async saveBattleHistory() {
     try {
       if (db) {
-        const playerIds = Array.from(this.state.players.keys()) as string[];
+        const playerIds = Array.from(this.state.players.keys())
+          .map(sid => this.sessionAccounts.get(sid))
+          .filter(Boolean) as string[];
         const logs = Array.from(this.state.logs);
         await db.insert(battleHistory).values({
           playerIds,
@@ -595,10 +611,9 @@ export class BattleRoom extends Room<{ state: BattleState }> {
                 let newStats = { ...(char.stats || { hp: 100, mp: 50, strength: 10, defense: 10, speed: 10 }) };
 
                 // Formula simples de Level Up: level * 150 de XP
-                const nextLevelXp = newLevel * 150;
                 let levelUpOccurred = false;
-                if (newXp >= nextLevelXp) {
-                  newXp -= nextLevelXp;
+                while (newXp >= newLevel * 150) {
+                  newXp -= newLevel * 150;
                   newLevel += 1;
                   newStats.hp += 120;
                   newStats.mp += 15;
@@ -643,7 +658,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     }
   }
 
-  override onLeave(client: Client, code?: number) {
+  override async onLeave(client: Client, code?: number) {
     console.log(`[BattleRoom] Player left: ${client.sessionId}`);
     
     if (this.state.status !== "finished" && this.state.players.has(client.sessionId)) {
@@ -656,7 +671,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         this.state.status = "finished";
         this.state.winnerSessionId = winnerSessionId;
         this.state.logs.push(`${winner.username} venceu por WO!`);
-        this.saveBattleHistory();
+        await this.saveBattleHistory();
       }
     }
     

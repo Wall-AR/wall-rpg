@@ -304,10 +304,13 @@ router.get('/available-points', authenticateToken, async (req, res) => {
       }
 
       const stats = character.stats as { strength: number; defense: number; speed: number };
+      const dynamicBaseStrength = BASE_STRENGTH + 8 * (character.level - 1);
+      const dynamicBaseDefense = BASE_DEFENSE + 6 * (character.level - 1);
+      const dynamicBaseSpeed = BASE_SPEED + 3 * (character.level - 1);
       const alreadySpent =
-        (stats.strength - BASE_STRENGTH) +
-        (stats.defense - BASE_DEFENSE) +
-        (stats.speed - BASE_SPEED);
+        (stats.strength - dynamicBaseStrength) +
+        (stats.defense - dynamicBaseDefense) +
+        (stats.speed - dynamicBaseSpeed);
       const availablePoints = (character.level * STAT_POINTS_PER_LEVEL) - alreadySpent;
 
       return res.json({ availablePoints });
@@ -357,10 +360,13 @@ router.post('/add-stats', authenticateToken, async (req, res) => {
       const currentStats = character.stats as {
         hp: number; mp: number; strength: number; defense: number; speed: number;
       };
+      const dynamicBaseStrength = BASE_STRENGTH + 8 * (character.level - 1);
+      const dynamicBaseDefense = BASE_DEFENSE + 6 * (character.level - 1);
+      const dynamicBaseSpeed = BASE_SPEED + 3 * (character.level - 1);
       const alreadySpent =
-        (currentStats.strength - BASE_STRENGTH) +
-        (currentStats.defense - BASE_DEFENSE) +
-        (currentStats.speed - BASE_SPEED);
+        (currentStats.strength - dynamicBaseStrength) +
+        (currentStats.defense - dynamicBaseDefense) +
+        (currentStats.speed - dynamicBaseSpeed);
       const availablePoints = (character.level * STAT_POINTS_PER_LEVEL) - alreadySpent;
 
       if (totalRequested > availablePoints) {

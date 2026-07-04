@@ -15,6 +15,11 @@ import characterRouter from './routes/character.js';
 import friendsRouter from './routes/friends.js';
 import inventoryRouter from './routes/inventory.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
 const port = Number(process.env.PORT || 3001);
@@ -87,8 +92,6 @@ const colyseusMonitorAuth = (req: express.Request, res: express.Response, next: 
 app.use("/colyseus", colyseusMonitorAuth, monitor());
 
 // Serve static client assets in production
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 if (process.env.NODE_ENV === 'production') {
   const clientDistPath = path.join(__dirname, '../../client/dist');

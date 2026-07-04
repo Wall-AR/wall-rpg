@@ -1,0 +1,31 @@
+Creator: samkfj
+
+Character Name
+Donica Linnell
+
+Character Info
+A natural born user of white magic, with years of education and experience in curative, protective and exorcist magic. Donica is a roller coaster of emotions; going from giggly and smiles one moment--to anger and discord the next... almost usually stemming from her easily irritable and standoffish attitude toward others.
+
+With a regal vocabulary and a sweet sounding voice--you'd never imagine she'd be easy to anger, or easy to sadden; but hanging out with a varied crew of adventurers can have it's effects on someone's overall mood, good or bad.
+
+Skills
+Curative Magic: Ability to heal the wounds, soothe the ailments, or negate toxins on allies.
+Protective Magic: Capable of creating shields of magical energy to reduce or outright negate physical or magical damage on allies.
+Exorcism Magic: Powerful magic with the purpose of exorcising any undead enemy with the power of sunlight.
+Recover: A prayer that can return a portion of magical energy.
+
+Credits
+Kadokawa - Battler (Mixture of various RTP and updated material)
+Hiddenone - Walk Sprites
+Whtdragon/SleepyMachine - Down Pose 1 Edit
+Vanessa - Art
+Yash - DOTD Logo/Bug Powder Logo
+samkfj - Various (clothing, coloring, etc)
+
+Tools
+Gimp, RMMV Generator
+
+Notes
+Can be used in non-commercial, commercial, what have you--as long as all credits are applied, and that hiddenone's rules for sprites are also followed.
+
+As always--credit to samkfj is optional. I just make things.
