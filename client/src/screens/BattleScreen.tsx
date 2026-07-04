@@ -6,6 +6,7 @@ import './styles/battle.css';
 import './styles/confrontation.css';
 import './styles/results.css';
 import './styles/recruit.css';
+import { sounds } from '../game/sound';
 import { RecruitmentRevealScreen } from './RecruitmentRevealScreen';
 import { gsap } from 'gsap';
 
@@ -209,6 +210,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     }
   }, [battleState?.status, playedTransition]);
 
+  // Play victory/defeat sounds when battle ends
+  useEffect(() => {
+    if (battleState?.status === 'finished') {
+      const isWinner = battleState.winnerSessionId === room?.sessionId;
+      if (isWinner) {
+        sounds.playVictory();
+      } else {
+        sounds.playFailure();
+      }
+    }
+  }, [battleState?.status, battleState?.winnerSessionId, room?.sessionId]);
+
   // Trigger resolution steps when turn increases
   const lastTurnRef = useRef<number>(1);
   useEffect(() => {
@@ -249,6 +262,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     if (qteTimerRef.current) cancelAnimationFrame(qteTimerRef.current);
     setQteResult(result);
 
+    if (result === 'perfect') {
+      sounds.playPerfect();
+    } else {
+      sounds.playFailure();
+    }
+
     // Dynamic Combat Slash GSAP effects based on QTE precision
     if (result === 'perfect') {
       // Screen flash
@@ -262,7 +281,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           yoyo: true,
           repeat: 9,
           duration: 0.02,
-          onStart: () => document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit")
+          onStart: () => {
+            sounds.playSlash();
+            document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit");
+          }
         })
         .to(".character-node-char-raven", { x: 0, y: 0, duration: 0.18, ease: "power1.inOut", delay: 0.15,
           onComplete: () => document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit")
@@ -276,7 +298,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           yoyo: true,
           repeat: 3,
           duration: 0.04,
-          onStart: () => document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit")
+          onStart: () => {
+            sounds.playSlash();
+            document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit");
+          }
         })
         .to(".character-node-char-raven", { x: 0, y: 0, duration: 0.28, ease: "power1.inOut",
           onComplete: () => document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit")
@@ -307,6 +332,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
     setQteScale(3.0);
     setQteResult('idle');
+    (window as any).__lastTickSegment = -1;
 
     const start = performance.now();
     const duration = 1200; // 1.2 seconds to reach the target size
@@ -316,6 +342,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
       const progress = Math.min(1.0, elapsed / duration);
       const currentScale = 3.0 - (progress * 2.5); // shrinks from 3.0 to 0.5
       setQteScale(currentScale);
+
+      // Play tick sound at 25%, 50%, 75% progress segments
+      const tickSegment = Math.floor(progress * 4);
+      if ((window as any).__lastTickSegment !== tickSegment) {
+        (window as any).__lastTickSegment = tickSegment;
+        if (tickSegment > 0 && tickSegment < 4) {
+          sounds.playTick();
+        }
+      }
 
       if (progress < 1.0) {
         qteTimerRef.current = requestAnimationFrame(qteLoop);
@@ -350,6 +385,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
     if (resolutionStep === 0) {
       // Lyria casts Nova Astral
+      sounds.playExplosion();
       // 1. Slide Lyria forward
       gsap.to(".character-node-char-lyria", {
         x: 40,
@@ -383,6 +419,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
       // Handled interactively by triggerQteResolution during Addition QTE sequence
     } else if (resolutionStep === 2) {
       // Caelum Holy Barrier
+      sounds.playBarrier();
       gsap.to(".character-node-char-caelum", {
         x: 30,
         y: -10,
@@ -413,6 +450,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
             repeat: 5,
             duration: 0.04,
             onStart: () => {
+              sounds.playSlash();
               document.querySelector(".character-node-char-raven")?.classList.add("flash-hit");
             },
             onComplete: () => {
