@@ -51,48 +51,63 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
   const [selectedReplaceId, setSelectedReplaceId] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // Source context strings
+  // Source context configuration
   const getSourceConfig = (type: RecruitmentSource) => {
     switch (type) {
       case 'post_battle_offer':
         return {
           title: 'NOVO COMPANHEIRO',
-          subtitle: 'Oferta de Recrutamento Pós-Combate',
-          introText: 'Um inimigo derrotado reconheceu sua força e deseja se unir à sua jornada.',
-          characterSpeak: '“Reconheço sua força. Permita-me caminhar ao seu lado.”',
-          bgStyle: 'bg-radial-battle'
+          subtitle: 'Recrutamento após combate',
+          originLabel: 'Pós-combate',
+          localLabel: 'Arena das Fendas',
+          introText: 'Um inimigo derrotado reconheceu sua força e deseja se juntar à sua jornada.',
+          characterSpeak: '“Derrotado, mas não quebrado. Thorn reconhece sua liderança e oferece sua lança à sua causa.”',
+          portalGlow: 'from-purple-600/35 to-indigo-950/20',
+          portalBorder: 'border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
         };
       case 'dimensional_chest':
         return {
-          title: 'REVELAÇÃO DIMENSIONAL',
-          subtitle: 'Abertura de Baú Dimensional',
+          title: 'NOVO COMPANHEIRO',
+          subtitle: 'Baú de Personagem',
+          originLabel: 'Baú Dimensional',
+          localLabel: 'Fenda Dimensional',
           introText: 'A fenda responde ao seu chamado e um novo eco atravessou o véu.',
           characterSpeak: '“A fenda revelou um novo destino. Vim ao seu chamado.”',
-          bgStyle: 'bg-radial-rift'
+          portalGlow: 'from-blue-600/35 to-indigo-950/20',
+          portalBorder: 'border-blue-500/40 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
         };
       case 'fragment_summon':
         return {
-          title: 'ENCANTAMENTO RÚNICO',
+          title: 'NOVO COMPANHEIRO',
           subtitle: 'Invocação por Fragmentos',
-          introText: 'Os fragmentos rúnicos se unem e um guerreiro antigo tomou forma.',
+          originLabel: 'Fragmentos',
+          localLabel: 'Altar Astral',
+          introText: 'Os fragmentos se unem em uma forma viva. Um eco antigo foi restaurado.',
           characterSpeak: '“Um eco perdido tomou forma mais uma vez.”',
-          bgStyle: 'bg-radial-magic'
+          portalGlow: 'from-emerald-600/35 to-indigo-950/20',
+          portalBorder: 'border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
         };
       case 'mercenary_contract':
         return {
-          title: 'CONTRATO DE MERCENÁRIO',
-          subtitle: 'Contratação da Taverna',
-          introText: 'Um profissional aceitou lutar em sua equipe sob acordo permanente.',
+          title: 'NOVO COMPANHEIRO',
+          subtitle: 'Contrato de Mercenário',
+          originLabel: 'Mercenário',
+          localLabel: 'Taverna do Porto',
+          introText: 'Um mercenário aceitou lutar em sua equipe sob contrato permanente.',
           characterSpeak: '“Meu preço foi pago. Minha lâmina é sua.”',
-          bgStyle: 'bg-radial-gold'
+          portalGlow: 'from-amber-600/35 to-indigo-950/20',
+          portalBorder: 'border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
         };
       default:
         return {
-          title: 'RECOMPENSA DE CAMPANHA',
-          subtitle: 'Aliança Narrativa',
+          title: 'NOVO COMPANHEIRO',
+          subtitle: 'Recompensa de Campanha',
+          originLabel: 'Campanha',
+          localLabel: 'Bosque de Veylar',
           introText: 'Após os eventos cruciais da jornada, este companheiro decidiu segui-lo.',
           characterSpeak: '“Nossa jornada agora segue o mesmo caminho.”',
-          bgStyle: 'bg-radial-magic'
+          portalGlow: 'from-indigo-600/35 to-indigo-950/20',
+          portalBorder: 'border-indigo-500/40 shadow-[0_0_20px_rgba(99,102,241,0.3)]'
         };
     }
   };
@@ -100,18 +115,27 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
   const config = getSourceConfig(sourceType);
   const isTeamFull = teamMembers.length >= 6;
 
-  // Rarity Colors
-  const getRarityColorClass = (r: string) => {
-    if (r === 'S+') return 'text-[#ea580c] text-glow-orange';
-    if (r === 'S') return 'text-[#dc2626] text-glow-red';
-    if (r === 'A') return 'text-[#eab308] text-glow-gold';
-    if (r === 'B') return 'text-[#a855f7] text-glow-purple';
-    if (r === 'C') return 'text-[#06b6d4] text-glow-cyan';
-    if (r === 'D') return 'text-[#10b981] text-glow-green';
+  // Rank / Rarity color maps
+  const getRarityBadgeStyle = (r: string) => {
+    if (r === 'S+') return 'bg-orange-950/50 border-orange-500/50 text-orange-400';
+    if (r === 'S') return 'bg-rose-955/50 border-rose-500/50 text-rose-400';
+    if (r === 'A') return 'bg-yellow-950/50 border-yellow-500/50 text-yellow-400';
+    if (r === 'B') return 'bg-indigo-950/50 border-indigo-500/50 text-indigo-400';
+    if (r === 'C') return 'bg-cyan-950/50 border-cyan-500/50 text-cyan-400';
+    if (r === 'D') return 'bg-emerald-950/50 border-emerald-500/50 text-emerald-400';
+    return 'bg-slate-900/50 border-slate-700/50 text-slate-400';
+  };
+
+  const getElementBadgeColor = (el: string) => {
+    const e = el.toLowerCase();
+    if (e === 'fogo') return 'text-rose-400';
+    if (e === 'água' || e === 'agua') return 'text-blue-400';
+    if (e === 'terra') return 'text-emerald-400';
+    if (e === 'vento') return 'text-teal-400';
+    if (e === 'sombra') return 'text-purple-400';
     return 'text-gray-400';
   };
 
-  // Element Icon
   const getElementIcon = (el: string) => {
     const e = el.toLowerCase();
     if (e === 'fogo') return '🔥';
@@ -122,99 +146,107 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
     return '🛡️';
   };
 
-  // Handle final replace confirmation
+  const getRoleIcon = (role: string) => {
+    const r = role.toLowerCase();
+    if (r === 'tanque') return '🛡️';
+    if (r === 'assassino') return '🗡️';
+    if (r === 'mago') return '🧙‍♀️';
+    if (r === 'lanceiro') return '⚔️';
+    if (r === 'clériga' || r === 'clérigo' || r === 'suporte') return '🌿';
+    return '👤';
+  };
+
+  // Safe portrait mapping
+  const getCharacterFace = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('caelum')) return '/assets/characters/caelum_face.png';
+    if (n.includes('lyria')) return '/assets/characters/lyria_face.png';
+    if (n.includes('raven')) return '/assets/characters/raven_face.png';
+    if (n.includes('seraphina')) return '/assets/characters/seraphina_face.png';
+    if (n.includes('korr')) return '/assets/characters/korr_face.png';
+    if (n.includes('thorn')) return '/assets/characters/thorn_face.png';
+    if (n.includes('nyxara')) return '/assets/characters/nyxara_face.png';
+    return null;
+  };
+
+  const getCharacterBust = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('caelum')) return '/assets/characters/caelum_bust.png';
+    if (n.includes('lyria')) return '/assets/characters/lyria_bust.png';
+    if (n.includes('raven')) return '/assets/characters/raven_bust.png';
+    if (n.includes('seraphina')) return '/assets/characters/seraphina_bust.png';
+    if (n.includes('korr')) return '/assets/characters/korr_bust.png';
+    if (n.includes('thorn')) return '/assets/characters/thorn_bust.png';
+    if (n.includes('nyxara')) return '/assets/characters/nyxara_bust.png';
+    return null;
+  };
+
   const handleConfirmReplace = () => {
     if (!selectedReplaceId) {
-      alert("Por favor, escolha um companheiro atual da sua equipe para substituir!");
+      alert("Selecione um companheiro para substituir!");
       return;
     }
     setShowConfirmModal(true);
   };
 
-  // Selected character from team to compare
   const compareTarget = teamMembers.find(m => m.id === selectedReplaceId);
 
-  // Mock stats translator for side-by-side comparison
-  const getComparisonStats = (char: any) => {
-    if (!char) return null;
-    return {
-      name: char.name,
-      level: char.level,
-      rarity: char.rarity || 'D',
-      element: char.element || 'none',
-      class: char.class || 'Companheiro',
-      stats: char.stats || { hp: 100, mp: 50, strength: 10, defense: 10, speed: 10 }
-    };
-  };
-
-  const leftChar = getComparisonStats(compareTarget);
-
   return (
-    <div className="recruit-fullscreen-wrapper w-full h-full min-h-[580px] bg-[#06060c] border border-indigo-950/60 rounded-3xl overflow-hidden p-6 flex flex-col justify-between select-none">
+    <div className="recruit-fullscreen-wrapper w-full h-full min-h-[580px] bg-[#06060c] border border-[#b59441]/40 rounded-3xl overflow-hidden p-6 flex flex-col justify-between select-none relative font-sans">
       
-      {/* ─── Styles ─── */}
-      <style>{`
-        .recruit-fullscreen-wrapper {
-          box-shadow: 0 0 40px rgba(0,0,0,0.85);
-        }
-        .glowing-circle {
-          background: radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(0,0,0,0) 70%);
-          border-radius: 50%;
-          animation: pulseRift 3s infinite ease-in-out;
-        }
-        .gold-border-glow {
-          border: 1px solid #b59441;
-          box-shadow: 0 0 15px rgba(181, 148, 65, 0.35);
-        }
-        .stat-bar-fill {
-          height: 100%;
-          background: linear-gradient(to right, #4338ca, #6366f1);
-          border-radius: 99px;
-        }
-        .stat-bar-bg {
-          height: 6px;
-          background: #1e1e38;
-          border-radius: 99px;
-          overflow: hidden;
-        }
-        @keyframes pulseRift {
-          0% { transform: scale(0.95); opacity: 0.7; }
-          50% { transform: scale(1.05); opacity: 1.0; }
-          100% { transform: scale(0.95); opacity: 0.7; }
-        }
-        .text-glow-purple { text-shadow: 0 0 10px rgba(168, 85, 247, 0.6); }
-        .text-glow-gold { text-shadow: 0 0 10px rgba(234, 179, 8, 0.6); }
-        .text-glow-red { text-shadow: 0 0 10px rgba(220, 38, 38, 0.6); }
-        .text-glow-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.6); }
-        .text-glow-green { text-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
-        .text-glow-orange { text-shadow: 0 0 10px rgba(234, 88, 12, 0.6); }
-      `}</style>
+      {/* Visual background details */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(27,61,109,0.04)_0%,_transparent_75%)] pointer-events-none" />
 
-      {/* HEADER */}
-      <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0">
-        <div>
-          <h1 className="text-lg font-black tracking-widest text-[#ffe082] uppercase leading-none">{config.title}</h1>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">{config.subtitle}</p>
+      {/* 1. TOP HEADER SECTION */}
+      <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-5 shrink-0 relative z-10">
+        {/* Left Profile details */}
+        <div className="flex flex-col text-left max-w-[200px]">
+          <div className="flex items-center gap-2">
+            <span className="text-[#ffe082] text-[8px] bg-indigo-955 px-2 py-0.5 rounded border border-blue-900 uppercase font-black tracking-wider shadow">Vencedor</span>
+            <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">Wall</span>
+          </div>
+          <span className="text-[7.5px] text-gray-500 font-bold uppercase mt-1">Poder da Equipe 52.843</span>
         </div>
-        <div className="bg-[#121226] border border-indigo-900/60 px-3 py-1 rounded-xl text-[9px] font-bold text-gray-400">
-          Equipe: {teamMembers.length}/6
+
+        {/* Center Main Title */}
+        <div className="text-center">
+          <h1 className="text-[#ffe082] text-xl font-black uppercase tracking-widest leading-none filter drop-shadow-[0_2px_8px_rgba(255,224,130,0.35)]">
+            {config.title}
+          </h1>
+          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1.5 leading-none">
+            {config.subtitle}
+          </p>
+        </div>
+
+        {/* Right Location Details */}
+        <div className="flex items-center gap-3 text-right">
+          <div className="flex flex-col">
+            <span className="text-gray-400 text-[9px] font-bold leading-none">Local: <strong className="text-gray-200">{config.localLabel}</strong></span>
+            <span className="text-[8px] text-gray-500 uppercase font-bold mt-1.5 block tracking-wide">Origem: {config.originLabel}</span>
+          </div>
+          {/* Animated portal badge */}
+          <div className="relative w-8 h-8 rounded-full border border-indigo-900/60 overflow-hidden flex items-center justify-center bg-black/60 shadow-[0_0_8px_rgba(99,102,241,0.25)]">
+            <div className="absolute inset-0 bg-gradient-to-tr from-purple-800 to-indigo-950 animate-spin duration-3000" />
+            <span className="text-xs relative z-10">🌀</span>
+          </div>
         </div>
       </header>
 
-      {/* STATE A: REVEAL/INITIAL EXPECTANCY */}
+      {/* 2. STATE A: REVEAL INITIAL EXPECTANCY */}
       {step === 'reveal' && (
-        <div className="flex-grow flex flex-col justify-center items-center py-6 text-center">
-          <div className="w-60 h-60 glowing-circle flex items-center justify-center relative mb-8">
-            <span className="text-7xl animate-bounce">🔮</span>
-            <div className="absolute inset-0 border border-indigo-500/20 rounded-full animate-ping" />
+        <div className="flex-grow flex flex-col justify-center items-center py-6 text-center relative z-10">
+          <div className="w-56 h-56 flex items-center justify-center relative mb-8">
+            <div className="absolute inset-0 bg-gradient-to-tr from-purple-800/25 to-indigo-900/5 rounded-full animate-pulse border border-purple-500/20" />
+            <div className="absolute inset-2 bg-gradient-to-bl from-indigo-800/10 to-transparent rounded-full animate-ping duration-2000" />
+            <span className="text-7xl relative z-10 filter drop-shadow-[0_0_20px_rgba(168,85,247,0.4)] animate-bounce duration-1500">🔮</span>
           </div>
-          <div className="max-w-md">
-            <p className="text-xs text-gray-300 font-medium leading-relaxed mb-6">
+          <div className="max-w-md space-y-5">
+            <p className="text-xs text-gray-300 font-medium leading-relaxed bg-[#0b0b18]/60 p-4 rounded-2xl border border-indigo-950/60">
               {config.introText}
             </p>
             <button
               onClick={() => setStep('details')}
-              className="px-8 py-3 bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black font-black uppercase text-xs rounded-full tracking-widest transition-all shadow-lg gold-border-glow"
+              className="px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-lg transition-all border border-[#b59441] shadow-[0_0_15px_rgba(181,148,65,0.25)]"
             >
               Revelar Companheiro
             </button>
@@ -222,224 +254,274 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         </div>
       )}
 
-      {/* STATE B: DETAILS REVEALED */}
-      {step === 'details' && !substituteMode && (
-        <div className="flex-grow flex flex-col lg:flex-row gap-6 overflow-hidden py-2">
+      {/* STATE B & C: CORE VIEWS */}
+      {step === 'details' && (
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch mb-5 min-h-0 relative z-10">
           
-          {/* Central Banner: Pose / Character Graphic */}
-          <div className="flex-1 bg-black/45 border border-indigo-950/40 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden">
-            <div className="absolute -top-12 -left-12 w-40 h-40 bg-purple-500/5 rounded-full filter blur-xl" />
-            <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-blue-500/5 rounded-full filter blur-xl" />
+          {/* COLUMN 1: EQUIPE ATUAL (6/6) or Rosters substitute */}
+          <div className="bg-[#0b0b18]/65 border border-indigo-950/80 rounded-2xl p-4 flex flex-col justify-between">
+            <div className="border-b border-indigo-950/50 pb-2 mb-3 flex justify-between items-center">
+              <h3 className="text-[9.5px] font-black text-[#ffe082] uppercase tracking-widest leading-none">
+                {substituteMode ? "Substituir Companheiro" : "Equipe Atual"}
+              </h3>
+              <span className="text-[8px] bg-indigo-950 text-indigo-300 font-extrabold px-1.5 py-0.5 rounded border border-indigo-900 leading-none">
+                {teamMembers.length}/6
+              </span>
+            </div>
+
+            {/* List Selection Grid */}
+            <div className="flex-1 grid grid-cols-2 gap-3.5 overflow-y-auto pr-1">
+              {teamMembers.map((m: any) => {
+                const isSelected = selectedReplaceId === m.id;
+                const hasSub = substituteMode;
+                const face = getCharacterFace(m.name);
+                
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => hasSub && setSelectedReplaceId(m.id)}
+                    className={`rounded-xl p-2.5 flex flex-col justify-between text-left relative transition-all min-h-[92px] ${
+                      hasSub ? 'cursor-pointer hover:bg-indigo-955/20' : ''
+                    } ${
+                      isSelected && hasSub
+                        ? 'border border-[#b59441] bg-[#1c1810]/50 shadow-[0_0_12px_rgba(181,148,65,0.15)]'
+                        : 'border border-indigo-950/40 bg-black/30'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center leading-none">
+                      <span className={`text-[9px] font-black uppercase ${m.rarity === 'S+' ? 'text-orange-400' : m.rarity === 'S' ? 'text-rose-400' : m.rarity === 'A' ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                        {m.rarity}
+                      </span>
+                      <span className="text-[7.5px] text-gray-500 font-bold">Lv. {m.level}</span>
+                    </div>
+
+                    <div className="flex justify-between items-end mt-1">
+                      <div>
+                        <h5 className="font-extrabold text-[8.5px] text-white truncate max-w-[55px] leading-none">{m.name}</h5>
+                        <span className="text-[6.5px] text-gray-500 font-bold uppercase mt-1 block leading-none">
+                          {getRoleIcon(m.class || m.role)} {m.class || m.role}
+                        </span>
+                      </div>
+
+                      <div className="w-8 h-8 rounded overflow-hidden border border-indigo-950 bg-slate-900 shrink-0 flex items-center justify-center">
+                        {face ? (
+                          <img src={face} alt={m.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-base">{m.name.includes('Lobo') ? '🐺' : '👤'}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
             
-            {/* Character Graphic Mock */}
-            <div className="w-48 h-48 bg-[#0a0a14] border border-[#b59441]/20 rounded-3xl flex items-center justify-center text-7xl shadow-inner mb-6 relative">
-              {character.name.includes('Thorn') ? '🛡️' : '🐺'}
-              <div className="absolute bottom-2 px-3 py-0.5 bg-black/80 rounded-full border border-gray-800 text-[8px] text-gray-400">
-                {character.role}
+            {substituteMode && (
+              <p className="text-[7px] text-rose-350 italic mt-3 leading-snug">
+                * Escolha o companheiro que sairá da formação permanente para dar vaga a {character.name}.
+              </p>
+            )}
+          </div>
+
+          {/* COLUMN 2 & 3: CENTER RITUALISTIC PORTAL & CHARACTER ART WORK */}
+          <div className="lg:col-span-2 bg-[#0b0b18]/45 border border-indigo-950/50 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden">
+            {/* Purple portal glowing aura */}
+            <div className={`absolute w-72 h-72 rounded-full bg-gradient-to-tr ${config.portalGlow} filter blur-xl opacity-80 animate-pulse pointer-events-none`} />
+            
+            {/* Spinning arcane circle backdrop */}
+            <div className="absolute w-64 h-64 border border-indigo-500/5 rounded-full animate-spin duration-10000 pointer-events-none flex items-center justify-center">
+              <div className="w-48 h-48 border border-purple-500/5 rounded-full animate-reverse-spin" />
+            </div>
+
+            {/* Sub-mode details vs compare panels */}
+            {!substituteMode ? (
+              <div className="flex flex-col items-center flex-1 justify-between w-full">
+                {/* Character full artwork */}
+                <div className="flex-1 flex items-center justify-center relative min-h-[220px]">
+                  {getCharacterBust(character.name) ? (
+                    <img 
+                      src={getCharacterBust(character.name)!} 
+                      alt={character.name} 
+                      className="max-h-[240px] object-contain filter drop-shadow-[0_5px_15px_rgba(0,0,0,0.75)] hover:scale-105 transition-all duration-300 relative z-10"
+                    />
+                  ) : (
+                    <span className="text-8xl animate-pulse filter drop-shadow-[0_0_15px_rgba(168,85,247,0.4)] relative z-10">
+                      {getRoleIcon(character.role)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Speech dialog card */}
+                <div className="w-full bg-black/40 border border-indigo-950/60 rounded-xl p-3.5 text-center mt-2 relative z-10">
+                  <p className="text-[7px] text-[#ffe082] uppercase tracking-widest font-black leading-none mb-1.5">{character.name} deseja se juntar à sua equipe.</p>
+                  <p className="text-[8.5px] text-gray-300 font-medium italic leading-relaxed px-2">
+                    {config.characterSpeak}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Substitute Comparison View
+              <div className="flex flex-col h-full w-full justify-between relative z-10">
+                {compareTarget ? (
+                  <div className="flex-1 flex flex-col justify-between">
+                    {/* VS Title banner */}
+                    <div className="grid grid-cols-3 items-center border-b border-indigo-950/30 pb-3.5 mb-3.5">
+                      <div className="text-right">
+                        <h4 className="font-extrabold text-xs text-white leading-none">{compareTarget.name}</h4>
+                        <span className="text-[7.5px] text-yellow-500 font-bold uppercase mt-1 block">Rank {compareTarget.rarity}</span>
+                      </div>
+                      <div className="text-center text-rose-500 font-black text-[10px] uppercase tracking-widest italic font-mono">VS</div>
+                      <div className="text-left">
+                        <h4 className="font-extrabold text-xs text-white leading-none">{character.name}</h4>
+                        <span className="text-[7.5px] text-indigo-400 font-bold uppercase mt-1 block">Rank {character.rarity}</span>
+                      </div>
+                    </div>
+
+                    {/* Compare Rows Grid */}
+                    <div className="flex-1 overflow-y-auto space-y-2 text-[9.5px] pr-1">
+                      {[
+                        { label: 'Nível', left: compareTarget.level, right: character.level, imp: character.level > compareTarget.level },
+                        { label: 'Elemento', left: compareTarget.element, right: character.element },
+                        { label: 'Função', left: compareTarget.class || compareTarget.role, right: character.role },
+                        { label: 'HP', left: compareTarget.stats?.hp || 100, right: character.stats.hp, imp: character.stats.hp > (compareTarget.stats?.hp || 100) },
+                        { label: 'MP', left: compareTarget.stats?.mp || 50, right: character.stats.mp, imp: character.stats.mp > (compareTarget.stats?.mp || 50) },
+                        { label: 'FORÇA', left: compareTarget.stats?.strength || 10, right: character.stats.strength, imp: character.stats.strength > (compareTarget.stats?.strength || 10) },
+                        { label: 'DEFESA', left: compareTarget.stats?.defense || 10, right: character.stats.defense, imp: character.stats.defense > (compareTarget.stats?.defense || 10) },
+                        { label: 'VELOCIDADE', left: compareTarget.stats?.speed || 10, right: character.stats.speed, imp: character.stats.speed > (compareTarget.stats?.speed || 10) }
+                      ].map((row, idx) => (
+                        <div key={idx} className="grid grid-cols-5 items-center py-1.5 border-b border-indigo-950/25">
+                          <div className="col-span-2 text-right text-gray-300 font-bold">{row.left}</div>
+                          <div className="col-span-1 text-center text-gray-500 text-[7px] font-black uppercase tracking-wider">{row.label}</div>
+                          <div className={`col-span-2 text-left font-bold ${row.imp ? 'text-emerald-400 font-black' : 'text-gray-300'}`}>
+                            {row.right}
+                            {row.imp && <span className="text-[7px] ml-1 text-emerald-400">▲</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Alert info box */}
+                    <div className="p-3 bg-yellow-955/15 border border-yellow-900/35 rounded-xl mt-3 text-[8px] text-yellow-300 font-medium leading-relaxed">
+                      💡 <strong>Substituição de Legado:</strong> Ao confirmar, {compareTarget.name} sairá definitivamente do roster e você receberá materiais correspondentes à sua evolução.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col justify-center items-center text-gray-500 text-xs italic text-center p-6 border border-dashed border-indigo-950 rounded-2xl">
+                    <span>Selecione um companheiro da lista esquerda para realizar o comparativo</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* COLUMN 4: CHARACTER SHEET DETAILS PANEL */}
+          <div className="bg-[#121226]/50 border border-indigo-950/60 rounded-2xl p-5 flex flex-col justify-between shrink-0">
+            <div>
+              {/* Sheet header */}
+              <div className="flex justify-between items-start border-b border-indigo-950/40 pb-3.5 mb-4">
+                <div>
+                  <h2 className="text-base font-black text-white leading-none">{character.name}</h2>
+                  <span className="text-[7.5px] text-gray-500 font-bold uppercase tracking-wider mt-1.5 block">Nível Inicial: {character.level}</span>
+                </div>
+                <span className={`text-[13px] font-black font-mono border rounded px-2.5 py-0.5 leading-none shrink-0 ${getRarityBadgeStyle(character.rarity)}`}>
+                  {character.rarity}
+                </span>
+              </div>
+
+              {/* Specs parameters lists */}
+              <div className="space-y-2 mb-4 text-[9.5px]">
+                <div className="flex justify-between border-b border-indigo-950/20 pb-1">
+                  <span className="text-gray-400">Raridade:</span>
+                  <strong className="text-white font-bold">{character.rarity}</strong>
+                </div>
+                <div className="flex justify-between border-b border-indigo-950/20 pb-1">
+                  <span className="text-gray-400 flex items-center gap-1">Elemento:</span>
+                  <strong className={`font-bold flex items-center gap-1 ${getElementBadgeColor(character.element)}`}>
+                    {getElementIcon(character.element)} {character.element}
+                  </strong>
+                </div>
+                <div className="flex justify-between border-b border-indigo-950/20 pb-1">
+                  <span className="text-gray-400">Função:</span>
+                  <strong className="text-white font-bold">{getRoleIcon(character.role)} {character.role}</strong>
+                </div>
+                <div className="flex justify-between border-b border-indigo-950/20 pb-1">
+                  <span className="text-gray-400">Nível Inicial:</span>
+                  <strong className="text-white font-bold">{character.level}</strong>
+                </div>
+                <div className="flex justify-between border-b border-indigo-950/20 pb-1">
+                  <span className="text-gray-400">Origem:</span>
+                  <strong className="text-white font-semibold">{config.originLabel}</strong>
+                </div>
+              </div>
+
+              {/* Trait & Skills description blocks */}
+              <div className="space-y-3 pt-3 border-t border-indigo-950/30 text-[9.5px]">
+                <div className="flex flex-col text-left">
+                  <span className="text-gray-400 font-bold block mb-1">Traço:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-emerald-400">🌿</span>
+                    <strong className="text-[#34d399] font-extrabold">{character.passive}</strong>
+                  </div>
+                </div>
+
+                <div className="flex flex-col text-left">
+                  <span className="text-gray-400 font-bold block mb-1">Habilidade:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-rose-400">🔥</span>
+                    <strong className="text-[#f87171] font-extrabold">{character.skill}</strong>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="text-center max-w-sm">
-              <span className="text-[9px] uppercase font-bold tracking-widest text-[#d1b894] px-3 py-1 bg-[#5c4535]/20 border border-[#5c4535]/40 rounded-full">
-                Vínculo Disponível
-              </span>
-              <p className="text-xs text-gray-200 font-medium italic mt-4 px-4 leading-relaxed">
-                {config.characterSpeak}
+            {/* Emblem watermark overlay */}
+            <div className="flex justify-center border-t border-indigo-950/30 pt-4 opacity-35">
+              <span className="text-3xl">🛡️</span>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* 3. BOTTOM WARNING BANNERS */}
+      {step === 'details' && isTeamFull && (
+        <div className="mb-4 relative z-10">
+          <div className="bg-rose-955/25 border border-rose-900/50 rounded-xl p-3.5 flex items-center gap-3 text-left">
+            <span className="text-rose-400 text-lg">⚠️</span>
+            <div>
+              <p className="text-[9px] text-rose-350 font-black uppercase leading-none mb-1">Equipe cheia: 6/6</p>
+              <p className="text-[8.5px] text-rose-400/90 leading-snug">
+                Para aceitar {character.name}, será necessário desencantar um companheiro atual. Companheiros desencantados serão enviados ao Livro de Memórias.
               </p>
             </div>
           </div>
-
-          {/* Right Panel: Character Stats Sheet */}
-          <div className="w-full lg:w-80 bg-[#121226]/50 border border-indigo-950/60 rounded-2xl p-5 flex flex-col justify-between shrink-0">
-            <div>
-              <div className="flex justify-between items-start border-b border-indigo-950/40 pb-3 mb-4">
-                <div>
-                  <h2 className="text-lg font-black text-white leading-none">{character.name}</h2>
-                  <span className="text-[10px] text-gray-500 font-semibold mt-1 block">Nível Inicial: {character.level}</span>
-                </div>
-                <div className="text-right">
-                  <span className={`text-xl font-black ${getRarityColorClass(character.rarity)}`}>Rank {character.rarity}</span>
-                </div>
-              </div>
-
-              {/* Specs Grid */}
-              <div className="grid grid-cols-2 gap-3 mb-5 text-[10px]">
-                <p className="flex justify-between border-b border-indigo-950/20 pb-1">
-                  <span className="text-gray-400">Função:</span>
-                  <strong className="text-white">{character.role}</strong>
-                </p>
-                <p className="flex justify-between border-b border-indigo-950/20 pb-1">
-                  <span className="text-gray-400">Elemento:</span>
-                  <strong className="text-white">{getElementIcon(character.element)} {character.element}</strong>
-                </p>
-                <p className="flex justify-between border-b border-indigo-950/20 pb-1 col-span-2">
-                  <span className="text-gray-400">Passiva:</span>
-                  <strong className="text-[#a855f7]">{character.passive}</strong>
-                </p>
-                <p className="flex justify-between border-b border-indigo-950/20 pb-1 col-span-2">
-                  <span className="text-gray-400">Habilidade:</span>
-                  <strong className="text-[#eab308]">{character.skill}</strong>
-                </p>
-              </div>
-
-              {/* Stats Bar */}
-              <div className="space-y-2 text-[9px]">
-                <span className="text-gray-400 font-bold block mb-1">ATRIBUTOS BASE</span>
-                {[
-                  { label: 'HP', val: character.stats.hp, max: 2500 },
-                  { label: 'MP', val: character.stats.mp, max: 150 },
-                  { label: 'FORÇA', val: character.stats.strength, max: 100 },
-                  { label: 'DEFESA', val: character.stats.defense, max: 100 },
-                  { label: 'VELOCIDADE', val: character.stats.speed, max: 100 }
-                ].map((stat, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-gray-400">
-                      <span>{stat.label}</span>
-                      <span className="text-white font-bold">{stat.val}</span>
-                    </div>
-                    <div className="stat-bar-bg">
-                      <div className="stat-bar-fill" style={{ width: `${(stat.val / stat.max) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Warnings Alert */}
-            {isTeamFull && (
-              <div className="mt-4 p-3 bg-rose-950/25 border border-rose-900/40 rounded-xl text-center text-[9px] text-rose-300 font-medium">
-                Sua equipe está cheia (6/6). Para aceitar Thorn, você precisará desencantar um companheiro atual.
-              </div>
-            )}
-          </div>
-
         </div>
       )}
 
-      {/* STATE C: SUBSTITUTION COMPARISON GRID */}
-      {step === 'details' && substituteMode && (
-        <div className="flex-grow flex flex-col lg:flex-row gap-6 overflow-hidden py-2">
-          
-          {/* LEFT COLUMN: Roster selections */}
-          <div className="w-full lg:w-60 bg-black/45 border border-indigo-950/40 rounded-2xl p-4 flex flex-col justify-between shrink-0">
-            <div>
-              <span className="text-[10px] text-gray-400 font-bold block border-b border-indigo-950/30 pb-2 mb-3">
-                SELECIONE UM COMPANHEIRO PARA SUBSTITUIR
-              </span>
-              <div className="space-y-2 overflow-y-auto max-h-[300px] pr-1">
-                {teamMembers.map((m: any) => (
-                  <div
-                    key={m.id}
-                    onClick={() => setSelectedReplaceId(m.id)}
-                    className={`bg-black/30 border p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all hover:bg-black/50 ${
-                      selectedReplaceId === m.id ? 'border-[#b59441] bg-black/60 shadow-md' : 'border-indigo-950/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">
-                        {m.name.includes('Lobo') ? '🐺' : m.name.includes('Lyria') ? '🧝‍♀️' : m.name.includes('Caelum') ? '🛡️' : '👤'}
-                      </span>
-                      <div>
-                        <p className="text-xs font-black text-white leading-none">{m.name}</p>
-                        <p className="text-[8px] text-gray-500 mt-1">Nível {m.level} • {m.element}</p>
-                      </div>
-                    </div>
-                    {m.id === 'char-lobo' && (
-                      <span className="px-1.5 py-0.5 bg-yellow-950 text-[#eab308] border border-yellow-800 rounded text-[7px] font-bold uppercase">
-                        Vínculo
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="text-[8px] text-gray-500 italic mt-3 leading-relaxed border-t border-indigo-950/20 pt-2">
-              ⚠️ O companheiro substituído irá se despedir e será registrado no Livro de Memórias.
-            </div>
-          </div>
-
-          {/* CENTER PANEL: Comparison stats side-by-side */}
-          <div className="flex-1 bg-[#121226]/30 border border-indigo-950/50 rounded-2xl p-5 flex flex-col justify-between">
-            {leftChar ? (
-              <div className="flex flex-col h-full justify-between">
-                
-                {/* VS Header */}
-                <div className="grid grid-cols-3 items-center border-b border-indigo-950/30 pb-3 mb-3">
-                  <div className="text-right">
-                    <h3 className="font-extrabold text-sm text-white">{leftChar.name}</h3>
-                    <span className="text-[9px] text-[#eab308] font-bold">Rank {leftChar.rarity}</span>
-                  </div>
-                  <div className="text-center text-rose-500 font-black text-sm italic font-mono">VS</div>
-                  <div className="text-left">
-                    <h3 className="font-extrabold text-sm text-white">{character.name}</h3>
-                    <span className="text-[9px] text-indigo-400 font-bold">Rank {character.rarity}</span>
-                  </div>
-                </div>
-
-                {/* Compare Grid */}
-                <div className="flex-1 overflow-y-auto space-y-2 text-[10px] pr-1">
-                  {[
-                    { label: 'Nível', left: leftChar.level, right: character.level, imp: character.level > leftChar.level },
-                    { label: 'Elemento', left: leftChar.element, right: character.element },
-                    { label: 'Função', left: leftChar.class, right: character.role },
-                    { label: 'HP', left: leftChar.stats.hp, right: character.stats.hp, imp: character.stats.hp > leftChar.stats.hp },
-                    { label: 'MP', left: leftChar.stats.mp, right: character.stats.mp, imp: character.stats.mp > leftChar.stats.mp },
-                    { label: 'FORÇA', left: leftChar.stats.strength, right: character.stats.strength, imp: character.stats.strength > leftChar.stats.strength },
-                    { label: 'DEFESA', left: leftChar.stats.defense, right: character.stats.defense, imp: character.stats.defense > leftChar.stats.defense },
-                    { label: 'VELOCIDADE', left: leftChar.stats.speed, right: character.stats.speed, imp: character.stats.speed > leftChar.stats.speed }
-                  ].map((row, idx) => (
-                    <div key={idx} className="grid grid-cols-5 items-center py-1.5 border-b border-indigo-950/20">
-                      <div className="col-span-2 text-right text-gray-300 font-semibold">{row.left}</div>
-                      <div className="col-span-1 text-center text-gray-500 text-[8px] font-bold uppercase">{row.label}</div>
-                      <div className={`col-span-2 text-left font-semibold ${row.imp ? 'text-emerald-400 font-black' : 'text-gray-300'}`}>
-                        {row.right}
-                        {row.imp && <span className="text-[8px] ml-1 text-emerald-400">^</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Warning Alert context box */}
-                <div className="p-3 bg-yellow-950/15 border border-yellow-900/30 rounded-xl mt-3 text-[8.5px] text-yellow-300/80 leading-normal">
-                  💡 <strong>Legado Emocional:</strong> Desencantar {leftChar.name} irá liberar orbes e eternizá-lo em seu Livro de Memórias.
-                </div>
-
-              </div>
-            ) : (
-              <div className="flex-grow flex flex-col justify-center items-center text-gray-500 text-xs italic">
-                <span>Seleccione um companheiro na lista esquerda para comparar</span>
-              </div>
-            )}
-          </div>
-
-        </div>
-      )}
-
-      {/* FOOTER ACTIONS */}
-      <footer className="w-full bg-[#121226]/50 border border-indigo-950 rounded-2xl p-4 shrink-0 flex justify-end items-center gap-4 mt-4">
+      {/* 4. FOOTER CONTROLS & ACTION BUTTONS */}
+      <footer className="w-full bg-[#121226]/50 border border-indigo-950 rounded-2xl p-4 shrink-0 flex justify-end items-center gap-4 relative z-10">
         <div className="flex gap-3">
           {step === 'reveal' ? (
             <button
               onClick={onDecline}
-              className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-gray-400"
+              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-gray-400"
             >
-              Recusar
+              Cancelar
             </button>
           ) : substituteMode ? (
             <>
               <button
                 onClick={() => setSubstituteMode(false)}
-                className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-gray-400"
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-gray-400 transition-all hover:scale-103"
               >
                 Voltar aos Detalhes
               </button>
               <button
                 onClick={handleConfirmReplace}
                 disabled={!selectedReplaceId}
-                className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black font-black shadow-md disabled:opacity-40"
+                className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-md disabled:opacity-40 transition-all hover:scale-103"
               >
-                Substituir Companheiro
+                🔄 Substituir Companheiro
               </button>
             </>
           ) : (
@@ -448,36 +530,36 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                 <>
                   <button
                     onClick={() => setSubstituteMode(true)}
-                    className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black font-black shadow-md"
+                    className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-md transition-all hover:scale-103"
                   >
-                    Substituir Companheiro
+                    🔄 Substituir Companheiro
                   </button>
                   <button
                     onClick={onConvert}
-                    className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-950/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300"
+                    className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-955/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300 transition-all hover:scale-103"
                   >
-                    Converter em Orbes
+                    🔮 Converter em Orbes
                   </button>
                 </>
               ) : (
                 <>
                   <button
                     onClick={onAccept}
-                    className="px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black font-black shadow-md"
+                    className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-md transition-all hover:scale-103"
                   >
-                    Adicionar à Equipe
+                    🤝 Adicionar à Equipe
                   </button>
                   <button
                     onClick={onConvert}
-                    className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-950/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300"
+                    className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-955/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300 transition-all hover:scale-103"
                   >
-                    Converter em Orbes
+                    🔮 Converter em Orbes
                   </button>
                 </>
               )}
               <button
                 onClick={onDecline}
-                className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-rose-400 border-rose-955/20"
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-rose-400 border-rose-955/20 transition-all hover:scale-103"
               >
                 Cancelar
               </button>
@@ -486,12 +568,16 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         </div>
       </footer>
 
+      {/* Footer shortcut guides */}
+      <div className="w-full text-center text-[7.5px] text-gray-600 font-bold uppercase tracking-widest pt-2.5 mt-2.5 border-t border-indigo-950/30 shrink-0 relative z-10">
+        Enter: Confirmar | Tab: Inspecionar | Esc: Cancelar
+      </div>
+
       {/* EMOTIONAL CONFIRMATION MODAL */}
       {showConfirmModal && compareTarget && (
         <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 z-50 animate-fadeIn">
           <div className="bg-[#121226] border-2 border-[#b59441] rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col justify-between relative overflow-hidden text-gray-200">
             
-            {/* Background glowing particles effect */}
             <div className="absolute -top-12 -left-12 w-32 h-32 bg-rose-500/10 rounded-full filter blur-xl" />
             <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-purple-500/10 rounded-full filter blur-xl" />
 
@@ -510,7 +596,6 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                 Ele será registrado no <strong>Livro de Memórias</strong> com todo o seu histórico, mas <strong>não poderá mais retornar à equipe nem lutar novamente</strong>.
               </p>
 
-              {/* Extra emotional warning for favorite or high bond (like Lobo Cinzento) */}
               {(compareTarget.id === 'char-lobo' || compareTarget.level >= 120) && (
                 <div className="p-3 bg-rose-955/25 border border-rose-900/50 rounded-xl text-[9px] text-rose-300 font-bold leading-normal flex items-start gap-2 shadow-inner">
                   <span>⚠️</span>
@@ -520,7 +605,6 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                 </div>
               )}
 
-              {/* Memory summary details preview */}
               <div className="bg-[#1a1a35] border border-indigo-950/40 rounded-xl p-3 text-[9px] text-gray-400 space-y-1.5">
                 <span className="font-extrabold text-[8px] text-indigo-400 uppercase tracking-widest block mb-1">REGISTRO DE MEMÓRIA</span>
                 <div className="grid grid-cols-2 gap-2 text-[9px]">
@@ -532,7 +616,6 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
               </div>
             </div>
 
-            {/* Modal Buttons */}
             <div className="flex gap-3 mt-6 border-t border-indigo-950/40 pt-4 justify-end">
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -545,7 +628,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                   setShowConfirmModal(false);
                   onReplace(selectedReplaceId);
                 }}
-                className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-900 hover:bg-rose-800 text-white font-bold shadow-lg shadow-rose-950/50"
+                className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-900 hover:bg-rose-800 text-white font-bold shadow-lg shadow-rose-955/50"
               >
                 Confirmar Desencantamento
               </button>
