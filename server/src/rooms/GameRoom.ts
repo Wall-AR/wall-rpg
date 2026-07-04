@@ -4,6 +4,12 @@ import { MapState } from '../schemas/MapState.js';
 import { PlayerState } from '../schemas/PlayerState.js';
 import { MonsterState } from '../schemas/MonsterState.js';
 import { JWT_SECRET } from '../middleware/auth.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const GM_SECRET = process.env.GM_SECRET || 'gm-master-key';
 
@@ -39,12 +45,6 @@ const LOBBY_GRID = [
   [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 ];
 
-const isWalkable = (gridX: number, gridY: number): boolean => {
-  if (gridX < 0 || gridX >= MAP_WIDTH || gridY < 0 || gridY >= MAP_HEIGHT) return false;
-  const tile = LOBBY_GRID[gridY][gridX];
-  return tile !== 2 && tile !== 5 && tile !== 7;
-};
-
 const getMonsterElement = (type: string): string => {
   const t = type.toLowerCase();
   if (t === 'orc') return 'terra';
@@ -56,6 +56,25 @@ const getMonsterElement = (type: string): string => {
 
 export class GameRoom extends Room<{ state: MapState }> {
   private gmSessions = new Set<string>();
+
+  private loadStaticGrid() {
+    this.state.width = MAP_WIDTH;
+    this.state.height = MAP_HEIGHT;
+    this.state.grid.clear();
+    for (let r = 0; r < LOBBY_GRID.length; r++) {
+      for (let c = 0; c < LOBBY_GRID[r].length; c++) {
+        this.state.grid.push(LOBBY_GRID[r][c]);
+      }
+    }
+  }
+
+  private isWalkable(gridX: number, gridY: number): boolean {
+    if (gridX < 0 || gridX >= this.state.width || gridY < 0 || gridY >= this.state.height) return false;
+    const tileIndex = gridY * this.state.width + gridX;
+    const tile = this.state.grid[tileIndex];
+    return tile !== 2 && tile !== 5 && tile !== 7;
+  }
+
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;
     if (!token) {
@@ -71,7 +90,27 @@ export class GameRoom extends Room<{ state: MapState }> {
 
   override onCreate(options: any) {
     this.setState(new MapState());
-    this.state.mapId = options.mapId || "default_map";
+    
+    const mapId = options.mapId || "default_map";
+    this.state.mapId = mapId;
+
+    try {
+      const mapPath = path.join(__dirname, '..', 'data', 'maps', `${mapId}.json`);
+      if (fs.existsSync(mapPath)) {
+        const mapData = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
+        this.state.width = mapData.width || 32;
+        this.state.height = mapData.height || 24;
+        this.state.grid.clear();
+        mapData.grid.forEach((tile: number) => this.state.grid.push(tile));
+        console.log(`[GameRoom] Loaded map layout dynamically from ${mapId}.json`);
+      } else {
+        console.warn(`[GameRoom] Map file ${mapId}.json not found. Falling back to static LOBBY_GRID.`);
+        this.loadStaticGrid();
+      }
+    } catch (err) {
+      console.error("[GameRoom] Failed to load map layout, using static grid fallback:", err);
+      this.loadStaticGrid();
+    }
 
     // Spawn some default monsters in grass areas
     const defaultMonsters = [
@@ -103,6 +142,48 @@ export class GameRoom extends Room<{ state: MapState }> {
       }
     });
 
+    // Paint tile handler (GM only)
+    this.onMessage("paint_tile", (client, data: { x: number; y: number; tileType: number }) => {
+      if (!this.gmSessions.has(client.sessionId)) {
+        client.send("error", "Não autorizado como GM.");
+        return;
+      }
+      
+      const { x, y, tileType } = data;
+      if (x < 0 || x >= this.state.width || y < 0 || y >= this.state.height) return;
+      
+      const index = y * this.state.width + x;
+      this.state.grid[index] = tileType;
+      console.log(`[GameRoom] GM ${client.sessionId} painted tile at (${x}, ${y}) to ${tileType}`);
+    });
+
+    // Save map handler (GM only)
+    this.onMessage("save_map", (client) => {
+      if (!this.gmSessions.has(client.sessionId)) {
+        client.send("error", "Não autorizado como GM.");
+        return;
+      }
+
+      try {
+        const mapPath = path.join(__dirname, '..', 'data', 'maps', `${this.state.mapId}.json`);
+        const mapData = {
+          width: this.state.width,
+          height: this.state.height,
+          grid: Array.from(this.state.grid)
+        };
+        fs.writeFileSync(mapPath, JSON.stringify(mapData, null, 2), 'utf8');
+        console.log(`[GameRoom] GM ${client.sessionId} saved map changes to ${this.state.mapId}.json`);
+        this.broadcast("chat", {
+          sender: "Sistema",
+          text: `🗺️ O mapa "${this.state.mapId}" foi atualizado e salvo com sucesso!`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      } catch (err) {
+        console.error("[GameRoom] Failed to save map changes:", err);
+        client.send("error", "Falha ao salvar as alterações do mapa no servidor.");
+      }
+    });
+
     // Handle movement messages from clients (with server-side validation)
     this.onMessage("move", (client, data: { x: number; y: number }) => {
       const player = this.state.players.get(client.sessionId);
@@ -112,7 +193,7 @@ export class GameRoom extends Room<{ state: MapState }> {
       if (typeof data.x !== 'number' || typeof data.y !== 'number') return;
 
       // Validate bounds
-      if (data.x < 0 || data.x >= MAP_WIDTH * TILE_SIZE || data.y < 0 || data.y >= MAP_HEIGHT * TILE_SIZE) return;
+      if (data.x < 0 || data.x >= this.state.width * TILE_SIZE || data.y < 0 || data.y >= this.state.height * TILE_SIZE) return;
 
       // Validate distance (max 1 tile movement per message)
       const dx = Math.abs(data.x - player.x);
@@ -382,7 +463,7 @@ export class GameRoom extends Room<{ state: MapState }> {
       const targetGridX = currentGridX + dir.dx;
       const targetGridY = currentGridY + dir.dy;
 
-      if (isWalkable(targetGridX, targetGridY)) {
+      if (this.isWalkable(targetGridX, targetGridY)) {
         monster.x = targetGridX * TILE_SIZE;
         monster.y = targetGridY * TILE_SIZE;
 
@@ -450,9 +531,9 @@ export class GameRoom extends Room<{ state: MapState }> {
             let rx = 14;
             let ry = 10;
             do {
-              rx = Math.floor(Math.random() * MAP_WIDTH);
-              ry = Math.floor(Math.random() * MAP_HEIGHT);
-            } while (!isWalkable(rx, ry));
+              rx = Math.floor(Math.random() * this.state.width);
+              ry = Math.floor(Math.random() * this.state.height);
+            } while (!this.isWalkable(rx, ry));
             monster.x = rx * TILE_SIZE;
             monster.y = ry * TILE_SIZE;
             monster.active = true;

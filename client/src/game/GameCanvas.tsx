@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Application, Sprite, Container } from 'pixi.js';
+import { Application, Sprite, Container, Graphics } from 'pixi.js';
 import { useAuthStore } from '../stores/auth';
 import { client } from './colyseus';
 import { generateTextures } from './textures';
@@ -43,6 +43,20 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   const [narrationText, setNarrationText] = useState<string | null>(null);
   const [activeQuest, setActiveQuest] = useState<any>(null);
   const [showPortalMenu, setShowPortalMenu] = useState(false);
+
+  // GM DevTool states
+  const [isGm, setIsGm] = useState(false);
+  const [isEditorMode, setIsEditorMode] = useState(false);
+  const [selectedTile, setSelectedTile] = useState<number>(0);
+  const [showGmLogin, setShowGmLogin] = useState(false);
+  const [gmPassphrase, setGmPassphrase] = useState("");
+  const [gmAuthError, setGmAuthError] = useState<string | null>(null);
+
+  const handleGmAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roomRef.current) return;
+    roomRef.current.send("authenticateGM", { secret: gmPassphrase });
+  };
 
   // League of Legends Mobile style Virtual Joystick states & handlers
   const [joystickActive, setJoystickActive] = useState(false);
@@ -218,6 +232,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           setActiveQuest(data);
         });
 
+        room.onMessage("gmAuthenticated", (data: { success: boolean }) => {
+          if (data.success) {
+            setIsGm(true);
+            setShowGmLogin(false);
+            setGmAuthError(null);
+          }
+        });
+
+        room.onMessage("error", (msg: string) => {
+          if (msg.includes("passphrase") || msg.includes("GM")) {
+            setGmAuthError(msg);
+          } else {
+            alert(msg);
+          }
+        });
+
         // Setup PIXI Application
         app = new Application();
         const rect = canvasContainerRef.current!.getBoundingClientRect();
@@ -258,80 +288,138 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         const playerContainer = new Container();
         worldContainer.addChild(playerContainer);
 
-        // Render Tilemap isometrically
-        const cols = LOBBY_MAP.width;
-        const rows = LOBBY_MAP.height;
+        // Render Tilemap dynamically using server state grid
+        const obstacleSprites = new Set<Sprite>();
+        const addObstacle = (sprite: Sprite) => {
+          playerContainer.addChild(sprite);
+          obstacleSprites.add(sprite);
+        };
+        const clearObstacles = () => {
+          obstacleSprites.forEach(sprite => {
+            playerContainer.removeChild(sprite);
+          });
+          obstacleSprites.clear();
+        };
 
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const tileType = LOBBY_MAP.grid[r][c];
-            const iso = toIsometric(c * size, r * size);
+        const gridGraphics = new Graphics();
+        worldContainer.addChild(gridGraphics);
 
-            if (tileType === 2 || tileType === 7) {
-              // Obstacle (Brick wall / Fence)
-              // Draw ground underneath first
-              const groundSprite = new Sprite(textures.grass);
-              groundSprite.x = iso.x;
-              groundSprite.y = iso.y;
-              groundSprite.anchor.set(0.5, 0.0);
-              groundSprite.width = 64;
-              groundSprite.height = 32;
-              mapContainer.addChild(groundSprite);
+        const drawGridLines = () => {
+          gridGraphics.clear();
+          if (!(window as any).__editorModeActive) return;
 
-              // Spawn vertical sprite on sorted container
-              const obstacleSprite = new Sprite(tileType === 2 ? textures.brick : textures.fence);
-              obstacleSprite.x = iso.x;
-              obstacleSprite.y = iso.y + 16; // base center on tile
-              obstacleSprite.anchor.set(0.5, 1.0);
-              obstacleSprite.width = 32;
-              obstacleSprite.height = tileType === 2 ? 64 : 40; // brick pillars are taller
-              playerContainer.addChild(obstacleSprite);
-            } else if (tileType === 3) {
-              // Portal
-              // Draw stone tile underneath first
-              const groundSprite = new Sprite(textures.stone);
-              groundSprite.x = iso.x;
-              groundSprite.y = iso.y;
-              groundSprite.anchor.set(0.5, 0.0);
-              groundSprite.width = 64;
-              groundSprite.height = 32;
-              mapContainer.addChild(groundSprite);
+          const cols = room.state.width || 32;
+          const rows = room.state.height || 24;
 
-              // Add cyan glow underneath the portal
-              const glow = new Sprite(textures.lightCyan);
-              glow.anchor.set(0.5, 0.5);
-              glow.x = iso.x;
-              glow.y = iso.y + 16;
-              glow.blendMode = 'add';
-              glow.alpha = 0.85;
-              mapContainer.addChild(glow);
+          gridGraphics.lineStyle(1, 0x4f46e5, 0.35);
 
-              // Large vertical portal arch on sorted container
-              const portalSprite = new Sprite(textures.portal);
-              portalSprite.x = iso.x;
-              portalSprite.y = iso.y + 16;
-              portalSprite.anchor.set(0.5, 1.0);
-              portalSprite.width = 64;
-              portalSprite.height = 96; // Nice tall arch
-              playerContainer.addChild(portalSprite);
-            } else {
-              // Flat ground tile
-              let tex = textures.grass;
-              if (tileType === 1) tex = textures.stone;
-              if (tileType === 4) tex = textures.flowers;
-              if (tileType === 5) tex = textures.water;
-              if (tileType === 6) tex = textures.woodFloor;
+          for (let r = 0; r <= rows; r++) {
+            const p1 = toIsometric(0, r * size);
+            const p2 = toIsometric(cols * size, r * size);
+            gridGraphics.moveTo(p1.x, p1.y);
+            gridGraphics.lineTo(p2.x, p2.y);
+          }
 
-              const tileSprite = new Sprite(tex);
-              tileSprite.x = iso.x;
-              tileSprite.y = iso.y;
-              tileSprite.anchor.set(0.5, 0.0);
-              tileSprite.width = 64;
-              tileSprite.height = 32;
-              mapContainer.addChild(tileSprite);
+          for (let c = 0; c <= cols; c++) {
+            const p1 = toIsometric(c * size, 0);
+            const p2 = toIsometric(c * size, rows * size);
+            gridGraphics.moveTo(p1.x, p1.y);
+            gridGraphics.lineTo(p2.x, p2.y);
+          }
+        };
+
+        (window as any).__reDrawGridLines = drawGridLines;
+
+        const drawMap = () => {
+          mapContainer.removeChildren();
+          clearObstacles();
+
+          const cols = room.state.width || 32;
+          const rows = room.state.height || 24;
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const tileIndex = r * cols + c;
+              const tileType = room.state.grid[tileIndex];
+              if (tileType === undefined) continue;
+
+              const iso = toIsometric(c * size, r * size);
+
+              if (tileType === 2 || tileType === 7) {
+                // Obstacle (Brick wall / Fence)
+                // Draw ground underneath first
+                const groundSprite = new Sprite(textures.grass);
+                groundSprite.x = iso.x;
+                groundSprite.y = iso.y;
+                groundSprite.anchor.set(0.5, 0.0);
+                groundSprite.width = 64;
+                groundSprite.height = 32;
+                mapContainer.addChild(groundSprite);
+
+                // Spawn vertical sprite on sorted container
+                const obstacleSprite = new Sprite(tileType === 2 ? textures.brick : textures.fence);
+                obstacleSprite.x = iso.x;
+                obstacleSprite.y = iso.y + 16;
+                obstacleSprite.anchor.set(0.5, 1.0);
+                obstacleSprite.width = 32;
+                obstacleSprite.height = tileType === 2 ? 64 : 40;
+                addObstacle(obstacleSprite);
+              } else if (tileType === 3) {
+                // Portal
+                // Draw stone tile underneath first
+                const groundSprite = new Sprite(textures.stone);
+                groundSprite.x = iso.x;
+                groundSprite.y = iso.y;
+                groundSprite.anchor.set(0.5, 0.0);
+                groundSprite.width = 64;
+                groundSprite.height = 32;
+                mapContainer.addChild(groundSprite);
+
+                // Add cyan glow underneath the portal
+                const glow = new Sprite(textures.lightCyan);
+                glow.anchor.set(0.5, 0.5);
+                glow.x = iso.x;
+                glow.y = iso.y + 16;
+                glow.blendMode = 'add';
+                glow.alpha = 0.85;
+                mapContainer.addChild(glow);
+
+                // Large vertical portal arch on sorted container
+                const portalSprite = new Sprite(textures.portal);
+                portalSprite.x = iso.x;
+                portalSprite.y = iso.y + 16;
+                portalSprite.anchor.set(0.5, 1.0);
+                portalSprite.width = 64;
+                portalSprite.height = 96;
+                addObstacle(portalSprite);
+              } else {
+                // Flat ground tile
+                let tex = textures.grass;
+                if (tileType === 1) tex = textures.stone;
+                if (tileType === 4) tex = textures.flowers;
+                if (tileType === 5) tex = textures.water;
+                if (tileType === 6) tex = textures.woodFloor;
+
+                const tileSprite = new Sprite(tex);
+                tileSprite.x = iso.x;
+                tileSprite.y = iso.y;
+                tileSprite.anchor.set(0.5, 0.0);
+                tileSprite.width = 64;
+                tileSprite.height = 32;
+                mapContainer.addChild(tileSprite);
+              }
             }
           }
-        }
+
+          // Render lanterns & chests on top of flat map tiles
+          drawGridLines();
+        };
+
+        // Initialize and listen to room state grid updates
+        drawMap();
+        room.state.grid.onAdd = drawMap;
+        room.state.grid.onChange = drawMap;
+        room.state.grid.onRemove = drawMap;
 
         // Add visual overlays for portals/chests
         const chestSprite = new Sprite(textures.flowers);
@@ -398,8 +486,25 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             const target = e.target;
             if (target && target !== app.stage) return;
             
-            const state = gameStateRef.current;
             const clickPos = e.getLocalPosition(worldContainer);
+            
+            // If in editor mode, paint tile!
+            if ((window as any).__editorModeActive) {
+              const flatX = (2 * clickPos.y + clickPos.x) / 2;
+              const flatY = (2 * clickPos.y - clickPos.x) / 2;
+              const colIdx = Math.floor(flatX / size);
+              const rowIdx = Math.floor(flatY / size);
+              const cols = room.state.width || 32;
+              const rows = room.state.height || 24;
+              
+              if (colIdx >= 0 && colIdx < cols && rowIdx >= 0 && rowIdx < rows) {
+                const tileType = (window as any).__editorSelectedTile || 0;
+                room.send("paint_tile", { x: colIdx, y: rowIdx, tileType });
+              }
+              return;
+            }
+
+            const state = gameStateRef.current;
             state.mouseTargetX = (2 * clickPos.y + clickPos.x) / 2;
             state.mouseTargetY = (2 * clickPos.y - clickPos.x) / 2;
             state.isMovingByMouse = true;
@@ -610,8 +715,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             const isPixelWalkable = (px: number, py: number) => {
               const colIdx = Math.floor(px / size);
               const rowIdx = Math.floor(py / size);
-              if (colIdx < 0 || colIdx >= cols || rowIdx < 0 || rowIdx >= rows) return false;
-              return isWalkable(colIdx, rowIdx);
+              const currentCols = room.state.width || 32;
+              const currentRows = room.state.height || 24;
+              if (colIdx < 0 || colIdx >= currentCols || rowIdx < 0 || rowIdx >= currentRows) return false;
+              
+              const tileIndex = rowIdx * currentCols + colIdx;
+              const tileType = room.state.grid[tileIndex];
+              return tileType !== 2 && tileType !== 5 && tileType !== 7;
             };
 
             const isPositionValid = (x: number, y: number) => {
@@ -654,7 +764,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             // Special checks for NPC/Portal triggers (calculated at grid coordinate)
             const playerGridX = Math.floor(state.flatX / size);
             const playerGridY = Math.floor(state.flatY / size);
-            const currentTile = LOBBY_MAP.grid[playerGridY]?.[playerGridX];
+            const currentTile = room.state.grid[playerGridY * (room.state.width || 32) + playerGridX];
 
             if (currentTile === 3) {
               setShowPortalMenu(true);
@@ -837,6 +947,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           <span className="text-[#ffe082]">Cidade-Portal de Veylar</span>
           <span>🌅 19:42</span>
           <span className="text-emerald-400">32ms</span>
+          <button 
+            onClick={() => {
+              if (isGm) {
+                const nextMode = !isEditorMode;
+                setIsEditorMode(nextMode);
+                (window as any).__editorModeActive = nextMode;
+                if ((window as any).__reDrawGridLines) (window as any).__reDrawGridLines();
+              } else {
+                setShowGmLogin(true);
+              }
+            }}
+            className={`px-1.5 py-0.5 rounded text-[7px] uppercase font-black tracking-wider transition-colors ${
+              isGm 
+                ? isEditorMode 
+                  ? 'bg-amber-500 text-black border border-amber-400' 
+                  : 'bg-indigo-950 text-indigo-300 border border-indigo-800 hover:bg-indigo-900'
+                : 'bg-rose-955/40 text-rose-300 border border-rose-900 hover:bg-rose-900/60'
+            }`}
+          >
+            {isGm ? (isEditorMode ? '🔧 Editor' : '👑 GM') : '👑 Admin'}
+          </button>
         </div>
 
         {/* Minimap Frame (Mockup style streets locator) */}
@@ -1090,6 +1221,121 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
               className="w-full py-3 bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 text-indigo-300 text-xs font-bold rounded-xl transition-colors font-sans"
             >
               Fechar Portal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* GM LOGIN MODAL */}
+      {showGmLogin && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-50 font-sans p-6 pointer-events-auto">
+          <div className="bg-[#121226] border-2 border-indigo-900 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setShowGmLogin(false);
+                setGmAuthError(null);
+              }}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white text-xs"
+            >
+              ✕
+            </button>
+            <div className="text-center space-y-1">
+              <span className="text-3xl block">🔑</span>
+              <h4 className="font-extrabold text-white text-base">Acesso de Administrador</h4>
+              <p className="text-[9.5px] text-gray-400">Insira a chave secreta de Game Master para acessar o editor de mapas.</p>
+            </div>
+
+            <form onSubmit={handleGmAuth} className="space-y-4 pt-2">
+              <div className="space-y-1.5 text-left">
+                <label className="text-[9px] uppercase font-bold text-indigo-300 tracking-wider">Chave Secreta (GM Passphrase)</label>
+                <input
+                  type="password"
+                  value={gmPassphrase}
+                  onChange={(e) => setGmPassphrase(e.target.value)}
+                  placeholder="Insira a senha do GM..."
+                  className="w-full bg-black/40 border border-indigo-950 rounded-xl px-3 py-2 text-xs text-[#ffe082] outline-none placeholder-gray-700"
+                  required
+                />
+              </div>
+
+              {gmAuthError && (
+                <p className="text-[9.5px] font-bold text-rose-400 text-left bg-rose-955/20 border border-rose-900/30 p-2 rounded-lg">
+                  ❌ {gmAuthError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-gradient-to-r from-indigo-850 to-indigo-750 hover:from-indigo-750 hover:to-indigo-650 text-white text-xs font-bold rounded-xl transition-all border border-indigo-600/30 shadow-md font-sans"
+              >
+                Autenticar Administrador
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* GM MAP EDITOR FLOATING SIDEBAR */}
+      {isGm && isEditorMode && (
+        <div className="absolute top-20 left-4 z-30 w-44 bg-[#0a0a18]/90 border border-indigo-900/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-3 text-left pointer-events-auto backdrop-blur-sm max-h-[70%] overflow-y-auto">
+          <div className="border-b border-indigo-900/60 pb-1.5">
+            <span className="text-[7.5px] uppercase font-bold text-amber-400 tracking-widest block leading-none">Paleta de Tiles</span>
+            <span className="text-[6.5px] text-gray-500 font-bold block mt-1">Selecione e clique no mapa</span>
+          </div>
+
+          {/* Tile Selector Roster */}
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { typeId: 0, label: 'Grama', emoji: '🌿' },
+              { typeId: 1, label: 'Pedra', emoji: '🪨' },
+              { typeId: 4, label: 'Flores', emoji: '🌸' },
+              { typeId: 6, label: 'Madeira', emoji: '🪵' },
+              { typeId: 2, label: 'Parede', emoji: '🧱' },
+              { typeId: 7, label: 'Cerca', emoji: '🚧' },
+              { typeId: 5, label: 'Água', emoji: '💧' },
+              { typeId: 3, label: 'Portal', emoji: '🔮' }
+            ].map(tile => {
+              const active = selectedTile === tile.typeId;
+              return (
+                <button
+                  key={tile.typeId}
+                  onClick={() => {
+                    setSelectedTile(tile.typeId);
+                    (window as any).__editorSelectedTile = tile.typeId;
+                  }}
+                  className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-[8.5px] font-bold transition-all ${
+                    active 
+                      ? 'bg-indigo-950 border-indigo-500 text-white shadow-lg' 
+                      : 'bg-black/30 border-indigo-950/40 text-gray-400 hover:bg-black/50 hover:border-indigo-900/60'
+                  }`}
+                >
+                  <span className="text-sm">{tile.emoji}</span>
+                  <span className="text-[6.5px] mt-0.5 font-bold uppercase tracking-wider">{tile.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="border-t border-indigo-900/60 pt-2 flex flex-col gap-1.5">
+            <button
+              onClick={() => {
+                if (roomRef.current) {
+                  roomRef.current.send("save_map");
+                }
+              }}
+              className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-[8.5px] rounded-lg border border-amber-400 transition-colors uppercase tracking-widest shadow-md"
+            >
+              💾 Salvar Mapa
+            </button>
+            <button
+              onClick={() => {
+                setIsEditorMode(false);
+                (window as any).__editorModeActive = false;
+                if ((window as any).__reDrawGridLines) (window as any).__reDrawGridLines();
+              }}
+              className="w-full py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-extrabold text-[8.5px] rounded-lg border border-zinc-700 transition-colors uppercase tracking-widest"
+            >
+              Fechar Editor
             </button>
           </div>
         </div>
