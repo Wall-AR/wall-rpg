@@ -14,7 +14,8 @@ export interface EncounterContext {
 
 interface BattleTransitionProps {
   encounter: EncounterContext;
-  onTransitionComplete: () => void;
+  onTransitionComplete?: () => void;
+  onComplete?: () => void;
 }
 
 /**
@@ -27,9 +28,11 @@ interface BattleTransitionProps {
  * 4. ENCOUNTER  → Texto dramático com nome do inimigo
  * 5. FADE_OUT   → Fade para preto antes da tela de batalha
  */
-export const BattleTransition: React.FC<BattleTransitionProps> = ({ encounter, onTransitionComplete }) => {
+export const BattleTransition: React.FC<BattleTransitionProps> = ({ encounter, onTransitionComplete, onComplete }) => {
   const [phase, setPhase] = useState<'flash' | 'shatter' | 'vortex' | 'encounter' | 'fade_out'>('flash');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const handleComplete = onTransitionComplete || onComplete;
 
   // Determine o gradiente do elemento
   const elementGradient = {
@@ -53,9 +56,11 @@ export const BattleTransition: React.FC<BattleTransitionProps> = ({ encounter, o
     timers.push(setTimeout(() => setPhase('vortex'), 900));
     timers.push(setTimeout(() => setPhase('encounter'), 1800));
     timers.push(setTimeout(() => setPhase('fade_out'), 3300));
-    timers.push(setTimeout(() => onTransitionComplete(), 4000));
+    timers.push(setTimeout(() => {
+      if (handleComplete) handleComplete();
+    }, 4000));
     return () => timers.forEach(clearTimeout);
-  }, [onTransitionComplete]);
+  }, [handleComplete]);
 
   // ─── Canvas Shatter Effect ────────────────────────────────────────────────
   useEffect(() => {

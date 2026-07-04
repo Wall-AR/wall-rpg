@@ -91,6 +91,166 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   const [qteResult, setQteResult] = useState<'idle' | 'perfect' | 'fail' | 'miss'>('idle');
   const qteTimerRef = useRef<number | null>(null);
   const perfectCombosRef = useRef<number>(0);
+  const qteResolverRef = useRef<((result: any) => void) | null>(null);
+
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const waitForQte = (): Promise<'perfect' | 'fail' | 'miss'> => {
+    return new Promise((resolve) => {
+      setShowQte(true);
+      qteResolverRef.current = resolve;
+    });
+  };
+
+  const updateVisualStats = (event: any) => {
+    if (event.targetHp !== undefined) {
+      setRedTeam(prev => prev.map(m => m.id === event.targetId ? { ...m, hp: event.targetHp, active: event.targetHp > 0 } : m));
+      setBlueTeam(prev => prev.map(m => m.id === event.targetId ? { ...m, hp: event.targetHp } : m));
+    }
+    if (event.actorMp !== undefined) {
+      setBlueTeam(prev => prev.map(m => m.id === event.actorId ? { ...m, mp: event.actorMp } : m));
+      setRedTeam(prev => prev.map(m => m.id === event.actorId ? { ...m, mp: event.actorMp } : m));
+    }
+  };
+
+  const animateRoundEvents = async (events: any[], activeRoom: any) => {
+    setResolutionStep(0); // Ativa modo de resolução visual
+
+    for (let idx = 0; idx < events.length; idx++) {
+      const event = events[idx];
+      
+      // Adiciona o log no painel tático
+      setActionLog(prev => [event.log, ...prev]);
+
+      if (event.type === 'defend') {
+        sounds.playBarrier();
+        gsap.to(`.character-node-${event.actorId}`, {
+          x: event.actorId.startsWith('char-') ? 20 : -20,
+          y: -10,
+          duration: 0.4,
+          yoyo: true,
+          repeat: 1,
+          ease: "power1.inOut"
+        });
+        await delay(900);
+      } 
+      else if (event.type === 'attack') {
+        const isLocalAttacker = event.actorId.startsWith('char-');
+        let qteRes: 'perfect' | 'fail' | 'miss' = 'fail';
+
+        if (isLocalAttacker) {
+          qteRes = await waitForQte();
+        }
+
+        const attackerNode = `.character-node-${event.actorId}`;
+        const targetNode = `.character-node-${event.targetId}`;
+
+        if (qteRes === 'perfect' && isLocalAttacker) {
+          gsap.to(".qte-flash-overlay", { opacity: 0.75, duration: 0.1, yoyo: true, repeat: 1 });
+          gsap.timeline()
+            .to(attackerNode, { x: 380, y: -70, duration: 0.12, ease: "power2.out" })
+            .to(targetNode, {
+              x: "+=22",
+              yoyo: true,
+              repeat: 9,
+              duration: 0.02,
+              onStart: () => {
+                sounds.playSlash();
+                document.querySelector(targetNode)?.classList.add("flash-hit");
+              }
+            })
+            .to(attackerNode, { x: 0, y: 0, duration: 0.18, ease: "power1.inOut", delay: 0.15,
+              onComplete: () => document.querySelector(targetNode)?.classList.remove("flash-hit")
+            });
+          await delay(1600);
+        } else {
+          // Ataque regular ou oponente atacando
+          const dx = isLocalAttacker ? 300 : -300;
+          const dy = isLocalAttacker ? -80 : 80;
+          gsap.timeline()
+            .to(attackerNode, { x: dx, y: dy, duration: 0.22, ease: "power2.out" })
+            .to(targetNode, {
+              x: isLocalAttacker ? "+=12" : "-=12",
+              yoyo: true,
+              repeat: 3,
+              duration: 0.04,
+              onStart: () => {
+                sounds.playSlash();
+                document.querySelector(targetNode)?.classList.add("flash-hit");
+              }
+            })
+            .to(attackerNode, { x: 0, y: 0, duration: 0.28, ease: "power1.inOut",
+              onComplete: () => document.querySelector(targetNode)?.classList.remove("flash-hit")
+            });
+          await delay(1200);
+        }
+      } 
+      else if (event.type === 'spell_cure') {
+        sounds.playCure();
+        gsap.to(`.character-node-${event.actorId}`, {
+          x: 30,
+          y: -10,
+          duration: 0.4,
+          yoyo: true,
+          repeat: 1,
+          ease: "power2.out"
+        });
+        gsap.to(`.character-node-${event.targetId}`, {
+          scale: 1.15,
+          duration: 0.3,
+          yoyo: true,
+          repeat: 1,
+        });
+        await delay(1000);
+      } 
+      else if (event.type === 'spell_attack') {
+        sounds.playExplosion();
+        gsap.to(`.character-node-${event.actorId}`, {
+          x: event.actorId.startsWith('char-') ? 40 : -40,
+          y: -10,
+          duration: 0.4,
+          yoyo: true,
+          repeat: 1,
+          ease: "power2.out"
+        });
+        
+        const targetNode = `.character-node-${event.targetId}`;
+        gsap.timeline()
+          .to(".qte-flash-overlay", { opacity: 0.3, duration: 0.1, yoyo: true, repeat: 1 })
+          .to(targetNode, {
+            x: "+=8",
+            yoyo: true,
+            repeat: 5,
+            duration: 0.05,
+            onStart: () => document.querySelector(targetNode)?.classList.add("flash-hit"),
+            onComplete: () => {
+              gsap.to(targetNode, { x: 0, duration: 0.1 });
+              document.querySelector(targetNode)?.classList.remove("flash-hit");
+            }
+          });
+        await delay(1200);
+      } 
+      else if (event.type === 'death') {
+        sounds.playFailure();
+        gsap.to(`.character-node-${event.actorId}`, {
+          opacity: 0.35,
+          scale: 0.8,
+          duration: 0.8,
+          ease: "power2.inOut"
+        });
+        await delay(800);
+      }
+
+      updateVisualStats(event);
+      await delay(450);
+    }
+
+    setResolutionStep(-1);
+    
+    if (activeRoom) {
+      activeRoom.send("animation_complete");
+    }
+  };
 
   // Character positions on isometric arena
   const [positions, setPositions] = useState<Record<string, 'front' | 'mid' | 'back'>>({
@@ -161,6 +321,70 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
               return obj;
             }, {}),
           });
+
+          // Sync teams from server schema when not resolving animations
+          if (state.status !== "resolving") {
+            const localPlayer = state.players.get(activeRoom.sessionId);
+            if (localPlayer && localPlayer.combatants && localPlayer.combatants.size > 0) {
+              const newBlue: Teammate[] = [];
+              localPlayer.combatants.forEach((c: any) => {
+                const baseMeta = PREP_ROSTER.find(item => item.id === c.id) || {
+                  portrait: '👤',
+                  rank: 'A' as const,
+                  spells: []
+                };
+                newBlue.push({
+                  id: c.id,
+                  name: c.name,
+                  class: c.class,
+                  level: c.level,
+                  hp: c.hp,
+                  maxHp: c.maxHp,
+                  mp: c.mp,
+                  maxMp: c.maxMp,
+                  element: c.element as any,
+                  position: c.position as any,
+                  portrait: baseMeta.portrait,
+                  rank: baseMeta.rank,
+                  spells: baseMeta.spells,
+                });
+              });
+              setBlueTeam(newBlue);
+            }
+
+            const opponentSessionId = Array.from(state.players.keys()).find(id => id !== activeRoom.sessionId);
+            if (opponentSessionId) {
+              const oppPlayer = state.players.get(opponentSessionId);
+              if (oppPlayer && oppPlayer.combatants && oppPlayer.combatants.size > 0) {
+                const newRed: any[] = [];
+                oppPlayer.combatants.forEach((c: any) => {
+                  const baseMeta = PREP_ROSTER.find(item => item.id === c.id) || {
+                    portrait: '👤',
+                    rank: 'A' as const,
+                    spells: []
+                  };
+                  newRed.push({
+                    id: c.id,
+                    name: c.name,
+                    class: c.class,
+                    level: c.level,
+                    hp: c.hp,
+                    maxHp: c.maxHp,
+                    mp: c.mp,
+                    maxMp: c.maxMp,
+                    element: c.element as any,
+                    portrait: baseMeta.portrait,
+                    active: c.hp > 0,
+                  });
+                });
+                setRedTeam(newRed);
+              }
+            }
+          }
+        });
+
+        activeRoom.onMessage("round_resolved", (data: { events: any[] }) => {
+          animateRoundEvents(data.events, activeRoom);
         });
       } catch (err: any) {
         console.error("Battle room connection failed:", err);
@@ -274,50 +498,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
       sounds.playFailure();
     }
 
-    // Dynamic Combat Slash GSAP effects based on QTE precision
-    if (result === 'perfect') {
-      // Screen flash
-      gsap.to(".qte-flash-overlay", { opacity: 0.75, duration: 0.1, yoyo: true, repeat: 1 });
-      
-      // Fast triple strike
-      gsap.timeline()
-        .to(".character-node-char-raven", { x: 380, y: -70, duration: 0.12, ease: "power2.out" })
-        .to(".character-node-opp-nyxara", {
-          x: "+=22",
-          yoyo: true,
-          repeat: 9,
-          duration: 0.02,
-          onStart: () => {
-            sounds.playSlash();
-            document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit");
-          }
-        })
-        .to(".character-node-char-raven", { x: 0, y: 0, duration: 0.18, ease: "power1.inOut", delay: 0.15,
-          onComplete: () => document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit")
-        });
-    } else {
-      // Normal strike on failure/miss
-      gsap.timeline()
-        .to(".character-node-char-raven", { x: 300, y: -80, duration: 0.22, ease: "power2.out" })
-        .to(".character-node-opp-nyxara", {
-          x: "+=12",
-          yoyo: true,
-          repeat: 3,
-          duration: 0.04,
-          onStart: () => {
-            sounds.playSlash();
-            document.querySelector(".character-node-opp-nyxara")?.classList.add("flash-hit");
-          }
-        })
-        .to(".character-node-char-raven", { x: 0, y: 0, duration: 0.28, ease: "power1.inOut",
-          onComplete: () => document.querySelector(".character-node-opp-nyxara")?.classList.remove("flash-hit")
-        });
+    if (qteResolverRef.current) {
+      qteResolverRef.current(result);
+      qteResolverRef.current = null;
     }
 
-    // Schedule advancing the turn sequence
     setTimeout(() => {
       setShowQte(false);
-      setResolutionStep(2);
     }, 1600);
   };
 
@@ -384,147 +571,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showQte, qteScale, qteResult]);
-
-  // GSAP Turn Resolution Animations
-  useEffect(() => {
-    if (resolutionStep === -1) return;
-
-    if (resolutionStep === 0) {
-      // Lyria casts Nova Astral
-      sounds.playExplosion();
-      // 1. Slide Lyria forward
-      gsap.to(".character-node-char-lyria", {
-        x: 40,
-        y: -10,
-        duration: 0.4,
-        yoyo: true,
-        repeat: 1,
-        ease: "power2.out"
-      });
-
-      // 2. Shake enemies and flash them red after 0.4s
-      gsap.delayedCall(0.4, () => {
-        const enemies = [".character-node-opp-korr", ".character-node-opp-lobo", ".character-node-opp-nyxara"];
-        enemies.forEach(el => {
-          gsap.to(el, {
-            x: "+=8",
-            yoyo: true,
-            repeat: 5,
-            duration: 0.05,
-            onStart: () => {
-              document.querySelector(el)?.classList.add("flash-hit");
-            },
-            onComplete: () => {
-              gsap.to(el, { x: 0, duration: 0.1 });
-              document.querySelector(el)?.classList.remove("flash-hit");
-            }
-          });
-        });
-      });
-    } else if (resolutionStep === 1) {
-      // Handled interactively by triggerQteResolution during Addition QTE sequence
-    } else if (resolutionStep === 2) {
-      // Caelum Holy Barrier
-      sounds.playBarrier();
-      gsap.to(".character-node-char-caelum", {
-        x: 30,
-        y: -10,
-        duration: 0.5,
-        yoyo: true,
-        repeat: 1,
-        ease: "power1.inOut"
-      });
-    } else if (resolutionStep === 3) {
-      // Korr Investida
-      const korrEl = document.querySelector(".character-node-opp-korr") as HTMLElement;
-      const targetEl = document.querySelector(".character-node-char-raven") as HTMLElement;
-      
-      if (korrEl && targetEl) {
-        const dx = targetEl.offsetLeft - korrEl.offsetLeft + 40;
-        const dy = targetEl.offsetTop - korrEl.offsetTop;
-        
-        gsap.timeline()
-          .to(".character-node-opp-korr", {
-            x: dx,
-            y: dy,
-            duration: 0.25,
-            ease: "power3.in"
-          })
-          .to(".character-node-char-raven", {
-            x: "-=12",
-            yoyo: true,
-            repeat: 5,
-            duration: 0.04,
-            onStart: () => {
-              sounds.playSlash();
-              document.querySelector(".character-node-char-raven")?.classList.add("flash-hit");
-            },
-            onComplete: () => {
-              gsap.to(".character-node-char-raven", { x: 0, duration: 0.1 });
-              document.querySelector(".character-node-char-raven")?.classList.remove("flash-hit");
-            }
-          })
-          .to(".character-node-opp-korr", {
-            x: 0,
-            y: 0,
-            duration: 0.3,
-            ease: "power2.out"
-          });
-      }
-    }
-  }, [resolutionStep]);
-
-  // Update stats dynamically in resolution
-  useEffect(() => {
-    if (resolutionStep === 0) {
-      setRedTeam(prev => prev.map(m => {
-        if (m.id === 'opp-korr') return { ...m, hp: 7038 };
-        if (m.id === 'opp-lobo') return { ...m, hp: 4844 };
-        if (m.id === 'opp-nyxara') return { ...m, hp: 2768 };
-        return m;
-      }));
-      setBlueTeam(prev => prev.map(m => {
-        if (m.id === 'char-lyria') return { ...m, mp: 270 };
-        return m;
-      }));
-      setActionLog(prev => [
-        'Lyria conjura Nova Astral',
-        'Todos os inimigos recebem dano mágico!',
-        ...prev.slice(0, 4)
-      ]);
-    } else if (resolutionStep === 1) {
-      setRedTeam(prev => prev.map(m => {
-        if (m.id === 'opp-nyxara') return { ...m, hp: 2156 };
-        return m;
-      }));
-      setBlueTeam(prev => prev.map(m => {
-        if (m.id === 'char-raven') return { ...m, mp: 80 };
-        return m;
-      }));
-      setActionLog(prev => [
-        'Raven alcança Nyxara e aplica Marca',
-        ...prev.slice(0, 5)
-      ]);
-    } else if (resolutionStep === 2) {
-      setBlueTeam(prev => prev.map(m => {
-        if (m.id === 'char-caelum') return { ...m, mp: 170 };
-        return m;
-      }));
-      setActionLog(prev => [
-        'Caelum protege a linha de frente',
-        ...prev.slice(0, 5)
-      ]);
-    } else if (resolutionStep === 3) {
-      setBlueTeam(prev => prev.map(m => {
-        if (m.id === 'char-raven') return { ...m, hp: 4820 };
-        return m;
-      }));
-      setActionLog(prev => [
-        'Korr avança (Investida)',
-        ...prev.slice(0, 5)
-      ]);
-    }
-  }, [resolutionStep]);
 
   if (connectionError) {
     return (

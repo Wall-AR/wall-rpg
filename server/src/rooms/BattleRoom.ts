@@ -46,6 +46,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   override maxClients = 2;
   private sessionAccounts = new Map<string, string>();
   private playerPerfectCombos = new Map<string, number>();
+  private clientAnimationsComplete = new Set<string>();
   private planningTimeout: any = null;
 
   override async onAuth(client: Client, options: any, request?: any) {
@@ -67,6 +68,20 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.onMessage("report_performance", (client, data: { perfectCombos: number }) => {
       this.playerPerfectCombos.set(client.sessionId, data.perfectCombos || 0);
       console.log(`[BattleRoom] Player ${client.sessionId} reported ${data.perfectCombos} perfect combos.`);
+    });
+
+    this.onMessage("animation_complete", (client) => {
+      this.clientAnimationsComplete.add(client.sessionId);
+      console.log(`[BattleRoom] Player ${client.sessionId} finished animations. Waiting for other players...`);
+      
+      let allFinished = true;
+      this.clients.forEach(c => {
+        if (!this.clientAnimationsComplete.has(c.sessionId)) allFinished = false;
+      });
+
+      if (allFinished) {
+        this.nextTurn();
+      }
     });
 
     // Action planning handler for all 3 team combatants
@@ -456,6 +471,8 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     // Ordenar fila de combatentes por velocidade individual (Decrescente)
     actors.sort((a, b) => b.state.speed - a.state.speed);
 
+    const roundEvents: any[] = [];
+
     // Executa ação de cada combatente
     for (let i = 0; i < actors.length; i++) {
       const actor = actors[i];
@@ -468,7 +485,14 @@ export class BattleRoom extends Room<{ state: BattleState }> {
       const oppPlayer = this.state.players.get(actor.opponentSessionId)!;
 
       if (combatant.selectedAction === "defend") {
-        this.state.logs.push(`${combatant.name} (${actorPlayer.username}) assumiu postura defensiva.`);
+        const logMsg = `${combatant.name} (${actorPlayer.username}) assumiu postura defensiva.`;
+        this.state.logs.push(logMsg);
+        roundEvents.push({
+          type: 'defend',
+          actorId: combatant.id,
+          actorUsername: actorPlayer.username,
+          log: logMsg
+        });
         continue;
       }
 
@@ -497,16 +521,30 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         if (modifier < 1) comment = " (Resistido... 🛡️)";
         if (target.selectedAction === "defend") comment += " [Defendido]";
 
-        this.state.logs.push(
-          `${combatant.name} atacou ${target.name} causando ${finalDmg} de dano${comment}.`
-        );
+        const logMsg = `${combatant.name} atacou ${target.name} causando ${finalDmg} de dano${comment}.`;
+        this.state.logs.push(logMsg);
+        roundEvents.push({
+          type: 'attack',
+          actorId: combatant.id,
+          targetId: target.id,
+          damage: finalDmg,
+          comment: comment,
+          targetHp: target.hp,
+          log: logMsg
+        });
       }
 
       if (combatant.selectedAction === "spell") {
         if (combatant.selectedSpellId === "cure") {
           const mpCost = 10;
           if (combatant.mp < mpCost) {
-            this.state.logs.push(`${combatant.name} tentou usar Cura mas não tem MP suficiente (${combatant.mp}/${mpCost}).`);
+            const logMsg = `${combatant.name} tentou usar Cura mas não tem MP suficiente (${combatant.mp}/${mpCost}).`;
+            this.state.logs.push(logMsg);
+            roundEvents.push({
+              type: 'spell_cure_fail',
+              actorId: combatant.id,
+              log: logMsg
+            });
           } else {
             combatant.mp -= mpCost;
             // Cura o aliado com menor HP
@@ -516,14 +554,30 @@ export class BattleRoom extends Room<{ state: BattleState }> {
             if (allyTarget) {
               const heal = Math.floor(combatant.intelligence * 1.5) + Math.floor(Math.random() * 8);
               allyTarget.hp = Math.min(allyTarget.maxHp, allyTarget.hp + heal);
-              this.state.logs.push(`${combatant.name} curou ${allyTarget.name} restaurando ${heal} de HP. (MP: ${combatant.mp}/${combatant.maxMp})`);
+              const logMsg = `${combatant.name} curou ${allyTarget.name} restaurando ${heal} de HP. (MP: ${combatant.mp}/${combatant.maxMp})`;
+              this.state.logs.push(logMsg);
+              roundEvents.push({
+                type: 'spell_cure',
+                actorId: combatant.id,
+                targetId: allyTarget.id,
+                heal: heal,
+                actorMp: combatant.mp,
+                targetHp: allyTarget.hp,
+                log: logMsg
+              });
             }
           }
         } else {
           // Spell ofensiva
           const mpCost = 15;
           if (combatant.mp < mpCost) {
-            this.state.logs.push(`${combatant.name} tentou lançar magia mas não tem MP suficiente (${combatant.mp}/${mpCost}).`);
+            const logMsg = `${combatant.name} tentou lançar magia mas não tem MP suficiente (${combatant.mp}/${mpCost}).`;
+            this.state.logs.push(logMsg);
+            roundEvents.push({
+              type: 'spell_attack_fail',
+              actorId: combatant.id,
+              log: logMsg
+            });
           } else {
             combatant.mp -= mpCost;
             const baseDmg = Math.floor(combatant.intelligence * 1.3) + Math.floor(Math.random() * 10) + 8;
@@ -541,30 +595,68 @@ export class BattleRoom extends Room<{ state: BattleState }> {
             if (modifier < 1) comment = " (Resistido... 🛡️)";
             if (target.selectedAction === "defend") comment += " [Defendido]";
 
-            this.state.logs.push(
-              `${combatant.name} lançou Magia em ${target.name} causando ${finalDmg} de dano${comment}. (MP: ${combatant.mp}/${combatant.maxMp})`
-            );
+            const logMsg = `${combatant.name} lançou Magia em ${target.name} causando ${finalDmg} de dano${comment}. (MP: ${combatant.mp}/${combatant.maxMp})`;
+            this.state.logs.push(logMsg);
+            roundEvents.push({
+              type: 'spell_attack',
+              actorId: combatant.id,
+              targetId: target.id,
+              damage: finalDmg,
+              comment: comment,
+              actorMp: combatant.mp,
+              targetHp: target.hp,
+              log: logMsg
+            });
           }
         }
       }
 
       if (target.hp <= 0) {
-        this.state.logs.push(`💀 ${target.name} desmaiou.`);
+        const logMsg = `💀 ${target.name} desmaiou.`;
+        this.state.logs.push(logMsg);
+        roundEvents.push({
+          type: 'death',
+          actorId: target.id,
+          log: logMsg
+        });
         
         // Verifica se a equipe do oponente foi totalmente aniquilada
         let oppAliveCount = 0;
         oppPlayer.combatants.forEach((c: any) => { if (c.hp > 0) oppAliveCount++; });
 
         if (oppAliveCount === 0) {
-          this.state.logs.push(`🎉 A equipe de ${oppPlayer.username} foi totalmente derrotada!`);
+          const logMsgOver = `🎉 A equipe de ${oppPlayer.username} foi totalmente derrotada!\n--- Batalha Encerrada. Vencedor: ${actorPlayer.username}! ---`;
+          this.state.logs.push(logMsgOver);
+          roundEvents.push({
+            type: 'battle_over',
+            winnerSessionId: actor.ownerSessionId,
+            log: logMsgOver
+          });
+          
           this.state.status = "finished";
           this.state.winnerSessionId = actor.ownerSessionId;
-          this.state.logs.push(`--- Batalha Encerrada. Vencedor: ${actorPlayer.username}! ---`);
+          
+          this.broadcast("round_resolved", { events: roundEvents });
           this.saveBattleHistory();
           return;
         }
       }
     }
+
+    // Broadcast do resultado da rodada para animações passo-a-passo
+    this.broadcast("round_resolved", { events: roundEvents });
+
+    // Fallback de segurança para avançar o turno se clientes travarem (15s)
+    this.clock.setTimeout(() => {
+      if (this.state.status === "resolving") {
+        console.log("[BattleRoom] Timeout das animações atingido, forçando próximo turno.");
+        this.nextTurn();
+      }
+    }, 15000);
+  }
+
+  private nextTurn() {
+    this.clientAnimationsComplete.clear();
 
     // Reset de escolhas para o próximo round
     this.state.players.forEach((p: any) => {
