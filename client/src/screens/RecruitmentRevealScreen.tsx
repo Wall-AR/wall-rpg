@@ -48,7 +48,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
 }) => {
   const [step, setStep] = useState<'reveal' | 'details'>('reveal');
   const [substituteMode, setSubstituteMode] = useState(false);
-  const [selectedReplaceId, setSelectedReplaceId] = useState<string>('');
+  const [selectedReplaceId, setSelectedReplaceId] = useState<string>('char-lobo'); // Default selected companion for substitution matches mockup
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Source context configuration
@@ -56,19 +56,19 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
     switch (type) {
       case 'post_battle_offer':
         return {
-          title: 'NOVO COMPANHEIRO',
-          subtitle: 'Recrutamento após combate',
+          title: 'ESCOLHA DE COMPANHEIRO',
+          subtitle: 'Sua equipe está cheia. Escolha quem será desencantado para aceitar Thorn.',
           originLabel: 'Pós-combate',
-          localLabel: 'Arena das Fendas',
+          localLabel: 'Arena das Feridas',
           introText: 'Um inimigo derrotado reconheceu sua força e deseja se juntar à sua jornada.',
-          characterSpeak: '“Derrotado, mas não quebrado. Thorn reconhece sua liderança e oferece sua lança à sua causa.”',
+          characterSpeak: '“Derrotado, mas não quebrado. Reconheço sua força e a liderança que carrega. Se aceitar meu aço, jurarei lutar ao seu lado. ❞',
           portalGlow: 'from-purple-600/35 to-indigo-950/20',
           portalBorder: 'border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
         };
       case 'dimensional_chest':
         return {
-          title: 'NOVO COMPANHEIRO',
-          subtitle: 'Baú de Personagem',
+          title: 'ESCOLHA DE COMPANHEIRO',
+          subtitle: 'Sua equipe está cheia. Escolha quem será desencantado para aceitar Thorn.',
           originLabel: 'Baú Dimensional',
           localLabel: 'Fenda Dimensional',
           introText: 'A fenda responde ao seu chamado e um novo eco atravessou o véu.',
@@ -78,8 +78,8 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         };
       case 'fragment_summon':
         return {
-          title: 'NOVO COMPANHEIRO',
-          subtitle: 'Invocação por Fragmentos',
+          title: 'ESCOLHA DE COMPANHEIRO',
+          subtitle: 'Sua equipe está cheia. Escolha quem será desencantado para aceitar Thorn.',
           originLabel: 'Fragmentos',
           localLabel: 'Altar Astral',
           introText: 'Os fragmentos se unem em uma forma viva. Um eco antigo foi restaurado.',
@@ -89,8 +89,8 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         };
       case 'mercenary_contract':
         return {
-          title: 'NOVO COMPANHEIRO',
-          subtitle: 'Contrato de Mercenário',
+          title: 'ESCOLHA DE COMPANHEIRO',
+          subtitle: 'Sua equipe está cheia. Escolha quem será desencantado para aceitar Thorn.',
           originLabel: 'Mercenário',
           localLabel: 'Taverna do Porto',
           introText: 'Um mercenário aceitou lutar em sua equipe sob contrato permanente.',
@@ -100,8 +100,8 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         };
       default:
         return {
-          title: 'NOVO COMPANHEIRO',
-          subtitle: 'Recompensa de Campanha',
+          title: 'ESCOLHA DE COMPANHEIRO',
+          subtitle: 'Sua equipe está cheia. Escolha quem será desencantado para aceitar Thorn.',
           originLabel: 'Campanha',
           localLabel: 'Bosque de Veylar',
           introText: 'Após os eventos cruciais da jornada, este companheiro decidiu segui-lo.',
@@ -115,15 +115,142 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
   const config = getSourceConfig(sourceType);
   const isTeamFull = teamMembers.length >= 6;
 
+  // Companion meta records mapping JRPG statistics & values
+  const getCompanionMeta = (id: string) => {
+    const cleanId = id.replace('char-', '').toLowerCase();
+    switch (cleanId) {
+      case 'caelum':
+        return {
+          bond: 10,
+          bondLabel: 'Vínculo 10',
+          sinceText: 'Desde o início da jornada',
+          battles: 418,
+          campaigns: 12,
+          watermark: '🛡️',
+          historyText: 'Desde o início da jornada / 418 batalhas',
+          phrase: 'Primeiro defensor da jornada',
+          mag: 210,
+          atq: 1254,
+          def: 1486,
+          vel: 1307,
+          passive: 'Barreira Sagrada',
+          skill: 'Proteção Divina'
+        };
+      case 'lyria':
+        return {
+          bond: 9,
+          bondLabel: 'Vínculo 9',
+          sinceText: 'Desde o Capítulo 2',
+          battles: 350,
+          campaigns: 10,
+          watermark: '🧙‍♀️',
+          historyText: 'Desde o Capítulo 2 / 350 batalhas',
+          phrase: 'Sua aliada rúnica mais fiel',
+          mag: 420,
+          atq: 1482,
+          def: 950,
+          vel: 1102,
+          passive: 'Nova Astral',
+          skill: 'Chama Curativa'
+        };
+      case 'raven':
+        return {
+          bond: 10,
+          bondLabel: 'Vínculo 10',
+          sinceText: 'Desde o Capítulo 3',
+          battles: 280,
+          campaigns: 8,
+          watermark: '🗡️',
+          historyText: 'Desde o Capítulo 3 / 280 batalhas',
+          phrase: 'Sombra silenciosa do coliseu',
+          mag: 200,
+          atq: 1980,
+          def: 820,
+          vel: 1642,
+          passive: 'Golpe Sombrio',
+          skill: 'Passo das Sombras'
+        };
+      case 'seraphina':
+        return {
+          bond: 8,
+          bondLabel: 'Vínculo 8',
+          sinceText: 'Desde o Capítulo 4',
+          battles: 150,
+          campaigns: 4,
+          watermark: '🌿',
+          historyText: 'Desde o Capítulo 4 / 150 batalhas',
+          phrase: 'Clériga do Templo de Veylar',
+          mag: 180,
+          atq: 910,
+          def: 1120,
+          vel: 980,
+          passive: 'Impacto Sísmico',
+          skill: 'Prece da Terra'
+        };
+      case 'lobo':
+      case 'lobo cinzento':
+        return {
+          bond: 10,
+          bondLabel: 'VÍNCULO LENDÁRIO',
+          sinceText: 'Desde o início da jornada',
+          battles: 418,
+          campaigns: 12,
+          watermark: '🐺',
+          historyText: 'Desde o início da jornada / 418 batalhas',
+          phrase: 'Primeiro companheiro da jornada',
+          mag: 1102,
+          atq: 1254,
+          def: 1486,
+          vel: 1307,
+          passive: 'Instinto de Lealdade',
+          skill: 'Proteção Instintiva'
+        };
+      case 'korr':
+        return {
+          bond: 9,
+          bondLabel: 'Vínculo 9',
+          sinceText: 'Desde o Capítulo 5',
+          battles: 90,
+          campaigns: 2,
+          watermark: '🦁',
+          historyText: 'Desde o Capítulo 5 / 90 batalhas',
+          phrase: 'Fera guerreira do coliseu',
+          mag: 180,
+          atq: 1720,
+          def: 1220,
+          vel: 1120,
+          passive: 'Investida Ígnea',
+          skill: 'Sopro de Fogo'
+        };
+      default:
+        return {
+          bond: 5,
+          bondLabel: 'Vínculo Novo',
+          sinceText: 'Recém-chegado',
+          battles: 0,
+          campaigns: 0,
+          watermark: '👤',
+          historyText: 'Novo recrutamento / 0 batalhas',
+          phrase: 'Um eco recém-sincronizado',
+          mag: 50,
+          atq: 100,
+          def: 100,
+          vel: 100,
+          passive: 'Nenhuma',
+          skill: 'Nenhuma'
+        };
+    }
+  };
+
   // Rank / Rarity color maps
   const getRarityBadgeStyle = (r: string) => {
-    if (r === 'S+') return 'bg-orange-950/50 border-orange-500/50 text-orange-400';
-    if (r === 'S') return 'bg-rose-955/50 border-rose-500/50 text-rose-400';
-    if (r === 'A') return 'bg-yellow-950/50 border-yellow-500/50 text-yellow-400';
-    if (r === 'B') return 'bg-indigo-950/50 border-indigo-500/50 text-indigo-400';
-    if (r === 'C') return 'bg-cyan-950/50 border-cyan-500/50 text-cyan-400';
-    if (r === 'D') return 'bg-emerald-950/50 border-emerald-500/50 text-emerald-400';
-    return 'bg-slate-900/50 border-slate-700/50 text-slate-400';
+    if (r === 'S+') return 'bg-orange-955 border-orange-500/50 text-orange-400';
+    if (r === 'S') return 'bg-rose-955 border-rose-500/50 text-rose-400';
+    if (r === 'A') return 'bg-yellow-955 border-yellow-500/50 text-yellow-400';
+    if (r === 'B') return 'bg-indigo-955 border-indigo-500/50 text-indigo-400';
+    if (r === 'C') return 'bg-cyan-955 border-cyan-500/50 text-cyan-400';
+    if (r === 'D') return 'bg-emerald-955 border-emerald-500/50 text-emerald-400';
+    return 'bg-slate-900 border-slate-700/50 text-slate-400';
   };
 
   const getElementBadgeColor = (el: string) => {
@@ -156,7 +283,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
     return '👤';
   };
 
-  // Safe portrait mapping
+  // Safe portrait mappings
   const getCharacterFace = (name: string) => {
     const n = name.toLowerCase();
     if (n.includes('caelum')) return '/assets/characters/caelum_face.png';
@@ -190,16 +317,18 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
   };
 
   const compareTarget = teamMembers.find(m => m.id === selectedReplaceId);
+  const compareMeta = compareTarget ? getCompanionMeta(compareTarget.name) : null;
+  const thornMeta = getCompanionMeta('thorn');
 
   return (
     <div className="recruit-fullscreen-wrapper w-full h-full min-h-[580px] bg-[#06060c] border border-[#b59441]/40 rounded-3xl overflow-hidden p-6 flex flex-col justify-between select-none relative font-sans">
       
-      {/* Visual background details */}
+      {/* Background radial-gradient effect */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(27,61,109,0.04)_0%,_transparent_75%)] pointer-events-none" />
 
       {/* 1. TOP HEADER SECTION */}
-      <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-5 shrink-0 relative z-10">
-        {/* Left Profile details */}
+      <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative z-10">
+        {/* Left Profile Details */}
         <div className="flex flex-col text-left max-w-[200px]">
           <div className="flex items-center gap-2">
             <span className="text-[#ffe082] text-[8px] bg-indigo-955 px-2 py-0.5 rounded border border-blue-900 uppercase font-black tracking-wider shadow">Vencedor</span>
@@ -211,10 +340,10 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         {/* Center Main Title */}
         <div className="text-center">
           <h1 className="text-[#ffe082] text-xl font-black uppercase tracking-widest leading-none filter drop-shadow-[0_2px_8px_rgba(255,224,130,0.35)]">
-            {config.title}
+            {substituteMode ? "ESCOLHA DE COMPANHEIRO" : config.title}
           </h1>
           <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1.5 leading-none">
-            {config.subtitle}
+            {substituteMode ? "Sua equipe está cheia. Escolha quem será desencantado para aceitar Thorn." : config.subtitle}
           </p>
         </div>
 
@@ -222,9 +351,9 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         <div className="flex items-center gap-3 text-right">
           <div className="flex flex-col">
             <span className="text-gray-400 text-[9px] font-bold leading-none">Local: <strong className="text-gray-200">{config.localLabel}</strong></span>
-            <span className="text-[8px] text-gray-500 uppercase font-bold mt-1.5 block tracking-wide">Origem: {config.originLabel}</span>
+            <span className="text-[8px] text-gray-500 uppercase font-bold mt-1.5 block tracking-wide font-sans">Origem: {config.originLabel}</span>
           </div>
-          {/* Animated portal badge */}
+          {/* Animated portal element */}
           <div className="relative w-8 h-8 rounded-full border border-indigo-900/60 overflow-hidden flex items-center justify-center bg-black/60 shadow-[0_0_8px_rgba(99,102,241,0.25)]">
             <div className="absolute inset-0 bg-gradient-to-tr from-purple-800 to-indigo-950 animate-spin duration-3000" />
             <span className="text-xs relative z-10">🌀</span>
@@ -232,7 +361,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         </div>
       </header>
 
-      {/* 2. STATE A: REVEAL INITIAL EXPECTANCY */}
+      {/* 2. STATE A: REVEAL INITIAL AURA */}
       {step === 'reveal' && (
         <div className="flex-grow flex flex-col justify-center items-center py-6 text-center relative z-10">
           <div className="w-56 h-56 flex items-center justify-center relative mb-8">
@@ -245,7 +374,11 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
               {config.introText}
             </p>
             <button
-              onClick={() => setStep('details')}
+              onClick={() => {
+                setStep('details');
+                // If team is full, automatically go to substituteMode to fit mockup Flow
+                if (isTeamFull) setSubstituteMode(true);
+              }}
               className="px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-lg transition-all border border-[#b59441] shadow-[0_0_15px_rgba(181,148,65,0.25)]"
             >
               Revelar Companheiro
@@ -254,15 +387,15 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
         </div>
       )}
 
-      {/* STATE B & C: CORE VIEWS */}
+      {/* STATE B & C: CORE PANEL COLUMNS */}
       {step === 'details' && (
-        <div className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch mb-5 min-h-0 relative z-10">
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch mb-4 min-h-0 relative z-10">
           
-          {/* COLUMN 1: EQUIPE ATUAL (6/6) or Rosters substitute */}
+          {/* COLUMN 1: EQUIPE ATUAL (6/6) */}
           <div className="bg-[#0b0b18]/65 border border-indigo-950/80 rounded-2xl p-4 flex flex-col justify-between">
             <div className="border-b border-indigo-950/50 pb-2 mb-3 flex justify-between items-center">
               <h3 className="text-[9.5px] font-black text-[#ffe082] uppercase tracking-widest leading-none">
-                {substituteMode ? "Substituir Companheiro" : "Equipe Atual"}
+                Equipe Atual
               </h3>
               <span className="text-[8px] bg-indigo-950 text-indigo-300 font-extrabold px-1.5 py-0.5 rounded border border-indigo-900 leading-none">
                 {teamMembers.length}/6
@@ -273,19 +406,17 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
             <div className="flex-1 grid grid-cols-2 gap-3.5 overflow-y-auto pr-1">
               {teamMembers.map((m: any) => {
                 const isSelected = selectedReplaceId === m.id;
-                const hasSub = substituteMode;
+                const meta = getCompanionMeta(m.name);
                 const face = getCharacterFace(m.name);
                 
                 return (
                   <div
                     key={m.id}
-                    onClick={() => hasSub && setSelectedReplaceId(m.id)}
-                    className={`rounded-xl p-2.5 flex flex-col justify-between text-left relative transition-all min-h-[92px] ${
-                      hasSub ? 'cursor-pointer hover:bg-indigo-955/20' : ''
-                    } ${
-                      isSelected && hasSub
-                        ? 'border border-[#b59441] bg-[#1c1810]/50 shadow-[0_0_12px_rgba(181,148,65,0.15)]'
-                        : 'border border-indigo-950/40 bg-black/30'
+                    onClick={() => { setSubstituteMode(true); setSelectedReplaceId(m.id); }}
+                    className={`rounded-xl p-2.5 flex flex-col justify-between text-left relative transition-all min-h-[95px] cursor-pointer ${
+                      isSelected
+                        ? 'border border-[#b59441] bg-[#1c1810]/50 shadow-[0_0_12px_rgba(181,148,65,0.25)]'
+                        : 'border border-indigo-950/40 bg-black/30 hover:bg-indigo-955/15'
                     }`}
                   >
                     <div className="flex justify-between items-center leading-none">
@@ -298,8 +429,8 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                     <div className="flex justify-between items-end mt-1">
                       <div>
                         <h5 className="font-extrabold text-[8.5px] text-white truncate max-w-[55px] leading-none">{m.name}</h5>
-                        <span className="text-[6.5px] text-gray-500 font-bold uppercase mt-1 block leading-none">
-                          {getRoleIcon(m.class || m.role)} {m.class || m.role}
+                        <span className="text-[6.5px] text-[#ffe082]/65 font-bold uppercase mt-1 block leading-none">
+                          {meta.bondLabel === 'VÍNCULO LENDÁRIO' ? '👑 ' : '❤ '}{m.class || m.role}
                         </span>
                       </div>
 
@@ -311,110 +442,106 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                         )}
                       </div>
                     </div>
+
+                    {/* Vínculo description inside selected card */}
+                    {isSelected && (
+                      <div className="absolute inset-x-0 bottom-0 bg-black/90 text-[5.5px] font-black text-center py-0.5 rounded-b-xl text-yellow-400 uppercase tracking-widest leading-none">
+                        {meta.bondLabel}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
             
-            {substituteMode && (
-              <p className="text-[7px] text-rose-350 italic mt-3 leading-snug">
-                * Escolha o companheiro que sairá da formação permanente para dar vaga a {character.name}.
-              </p>
-            )}
+            <p className="text-[7px] text-gray-500 italic mt-3 leading-none text-center">
+              Apenas 6 companheiros podem permanecer ativos.
+            </p>
           </div>
 
-          {/* COLUMN 2 & 3: CENTER RITUALISTIC PORTAL & CHARACTER ART WORK */}
-          <div className="lg:col-span-2 bg-[#0b0b18]/45 border border-indigo-950/50 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden">
-            {/* Purple portal glowing aura */}
-            <div className={`absolute w-72 h-72 rounded-full bg-gradient-to-tr ${config.portalGlow} filter blur-xl opacity-80 animate-pulse pointer-events-none`} />
-            
-            {/* Spinning arcane circle backdrop */}
-            <div className="absolute w-64 h-64 border border-indigo-500/5 rounded-full animate-spin duration-10000 pointer-events-none flex items-center justify-center">
-              <div className="w-48 h-48 border border-purple-500/5 rounded-full animate-reverse-spin" />
-            </div>
+          {/* COLUMN 2 & 3: CENTER DYNAMIC COMPARISON VIEW */}
+          <div className="lg:col-span-2 bg-[#0b0b18]/45 border border-indigo-950/50 rounded-2xl p-5 flex flex-col justify-between overflow-hidden relative">
+            {/* Background glowing portal elements */}
+            <div className={`absolute w-72 h-72 rounded-full bg-gradient-to-tr ${config.portalGlow} filter blur-xl opacity-50 pointer-events-none top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`} />
 
-            {/* Sub-mode details vs compare panels */}
-            {!substituteMode ? (
-              <div className="flex flex-col items-center flex-1 justify-between w-full">
-                {/* Character full artwork */}
-                <div className="flex-1 flex items-center justify-center relative min-h-[220px]">
-                  {getCharacterBust(character.name) ? (
-                    <img 
-                      src={getCharacterBust(character.name)!} 
-                      alt={character.name} 
-                      className="max-h-[240px] object-contain filter drop-shadow-[0_5px_15px_rgba(0,0,0,0.75)] hover:scale-105 transition-all duration-300 relative z-10"
-                    />
-                  ) : (
-                    <span className="text-8xl animate-pulse filter drop-shadow-[0_0_15px_rgba(168,85,247,0.4)] relative z-10">
-                      {getRoleIcon(character.role)}
-                    </span>
-                  )}
+            {compareTarget && compareMeta ? (
+              <div className="flex flex-col h-full justify-between relative z-10">
+                {/* VS Header Portraits */}
+                <div className="grid grid-cols-5 items-center border-b border-indigo-950/30 pb-3 mb-3">
+                  <div className="col-span-2 flex flex-col items-center">
+                    <div className="w-12 h-12 rounded-lg border border-indigo-950 overflow-hidden bg-slate-900 flex items-center justify-center relative shadow-md">
+                      {getCharacterFace(compareTarget.name) ? (
+                        <img src={getCharacterFace(compareTarget.name)!} alt={compareTarget.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl">{compareMeta.watermark}</span>
+                      )}
+                      <span className="absolute bottom-0 right-0 bg-slate-950/80 px-1 py-0.5 rounded text-[6.5px] font-black text-gray-300 leading-none">{compareTarget.rarity}</span>
+                    </div>
+                    <span className="text-[8px] font-bold text-gray-400 mt-1 leading-none">{compareTarget.name}</span>
+                  </div>
+
+                  <div className="col-span-1 text-center text-rose-500 font-black text-sm italic font-mono leading-none">VS</div>
+
+                  <div className="col-span-2 flex flex-col items-center">
+                    <div className="w-12 h-12 rounded-lg border border-[#b59441]/40 overflow-hidden bg-slate-900 flex items-center justify-center relative shadow-md">
+                      {getCharacterFace(character.name) ? (
+                        <img src={getCharacterFace(character.name)!} alt={character.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl">⚔️</span>
+                      )}
+                      <span className="absolute bottom-0 right-0 bg-slate-950/80 px-1 py-0.5 rounded text-[6.5px] font-black text-yellow-400 leading-none">{character.rarity}</span>
+                    </div>
+                    <span className="text-[8px] font-bold text-gray-400 mt-1 leading-none">{character.name}</span>
+                  </div>
                 </div>
 
-                {/* Speech dialog card */}
-                <div className="w-full bg-black/40 border border-indigo-950/60 rounded-xl p-3.5 text-center mt-2 relative z-10">
-                  <p className="text-[7px] text-[#ffe082] uppercase tracking-widest font-black leading-none mb-1.5">{character.name} deseja se juntar à sua equipe.</p>
-                  <p className="text-[8.5px] text-gray-300 font-medium italic leading-relaxed px-2">
-                    {config.characterSpeak}
-                  </p>
+                {/* Compare Stats Table */}
+                <div className="flex-1 overflow-y-auto space-y-2 text-[9.5px] pr-1">
+                  {[
+                    { label: 'Raridade', left: compareTarget.rarity, right: character.rarity, imp: character.rarity === 'B' && compareTarget.rarity === 'D' },
+                    { label: 'Nível', left: compareTarget.level, right: character.level, imp: compareTarget.level < character.level, dec: compareTarget.level > character.level },
+                    { label: 'Função', left: compareTarget.class || compareTarget.role, right: character.role },
+                    { label: 'Elemento', left: `${getElementIcon(compareTarget.element)} ${compareTarget.element}`, right: `${getElementIcon(character.element)} ${character.element}` },
+                    { label: 'ATQ', left: compareMeta.atq.toLocaleString(), right: thornMeta.atq.toLocaleString(), imp: thornMeta.atq > compareMeta.atq },
+                    { label: 'DEF', left: compareMeta.def.toLocaleString(), right: thornMeta.def.toLocaleString(), imp: thornMeta.def > compareMeta.def },
+                    { label: 'MAG', left: compareMeta.mag.toLocaleString(), right: thornMeta.mag.toLocaleString(), imp: thornMeta.mag > compareMeta.mag },
+                    { label: 'VEL', left: compareMeta.vel.toLocaleString(), right: thornMeta.vel.toLocaleString(), imp: thornMeta.vel > compareMeta.vel },
+                    { label: 'Passiva', left: compareMeta.passive, right: character.passive },
+                    { label: 'Habilidade', left: compareMeta.skill, right: character.skill, imp: true },
+                    { label: 'Histórico', left: compareMeta.historyText, right: `Novo recrutamento / 0 batalhas` }
+                  ].map((row, idx) => (
+                    <div key={idx} className="grid grid-cols-5 items-center py-1.5 border-b border-indigo-950/20 leading-none">
+                      <div className={`col-span-2 text-right font-bold ${row.dec ? 'text-emerald-400 flex items-center justify-end gap-1.5' : 'text-gray-300'}`}>
+                        <span>{row.left}</span>
+                        {row.dec && <span className="text-[7.5px] text-emerald-400 font-black">▲</span>}
+                      </div>
+                      <div className="col-span-1 text-center text-gray-500 text-[6.5px] font-black uppercase tracking-wider">{row.label}</div>
+                      <div className={`col-span-2 text-left font-bold ${row.imp ? 'text-emerald-400 flex items-center gap-1.5' : 'text-gray-300'}`}>
+                        <span>{row.right}</span>
+                        {row.imp && <span className="text-[7.5px] text-emerald-400 font-black">▲</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sub-modes bond tag text */}
+                <div className="grid grid-cols-2 gap-4 mt-3 border-t border-indigo-950/30 pt-3">
+                  <div className="text-right text-[8.5px] font-black text-yellow-500 flex justify-end items-center gap-1.5">
+                    <span>💛 {compareMeta.bondLabel}</span>
+                  </div>
+                  <div className="text-left text-[8.5px] font-black text-indigo-400 flex items-center gap-1.5">
+                    <span>✨ Potencial Maior</span>
+                  </div>
                 </div>
               </div>
             ) : (
-              // Substitute Comparison View
-              <div className="flex flex-col h-full w-full justify-between relative z-10">
-                {compareTarget ? (
-                  <div className="flex-1 flex flex-col justify-between">
-                    {/* VS Title banner */}
-                    <div className="grid grid-cols-3 items-center border-b border-indigo-950/30 pb-3.5 mb-3.5">
-                      <div className="text-right">
-                        <h4 className="font-extrabold text-xs text-white leading-none">{compareTarget.name}</h4>
-                        <span className="text-[7.5px] text-yellow-500 font-bold uppercase mt-1 block">Rank {compareTarget.rarity}</span>
-                      </div>
-                      <div className="text-center text-rose-500 font-black text-[10px] uppercase tracking-widest italic font-mono">VS</div>
-                      <div className="text-left">
-                        <h4 className="font-extrabold text-xs text-white leading-none">{character.name}</h4>
-                        <span className="text-[7.5px] text-indigo-400 font-bold uppercase mt-1 block">Rank {character.rarity}</span>
-                      </div>
-                    </div>
-
-                    {/* Compare Rows Grid */}
-                    <div className="flex-1 overflow-y-auto space-y-2 text-[9.5px] pr-1">
-                      {[
-                        { label: 'Nível', left: compareTarget.level, right: character.level, imp: character.level > compareTarget.level },
-                        { label: 'Elemento', left: compareTarget.element, right: character.element },
-                        { label: 'Função', left: compareTarget.class || compareTarget.role, right: character.role },
-                        { label: 'HP', left: compareTarget.stats?.hp || 100, right: character.stats.hp, imp: character.stats.hp > (compareTarget.stats?.hp || 100) },
-                        { label: 'MP', left: compareTarget.stats?.mp || 50, right: character.stats.mp, imp: character.stats.mp > (compareTarget.stats?.mp || 50) },
-                        { label: 'FORÇA', left: compareTarget.stats?.strength || 10, right: character.stats.strength, imp: character.stats.strength > (compareTarget.stats?.strength || 10) },
-                        { label: 'DEFESA', left: compareTarget.stats?.defense || 10, right: character.stats.defense, imp: character.stats.defense > (compareTarget.stats?.defense || 10) },
-                        { label: 'VELOCIDADE', left: compareTarget.stats?.speed || 10, right: character.stats.speed, imp: character.stats.speed > (compareTarget.stats?.speed || 10) }
-                      ].map((row, idx) => (
-                        <div key={idx} className="grid grid-cols-5 items-center py-1.5 border-b border-indigo-950/25">
-                          <div className="col-span-2 text-right text-gray-300 font-bold">{row.left}</div>
-                          <div className="col-span-1 text-center text-gray-500 text-[7px] font-black uppercase tracking-wider">{row.label}</div>
-                          <div className={`col-span-2 text-left font-bold ${row.imp ? 'text-emerald-400 font-black' : 'text-gray-300'}`}>
-                            {row.right}
-                            {row.imp && <span className="text-[7px] ml-1 text-emerald-400">▲</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Alert info box */}
-                    <div className="p-3 bg-yellow-955/15 border border-yellow-900/35 rounded-xl mt-3 text-[8px] text-yellow-300 font-medium leading-relaxed">
-                      💡 <strong>Substituição de Legado:</strong> Ao confirmar, {compareTarget.name} sairá definitivamente do roster e você receberá materiais correspondentes à sua evolução.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex flex-col justify-center items-center text-gray-500 text-xs italic text-center p-6 border border-dashed border-indigo-950 rounded-2xl">
-                    <span>Selecione um companheiro da lista esquerda para realizar o comparativo</span>
-                  </div>
-                )}
+              <div className="flex-grow flex flex-col justify-center items-center text-gray-500 text-xs italic text-center p-6 border border-dashed border-indigo-950 rounded-2xl">
+                <span>Selecione um companheiro da equipe na lista lateral para comparar</span>
               </div>
             )}
           </div>
 
-          {/* COLUMN 4: CHARACTER SHEET DETAILS PANEL */}
+          {/* COLUMN 4: NEW COMPANHEIRO PREVIEW (THORN) */}
           <div className="bg-[#121226]/50 border border-indigo-950/60 rounded-2xl p-5 flex flex-col justify-between shrink-0">
             <div>
               {/* Sheet header */}
@@ -484,17 +611,31 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
       )}
 
       {/* 3. BOTTOM WARNING BANNERS */}
-      {step === 'details' && isTeamFull && (
-        <div className="mb-4 relative z-10">
+      {step === 'details' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 relative z-10">
           <div className="bg-rose-955/25 border border-rose-900/50 rounded-xl p-3.5 flex items-center gap-3 text-left">
             <span className="text-rose-400 text-lg">⚠️</span>
             <div>
-              <p className="text-[9px] text-rose-350 font-black uppercase leading-none mb-1">Equipe cheia: 6/6</p>
               <p className="text-[8.5px] text-rose-400/90 leading-snug">
-                Para aceitar {character.name}, será necessário desencantar um companheiro atual. Companheiros desencantados serão enviados ao Livro de Memórias.
+                O personagem desencantado será enviado ao Livro de Memórias e não poderá mais lutar.
               </p>
             </div>
           </div>
+
+          {compareTarget && compareMeta ? (
+            <div className="bg-indigo-955/25 border border-indigo-900/50 rounded-xl p-3.5 flex items-center gap-3 text-left">
+              <span className="text-indigo-400 text-lg">📖</span>
+              <div>
+                <p className="text-[8.5px] text-indigo-300 font-medium leading-snug">
+                  {compareTarget.name} acompanha sua jornada desde o início. Se for desencantado, seu legado será preservado no Livro de Memórias.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-[#121226]/50 border border-indigo-950 rounded-xl p-3.5 flex items-center gap-3 text-left text-gray-500 italic text-[8.5px]">
+              Selecione um companheiro para visualizar seu legado.
+            </div>
+          )}
         </div>
       )}
 
@@ -508,75 +649,50 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
             >
               Cancelar
             </button>
-          ) : substituteMode ? (
+          ) : (
             <>
               <button
-                onClick={() => setSubstituteMode(false)}
-                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-gray-400 transition-all hover:scale-103"
+                onClick={onDecline}
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#101c38]/40 border border-indigo-850 text-indigo-300 hover:bg-[#1a2c56]/60 transition-all hover:scale-103"
               >
-                Voltar aos Detalhes
+                🛡️ Manter Equipe Atual
               </button>
+              
               <button
                 onClick={handleConfirmReplace}
                 disabled={!selectedReplaceId}
                 className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-md disabled:opacity-40 transition-all hover:scale-103"
               >
-                🔄 Substituir Companheiro
+                🐾 Substituir {compareTarget ? compareTarget.name : "Companheiro"}
               </button>
-            </>
-          ) : (
-            <>
-              {isTeamFull ? (
-                <>
-                  <button
-                    onClick={() => setSubstituteMode(true)}
-                    className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-md transition-all hover:scale-103"
-                  >
-                    🔄 Substituir Companheiro
-                  </button>
-                  <button
-                    onClick={onConvert}
-                    className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-955/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300 transition-all hover:scale-103"
-                  >
-                    🔮 Converter em Orbes
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={onAccept}
-                    className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[#b59441] hover:bg-[#cbb062] active:scale-95 text-black shadow-md transition-all hover:scale-103"
-                  >
-                    🤝 Adicionar à Equipe
-                  </button>
-                  <button
-                    onClick={onConvert}
-                    className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-955/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300 transition-all hover:scale-103"
-                  >
-                    🔮 Converter em Orbes
-                  </button>
-                </>
-              )}
+
+              <button
+                onClick={() => alert("Exibindo Livro de Memórias...")}
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-955/40 hover:bg-indigo-900 border border-indigo-850 text-indigo-300 transition-all hover:scale-103 animate-pulse"
+              >
+                📖 Ver Detalhes
+              </button>
+
               <button
                 onClick={onDecline}
                 className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-black/35 hover:bg-black/80 border border-gray-800 text-rose-400 border-rose-955/20 transition-all hover:scale-103"
               >
-                Cancelar
+                ❌ Cancelar
               </button>
             </>
           )}
         </div>
       </footer>
 
-      {/* Footer shortcut guides */}
+      {/* Footer shortcuts guidelines */}
       <div className="w-full text-center text-[7.5px] text-gray-600 font-bold uppercase tracking-widest pt-2.5 mt-2.5 border-t border-indigo-950/30 shrink-0 relative z-10">
         Enter: Confirmar | Tab: Inspecionar | Esc: Cancelar
       </div>
 
       {/* EMOTIONAL CONFIRMATION MODAL */}
-      {showConfirmModal && compareTarget && (
+      {showConfirmModal && compareTarget && compareMeta && (
         <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-6 z-50 animate-fadeIn">
-          <div className="bg-[#121226] border-2 border-[#b59441] rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col justify-between relative overflow-hidden text-gray-200">
+          <div className="bg-[#121226] border-2 border-[#b59441] rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col justify-between relative overflow-hidden text-gray-200 animate-scaleIn">
             
             <div className="absolute -top-12 -left-12 w-32 h-32 bg-rose-500/10 rounded-full filter blur-xl" />
             <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-purple-500/10 rounded-full filter blur-xl" />
@@ -600,7 +716,7 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                 <div className="p-3 bg-rose-955/25 border border-rose-900/50 rounded-xl text-[9px] text-rose-300 font-bold leading-normal flex items-start gap-2 shadow-inner">
                   <span>⚠️</span>
                   <p>
-                    Atenção: <strong>{compareTarget.name}</strong> possui <strong>Vínculo Lendário/Alto</strong>. Este companheiro marcou sua jornada. Deseja mesmo desencantá-lo?
+                    Atenção: <strong>{compareTarget.name}</strong> possui <strong>{compareMeta.bondLabel}</strong>. Este companheiro marcou sua jornada. Deseja mesmo desencantá-lo?
                   </p>
                 </div>
               )}
@@ -609,8 +725,9 @@ export const RecruitmentRevealScreen: React.FC<RecruitmentRevealScreenProps> = (
                 <span className="font-extrabold text-[8px] text-indigo-400 uppercase tracking-widest block mb-1">REGISTRO DE MEMÓRIA</span>
                 <div className="grid grid-cols-2 gap-2 text-[9px]">
                   <p>Nível Final: <strong className="text-white">{compareTarget.level}</strong></p>
-                  <p>Tempo na Equipe: <strong className="text-white">{compareTarget.id === 'char-lobo' ? 'Início da Jornada' : 'Campanha 1'}</strong></p>
-                  <p>Batalhas: <strong className="text-white">{compareTarget.id === 'char-lobo' ? 418 : 120}</strong></p>
+                  <p>Tempo na Equipe: <strong className="text-white">{compareMeta.sinceText}</strong></p>
+                  <p>Batalhas: <strong className="text-white">{compareMeta.battles}</strong></p>
+                  <p>Feitos marcantes: <strong className="text-white">"{compareMeta.phrase}"</strong></p>
                   <p>Substituído por: <strong className="text-white">Thorn</strong></p>
                 </div>
               </div>
