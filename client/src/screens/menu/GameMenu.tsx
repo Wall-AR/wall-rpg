@@ -99,7 +99,15 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onClose }) => {
       case 'quests':
         return <QuestsTab />;
       case 'map':
-        return <MapTab />;
+        return (
+          <MapTab
+            dimCrystals={menu.dimCrystals}
+            setDimCrystals={menu.setDimCrystals}
+            locationName={menu.locationName}
+            setLocationName={menu.setLocationName}
+            onClose={onClose}
+          />
+        );
       case 'memories':
         return <MemoryBookTab />;
       case 'settings':

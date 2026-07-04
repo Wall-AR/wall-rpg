@@ -550,8 +550,8 @@ export function useMenuData(onClose: () => void) {
     selectedMemberId, setSelectedMemberId,
     handleSwapMember,
     // Resources & Stats
-    gold, soulOrbs, dimCrystals, meritPoints,
-    playTime, gameDate, locationName,
+    gold, soulOrbs, dimCrystals, setDimCrystals, meritPoints,
+    playTime, gameDate, locationName, setLocationName,
     // Handlers
     handleConfirmStats,
     handleFuseItem,
