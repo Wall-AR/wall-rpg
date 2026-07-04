@@ -1,12 +1,21 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Initialize dotenv first
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
+
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { Server } from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { monitor } from '@colyseus/monitor';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 import { GameRoom } from './rooms/GameRoom.js';
 import { BattleRoom } from './rooms/BattleRoom.js';
@@ -14,13 +23,6 @@ import authRouter from './routes/auth.js';
 import characterRouter from './routes/character.js';
 import friendsRouter from './routes/friends.js';
 import inventoryRouter from './routes/inventory.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config();
 
 const port = Number(process.env.PORT || 3001);
 const app = express();
