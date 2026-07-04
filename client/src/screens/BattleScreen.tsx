@@ -90,6 +90,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   const [qteScale, setQteScale] = useState(3.0);
   const [qteResult, setQteResult] = useState<'idle' | 'perfect' | 'fail' | 'miss'>('idle');
   const qteTimerRef = useRef<number | null>(null);
+  const perfectCombosRef = useRef<number>(0);
 
   // Character positions on isometric arena
   const [positions, setPositions] = useState<Record<string, 'front' | 'mid' | 'back'>>({
@@ -219,6 +220,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
       } else {
         sounds.playFailure();
       }
+
+      if (room) {
+        room.send("report_performance", { perfectCombos: perfectCombosRef.current });
+      }
     }
   }, [battleState?.status, battleState?.winnerSessionId, room?.sessionId]);
 
@@ -263,6 +268,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     setQteResult(result);
 
     if (result === 'perfect') {
+      perfectCombosRef.current += 1;
       sounds.playPerfect();
     } else {
       sounds.playFailure();

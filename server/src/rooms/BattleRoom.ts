@@ -45,6 +45,7 @@ const getElementModifier = (attackerEl: string, defenderEl: string): number => {
 export class BattleRoom extends Room<{ state: BattleState }> {
   override maxClients = 2;
   private sessionAccounts = new Map<string, string>();
+  private playerPerfectCombos = new Map<string, number>();
   private planningTimeout: any = null;
 
   override async onAuth(client: Client, options: any, request?: any) {
@@ -62,6 +63,11 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
   override onCreate(options: any) {
     this.setState(new BattleState());
+
+    this.onMessage("report_performance", (client, data: { perfectCombos: number }) => {
+      this.playerPerfectCombos.set(client.sessionId, data.perfectCombos || 0);
+      console.log(`[BattleRoom] Player ${client.sessionId} reported ${data.perfectCombos} perfect combos.`);
+    });
 
     // Action planning handler for all 3 team combatants
     this.onMessage("plan_actions", (client, data: { actions: Record<string, { action: string; spellId?: string; targetId?: string }> }) => {
@@ -597,12 +603,39 @@ export class BattleRoom extends Room<{ state: BattleState }> {
           if (!accountId) continue;
 
           const isWinner = this.state.winnerSessionId === sessionId;
-          const xpGained = isWinner ? 250 : 50;
+          let xpGained = isWinner ? 250 : 50;
 
           // Encontra ID do personagem do jogador
           const playerState = this.state.players.get(sessionId);
           if (playerState && playerState.characterId) {
             try {
+              // Calcular combos perfeitos e bônus
+              const perfectCombos = this.playerPerfectCombos.get(sessionId) || 0;
+              if (perfectCombos > 0) {
+                const bonusXp = perfectCombos * 50;
+                const bonusOrbs = perfectCombos * 5;
+                xpGained += bonusXp;
+
+                // Concede Soul Orbs extras no banco de dados
+                await db.update(accounts)
+                  .set({ soulOrbs: sql`${accounts.soulOrbs} + ${bonusOrbs}` })
+                  .where(eq(accounts.id, accountId));
+
+                this.state.logs.push(`✨ [Combo Perfeito]: ${playerState.username} realizou ${perfectCombos} combos perfeito(s) e obteve +${bonusXp} EXP e +${bonusOrbs} Orbes de Alma!`);
+
+                // Drop extra de loot do Baú da Taverna (Cristal)
+                try {
+                  await db.insert(inventory).values({
+                    accountId,
+                    itemId: "stone",
+                    slot: -1,
+                    quantity: 1,
+                    metadata: { type: "loot", name: "Cristal Rúnico (Baú da Taverna)" }
+                  });
+                  this.state.logs.push(`🔓 [Baú da Taverna]: ${playerState.username} destravou o baú da taverna e ganhou 1x Cristal Rúnico!`);
+                } catch (_) {}
+              }
+
               const charData = await db.select().from(characters).where(eq(characters.id, playerState.characterId)).limit(1);
               if (charData && charData.length > 0) {
                 const char = charData[0];
