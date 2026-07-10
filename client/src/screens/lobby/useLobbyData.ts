@@ -36,6 +36,8 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
   const [onlineCount, setOnlineCount] = useState(1);
   const [retiredList, setRetiredList] = useState<any[]>([]);
   const [isDismissing, setIsDismissing] = useState(false);
+  const [companionsList, setCompanionsList] = useState<any[]>([]);
+  const [isSwappingCompanion, setIsSwappingCompanion] = useState(false);
 
   // Social & Multiplayer
   const [friendsList, setFriendsList] = useState<any[]>([]);
@@ -138,12 +140,27 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     }
   };
 
+  const fetchCompanions = async () => {
+    try {
+      const res = await fetch('/companions', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCompanionsList(data);
+      }
+    } catch (err) {
+      console.error("Error fetching companions:", err);
+    }
+  };
+
   // ─── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (token) {
       fetchCharacter();
       fetchFriends();
       fetchInventory();
+      fetchCompanions();
     }
   }, [token]);
 
@@ -447,6 +464,61 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     }
   };
 
+  const handleSwapCompanionActive = async (companionId: string, isActive: boolean) => {
+    setIsSwappingCompanion(true);
+    try {
+      const res = await fetch('/companions/swap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ companionId, isActive })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchCompanions();
+      } else {
+        alert(data.error || "Erro ao alterar time.");
+      }
+    } catch (err) {
+      alert("Erro ao conectar.");
+    } finally {
+      setIsSwappingCompanion(false);
+    }
+  };
+
+  const handleDisenchantCompanion = async (companionId: string) => {
+    const targetComp = companionsList.find(c => c.id === companionId);
+    if (!targetComp) return;
+    
+    const confirm = window.confirm(
+      `Tem certeza que deseja aposentar ${targetComp.name}? Esta ação é irreversível. Ele entrará para o Livro de Memórias e você receberá Orbes de Alma.`
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch('/companions/disenchant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ companionId })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`${data.message}\nVocê recebeu +${data.soulOrbsAwarded} Orbes de Alma!`);
+        fetchCompanions();
+        fetchCharacter();
+      } else {
+        alert(data.error || "Erro ao aposentar companheiro.");
+      }
+    } catch (err) {
+      alert("Erro ao conectar.");
+    }
+  };
+
   // GM Handlers
   const handleGmNarrateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -489,6 +561,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     character, loading, error,
     onlineCount, retiredList,
     isDismissing,
+    companionsList, isSwappingCompanion,
     // Social
     friendsList, inventoryList,
     chatMessages, chatInput, setChatInput,
@@ -522,6 +595,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     handleAcceptParty, handleInviteParty, handleLeaveParty,
     handleFuseItems, handleEvolveRarityAction,
     handleDismissCharacter,
+    handleSwapCompanionActive, handleDisenchantCompanion, fetchCompanions,
     handleGmNarrateSubmit, handleGmSpawnSubmit, handleGmQuestSubmit,
     // Fetch (for external refresh)
     fetchInventory, fetchCharacter, fetchFriends,

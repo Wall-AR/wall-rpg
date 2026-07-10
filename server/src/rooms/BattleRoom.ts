@@ -2,7 +2,7 @@ import { Room, Client } from 'colyseus';
 import jwt from 'jsonwebtoken';
 import { BattleState, BattlePlayerState, BattleCombatantState } from '../schemas/BattleState.js';
 import { db } from '../db/index.js';
-import { characters, inventory, itemsBase, battleHistory, accounts, retiredCharacters } from '../db/schema.js';
+import { characters, inventory, itemsBase, battleHistory, accounts, retiredCharacters, companions } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { JWT_SECRET } from '../middleware/auth.js';
 import {
@@ -135,7 +135,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     });
 
     // Confrontation Prep Selection: Choose 3 of 6 combatants + runes
-    this.onMessage("choose_lineup", (client, data: { lineup: string[]; positions: Record<string, string>; runeId: string }) => {
+    this.onMessage("choose_lineup", async (client, data: { lineup: string[]; positions: Record<string, string>; runeId: string }) => {
       if (this.state.status !== "confrontation_prep") {
         client.send("error", "Não está na fase de Preparação de Confronto.");
         return;
@@ -144,25 +144,50 @@ export class BattleRoom extends Room<{ state: BattleState }> {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
 
+      const accountId = this.sessionAccounts.get(client.sessionId);
+      let dbCompanions: any[] = [];
+      if (db && accountId) {
+        try {
+          dbCompanions = await db.select().from(companions).where(eq(companions.accountId, accountId));
+        } catch (_) {}
+      }
+
       // Popula combatentes ativos do time de 3 selecionados
       const chosenLineup = data.lineup || [];
       chosenLineup.forEach(charId => {
         const combatant = new BattleCombatantState();
         combatant.id = charId;
         
-        // Carrega do dicionário CHARACTER_DATABASE ou cria mock padrão
-        const dbStats = CHARACTER_DATABASE[charId] || CHARACTER_DATABASE['char-caelum'];
-        combatant.name = dbStats.name;
-        combatant.class = dbStats.class;
-        combatant.level = dbStats.level;
-        combatant.hp = dbStats.hp;
-        combatant.maxHp = dbStats.hp;
-        combatant.mp = dbStats.mp;
-        combatant.maxMp = dbStats.mp;
-        combatant.speed = dbStats.speed;
-        combatant.strength = dbStats.strength;
-        combatant.intelligence = dbStats.intelligence;
-        combatant.element = dbStats.element;
+        // Tenta carregar do DB real
+        const dbCompanion = dbCompanions.find(c => c.id === charId);
+        
+        if (dbCompanion) {
+          combatant.name = dbCompanion.name;
+          combatant.class = dbCompanion.class;
+          combatant.level = dbCompanion.level;
+          combatant.hp = dbCompanion.stats.hp;
+          combatant.maxHp = dbCompanion.stats.maxHp || dbCompanion.stats.hp;
+          combatant.mp = dbCompanion.stats.mp;
+          combatant.maxMp = dbCompanion.stats.maxMp || dbCompanion.stats.mp;
+          combatant.speed = dbCompanion.stats.speed;
+          combatant.strength = dbCompanion.stats.strength;
+          combatant.intelligence = dbCompanion.stats.intelligence !== undefined ? dbCompanion.stats.intelligence : dbCompanion.stats.defense;
+          combatant.element = dbCompanion.element;
+        } else {
+          // Carrega do dicionário CHARACTER_DATABASE ou cria mock padrão
+          const dbStats = CHARACTER_DATABASE[charId] || CHARACTER_DATABASE['char-caelum'];
+          combatant.name = dbStats.name;
+          combatant.class = dbStats.class;
+          combatant.level = dbStats.level;
+          combatant.hp = dbStats.hp;
+          combatant.maxHp = dbStats.hp;
+          combatant.mp = dbStats.mp;
+          combatant.maxMp = dbStats.mp;
+          combatant.speed = dbStats.speed;
+          combatant.strength = dbStats.strength;
+          combatant.intelligence = dbStats.intelligence;
+          combatant.element = dbStats.element;
+        }
         combatant.position = data.positions[charId] || "mid";
         combatant.hasSelectedAction = false;
         
