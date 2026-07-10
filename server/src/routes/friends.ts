@@ -103,6 +103,7 @@ router.post('/request', authenticateToken, async (req, res) => {
         userId1: id1,
         userId2: id2,
         status: 'pending',
+        senderId: myId,
       });
 
       return res.json({ success: true, message: `Pedido de amizade enviado para ${targetUsername}.` });
@@ -136,6 +137,11 @@ router.post('/accept', authenticateToken, async (req, res) => {
 
       if (!rel) {
         return res.status(404).json({ error: 'Friend request not found' });
+      }
+
+      // Check that the request is pending and the current user is NOT the sender
+      if (rel.status !== 'pending' || rel.senderId === myId) {
+        return res.status(400).json({ error: 'You cannot accept your own request or request is already accepted' });
       }
 
       await db

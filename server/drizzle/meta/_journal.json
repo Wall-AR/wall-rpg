@@ -15,6 +15,13 @@
       "when": 1783161283731,
       "tag": "0001_aberrant_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783724055641,
+      "tag": "0002_superb_king_cobra",
+      "breakpoints": true
     }
   ]
 }

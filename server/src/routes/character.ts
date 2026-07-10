@@ -3,6 +3,15 @@ import { eq, and } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { characters, accounts, retiredCharacters } from '../db/schema.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import {
+  BASE_STRENGTH,
+  BASE_DEFENSE,
+  BASE_SPEED,
+  STAT_POINTS_PER_LEVEL,
+  GROWTH_STRENGTH,
+  GROWTH_DEFENSE,
+  GROWTH_SPEED
+} from '../constants/growth.js';
 
 const router = Router();
 
@@ -281,12 +290,6 @@ router.get('/retired', authenticateToken, async (req, res) => {
   }
 });
 
-// Base stats for a new character (used to calculate already-spent points)
-const BASE_STRENGTH = 15;
-const BASE_DEFENSE = 10;
-const BASE_SPEED = 8;
-const STAT_POINTS_PER_LEVEL = 3;
-
 // GET /character/available-points - returns how many stat points the player can still allocate
 router.get('/available-points', authenticateToken, async (req, res) => {
   const { id: accountId } = (req as AuthenticatedRequest).user;
@@ -304,9 +307,9 @@ router.get('/available-points', authenticateToken, async (req, res) => {
       }
 
       const stats = character.stats as { strength: number; defense: number; speed: number };
-      const dynamicBaseStrength = BASE_STRENGTH + 8 * (character.level - 1);
-      const dynamicBaseDefense = BASE_DEFENSE + 6 * (character.level - 1);
-      const dynamicBaseSpeed = BASE_SPEED + 3 * (character.level - 1);
+      const dynamicBaseStrength = BASE_STRENGTH + GROWTH_STRENGTH * (character.level - 1);
+      const dynamicBaseDefense = BASE_DEFENSE + GROWTH_DEFENSE * (character.level - 1);
+      const dynamicBaseSpeed = BASE_SPEED + GROWTH_SPEED * (character.level - 1);
       const alreadySpent =
         (stats.strength - dynamicBaseStrength) +
         (stats.defense - dynamicBaseDefense) +

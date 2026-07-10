@@ -1,4 +1,4 @@
-import { pgTable, text, integer, jsonb, timestamp, primaryKey, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, jsonb, timestamp, primaryKey, uuid, boolean } from 'drizzle-orm/pg-core';
 
 export const accounts = pgTable('accounts', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -72,6 +72,8 @@ export const friendships = pgTable('friendships', {
     .notNull()
     .references(() => accounts.id, { onDelete: 'cascade' }),
   status: text('status').notNull(), // e.g., 'pending', 'accepted', 'blocked'
+  senderId: uuid('sender_id')
+    .references(() => accounts.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   primaryKey({ columns: [table.userId1, table.userId2] })
@@ -103,4 +105,33 @@ export const questProgress = pgTable('quest_progress', {
   status: text('status').notNull(), // e.g., 'active', 'completed', 'failed'
   progress: jsonb('progress').$type<Record<string, any>>().default({}).notNull(),
   timeStarted: timestamp('time_started').defaultNow().notNull(),
+});
+
+export const companions = pgTable('companions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  accountId: uuid('account_id')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  class: text('class').notNull(), // 'tank' | 'mage' | 'assassin' | 'cleric' | 'companion' | 'lancer'
+  level: integer('level').default(1).notNull(),
+  xp: integer('xp').default(0).notNull(),
+  element: text('element').default('none').notNull(),
+  rarity: text('rarity').default('C').notNull(), // 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'S+'
+  stats: jsonb('stats').$type<{
+    hp: number;
+    maxHp: number;
+    mp: number;
+    maxMp: number;
+    strength: number;
+    defense: number;
+    speed: number;
+    intelligence: number;
+  }>().notNull(),
+  skills: jsonb('skills').$type<any[]>().default([]).notNull(),
+  passives: jsonb('passives').$type<any[]>().default([]).notNull(),
+  isActive: boolean('is_active').default(false).notNull(),
+  battlesFought: integer('battles_fought').default(0).notNull(),
+  recruitedAt: timestamp('recruited_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });

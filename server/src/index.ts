@@ -23,6 +23,7 @@ import authRouter from './routes/auth.js';
 import characterRouter from './routes/character.js';
 import friendsRouter from './routes/friends.js';
 import inventoryRouter from './routes/inventory.js';
+import companionsRouter from './routes/companions.js';
 
 const port = Number(process.env.PORT || 3001);
 const app = express();
@@ -36,6 +37,7 @@ app.use('/auth', authRouter);
 app.use('/character', characterRouter);
 app.use('/friends', friendsRouter);
 app.use('/inventory', inventoryRouter);
+app.use('/companions', companionsRouter);
 
 // Maintain /health route
 app.get('/health', (_req, res) => {

@@ -5,6 +5,13 @@ import { db } from '../db/index.js';
 import { characters, inventory, itemsBase, battleHistory, accounts, retiredCharacters } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { JWT_SECRET } from '../middleware/auth.js';
+import {
+  GROWTH_HP,
+  GROWTH_MP,
+  GROWTH_STRENGTH,
+  GROWTH_DEFENSE,
+  GROWTH_SPEED
+} from '../constants/growth.js';
 
 const CHARACTER_DATABASE: Record<string, { name: string; class: string; level: number; hp: number; mp: number; speed: number; strength: number; intelligence: number; element: string }> = {
   'char-caelum': { name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, mp: 210, speed: 95, strength: 120, intelligence: 80, element: 'agua' },
@@ -740,11 +747,11 @@ export class BattleRoom extends Room<{ state: BattleState }> {
                 while (newXp >= newLevel * 150) {
                   newXp -= newLevel * 150;
                   newLevel += 1;
-                  newStats.hp += 120;
-                  newStats.mp += 15;
-                  newStats.strength += 8;
-                  newStats.defense += 6;
-                  newStats.speed += 3;
+                  newStats.hp += GROWTH_HP;
+                  newStats.mp += GROWTH_MP;
+                  newStats.strength += GROWTH_STRENGTH;
+                  newStats.defense += GROWTH_DEFENSE;
+                  newStats.speed += GROWTH_SPEED;
                   levelUpOccurred = true;
                 }
 

@@ -385,56 +385,8 @@ export class GameRoom extends Room<{ state: MapState }> {
     });
 
     // Handle client monster collision and battle room matchmaking triggers
-    this.onMessage("triggerBattle", async (client, data: { monsterId: string }) => {
-      const player = this.state.players.get(client.sessionId);
-      if (!player) return;
-
-      // Cooldown: evitar triggers duplicados (1 por sessão a cada 3s)
-      const now = Date.now();
-      const lastTrigger = (player as any).__lastBattleTrigger || 0;
-      if (now - lastTrigger < 3000) return;
-      (player as any).__lastBattleTrigger = now;
-
-      const monster = this.state.monsters.get(data.monsterId);
-      if (monster && monster.active) {
-        monster.active = false; // Deactivate monster on map state
-
-        // Contexto do encontro para transição no client
-        const encounterData = {
-          roomId: '',  // preenchido abaixo
-          type: 'wild' as const,
-          enemyName: monster.name,
-          enemyElement: getMonsterElement(monster.type),
-        };
-
-        try {
-          const battleRoom = await matchMaker.createRoom("battle", {});
-          encounterData.roomId = battleRoom.roomId;
-          
-          // If in a party, pull everyone into the same battle room!
-          if (player.partyId) {
-            const members: string[] = [];
-            this.state.players.forEach((p: any, sid: string) => {
-              if (p.partyId === player.partyId) {
-                members.push(sid);
-              }
-            });
-
-            members.forEach(sid => {
-              const memberClient = this.clients.find(c => c.sessionId === sid);
-              if (memberClient) {
-                memberClient.send("startBattle", encounterData);
-              }
-            });
-          } else {
-            client.send("startBattle", encounterData);
-          }
-        } catch (err) {
-          console.error("Failed to create battle room for encounter:", err);
-          // Reativar monstro se falhou
-          monster.active = true;
-        }
-      }
+    this.onMessage("triggerBattle", (client, data: { monsterId: string }) => {
+      this.triggerBattleForPlayer(client.sessionId, data.monsterId);
     });
 
     // Start roaming interval for active monsters
@@ -552,8 +504,8 @@ export class GameRoom extends Room<{ state: MapState }> {
     const player = new PlayerState();
     player.username = auth.username || "Guest";
     player.characterId = auth.characterId || "";
-    player.x = options.x || 0;
-    player.y = options.y || 0;
+    player.x = (options && options.x !== undefined) ? options.x : 160;
+    player.y = (options && options.y !== undefined) ? options.y : 384;
     player.status = "idle";
 
     this.state.players.set(client.sessionId, player);
