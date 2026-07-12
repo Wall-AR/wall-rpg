@@ -32,7 +32,7 @@ Um **RPG multiplayer online** com sistema de batalha por turnos (inspirado em Fi
 | **Frontend** | React 18 + TypeScript + Vite | SPA com PixiJS para o canvas isométrico |
 | **Backend** | Node.js + Express + Colyseus | Colyseus gerencia salas multiplayer em tempo real |
 | **Banco de Dados** | PostgreSQL + Drizzle ORM | O servidor degrada graciosamente para modo in-memory quando o DB está offline |
-| **Canvas/Gráficos** | PixiJS 7 | Renderização isométrica tile-based para o overworld |
+| **Canvas/Gráficos** | PixiJS 8 (`pixi.js` 8.19 + `@pixi/react` 8) | Renderização isométrica tile-based para o overworld |
 | **Animações** | GSAP | Animações de batalha, transições e efeitos visuais |
 | **Auth** | JWT (jsonwebtoken) | Token-based, sem sessões server-side |
 | **Build** | TypeScript ESM | Server usa `"type": "module"` — imports precisam de extensão `.js` |
@@ -222,7 +222,11 @@ Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
 ## ⏳ 5. O que falta Implementar
 
 ### Fase 2: Sistemas Core
+- [ ] Remover credencial GM padrão (`gm-master-key`) e exigir `GM_SECRET` seguro em produção
+- [ ] Corrigir proxy local de `/companions` no Vite (a rota hoje retorna o HTML da SPA em desenvolvimento)
+- [ ] Migrar listeners de presença para `Callbacks.get(room)` do Colyseus 0.17
 - [ ] Refatorar `GameCanvas.tsx` (58KB para módulos)
+- [ ] Separar HUD/missão mockados do estado real (`Lv. 128`, poder da equipe e quest padrão ainda são visuais estáticos)
 - [ ] Conectar `PREP_ROSTER` do client ao endpoint `/companions`
 - [ ] Implementar posição no combate (frente/meio/trás) com efeito real
 - [ ] Expandir catálogo de magias (8 spells com custos e efeitos)
@@ -239,6 +243,9 @@ Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
 - [ ] Implementar chat in-game no overworld
 
 ### Fase 4: Polish e Conteúdo
+- [ ] Criar testes automatizados mínimos para auth, rotas core e ciclo de batalha
+- [ ] Adicionar smoke test de navegador para cadastro → lobby → mundo
+- [ ] Implementar code splitting no client (bundle principal atual: ~887KB minificado / ~262KB gzip)
 - [ ] Seed de `items_base` com catálogo completo
 - [ ] Dragoon Level system (transformação temporária)
 - [ ] Balanceamento de combate
@@ -259,6 +266,11 @@ Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
 3. **TailwindCSS no client:** Classes utilitárias aplicadas diretamente nos componentes.
 4. **CHARACTER_DATABASE ainda existe:** Array estático no `BattleRoom.ts` como fallback. Manter até DB estar garantido.
 5. **Colyseus rooms:** `GameRoom` é persistente. `BattleRoom` é criada por demanda.
+6. **Proxy de desenvolvimento incompleto:** `client/vite.config.ts` ainda não encaminha `/companions` para a porta 3001.
+7. **Callbacks Colyseus 0.17:** O lobby ainda usa o padrão legado `state.players.onAdd/onRemove`; migrar para `Callbacks.get(room)`.
+8. **Mocks visuais no overworld:** O HUD de `GameCanvas.tsx` ainda mostra nível, poder da equipe e quest padrão estáticos, diferentes do personagem real carregado no lobby.
+9. **Cobertura de testes:** A CI executa typecheck e build, mas o repositório ainda não possui testes automatizados.
+10. **Credencial GM de desenvolvimento:** `GameRoom.ts` aceita `gm-master-key` quando `GM_SECRET` não está definido. O fallback precisa ser bloqueado em produção antes de qualquer implantação pública.
 
 ---
 
