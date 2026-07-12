@@ -14,6 +14,18 @@ const __dirname = path.dirname(__filename);
 
 const GM_SECRET = process.env.GM_SECRET || 'gm-master-key';
 
+type CustomLobbyMode = 'world' | 'training' | 'duel';
+interface CustomLobbyMember { sessionId: string; username: string }
+interface CustomLobby {
+  id: string;
+  name: string;
+  hostSessionId: string;
+  hostUsername: string;
+  mode: CustomLobbyMode;
+  maxPlayers: number;
+  members: CustomLobbyMember[];
+}
+
 // Map dimensions (matching client map.ts)
 const MAP_WIDTH = 32;
 const MAP_HEIGHT = 24;
@@ -57,6 +69,25 @@ const getMonsterElement = (type: string): string => {
 
 export class GameRoom extends Room<{ state: MapState }> {
   private gmSessions = new Set<string>();
+  private customLobbies = new Map<string, CustomLobby>();
+
+  private publishCustomLobbies() {
+    this.broadcast('customLobbies', Array.from(this.customLobbies.values()));
+  }
+
+  private removeFromCustomLobbies(sessionId: string) {
+    for (const [roomId, lobby] of this.customLobbies) {
+      const wasMember = lobby.members.some(member => member.sessionId === sessionId);
+      if (!wasMember) continue;
+      lobby.members = lobby.members.filter(member => member.sessionId !== sessionId);
+      if (lobby.members.length === 0) {
+        this.customLobbies.delete(roomId);
+      } else if (lobby.hostSessionId === sessionId) {
+        lobby.hostSessionId = lobby.members[0].sessionId;
+        lobby.hostUsername = lobby.members[0].username;
+      }
+    }
+  }
 
   private loadStaticGrid() {
     this.state.width = MAP_WIDTH;
@@ -476,6 +507,90 @@ export class GameRoom extends Room<{ state: MapState }> {
       }
     });
 
+    this.onMessage('createCustomLobby', (client, data: { name?: string; mode?: CustomLobbyMode; maxPlayers?: number }) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      this.removeFromCustomLobbies(client.sessionId);
+      const allowedModes: CustomLobbyMode[] = ['world', 'training', 'duel'];
+      const mode = allowedModes.includes(data.mode as CustomLobbyMode) ? data.mode as CustomLobbyMode : 'training';
+      const maxPlayers = Math.max(1, Math.min(Number(data.maxPlayers) || 3, mode === 'duel' ? 6 : 3));
+      const requestedName = String(data.name || '').trim().slice(0, 32);
+      const id = `sala-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      this.customLobbies.set(id, {
+        id,
+        name: requestedName || `Sala de ${player.username}`,
+        hostSessionId: client.sessionId,
+        hostUsername: player.username,
+        mode,
+        maxPlayers,
+        members: [{ sessionId: client.sessionId, username: player.username }],
+      });
+      client.send('customLobbyFeedback', { message: `Sala ${id} criada. Convide seus amigos.` });
+      this.publishCustomLobbies();
+    });
+
+    this.onMessage('joinCustomLobby', (client, data: { roomId?: string }) => {
+      const player = this.state.players.get(client.sessionId);
+      const lobby = data.roomId ? this.customLobbies.get(data.roomId) : undefined;
+      if (!player || !lobby) {
+        client.send('customLobbyFeedback', { message: 'Sala não encontrada ou encerrada.' });
+        return;
+      }
+      if (lobby.members.some(member => member.sessionId === client.sessionId)) {
+        client.send('customLobbyFeedback', { message: `Você já está em ${lobby.name}.` });
+        return;
+      }
+      if (lobby.members.length >= lobby.maxPlayers && !lobby.members.some(member => member.sessionId === client.sessionId)) {
+        client.send('customLobbyFeedback', { message: 'Esta sala já está cheia.' });
+        return;
+      }
+      this.removeFromCustomLobbies(client.sessionId);
+      lobby.members.push({ sessionId: client.sessionId, username: player.username });
+      client.send('customLobbyFeedback', { message: `Você entrou em ${lobby.name}.` });
+      this.publishCustomLobbies();
+    });
+
+    this.onMessage('leaveCustomLobby', (client) => {
+      this.removeFromCustomLobbies(client.sessionId);
+      client.send('customLobbyFeedback', { message: 'Você saiu da sala.' });
+      this.publishCustomLobbies();
+    });
+
+    this.onMessage('startCustomLobby', async (client, data: { roomId?: string }) => {
+      const lobby = data.roomId ? this.customLobbies.get(data.roomId) : undefined;
+      if (!lobby || lobby.hostSessionId !== client.sessionId) {
+        client.send('customLobbyFeedback', { message: 'Apenas o líder pode iniciar.' });
+        return;
+      }
+      const memberClients = lobby.members
+        .map(member => this.clients.find(candidate => candidate.sessionId === member.sessionId))
+        .filter((candidate): candidate is Client => Boolean(candidate));
+      if (lobby.mode === 'duel' && (memberClients.length < 2 || memberClients.length % 2 !== 0)) {
+        client.send('customLobbyFeedback', { message: 'Duelos precisam de 2, 4 ou 6 jogadores conectados.' });
+        return;
+      }
+      if (lobby.mode === 'world') {
+        memberClients.forEach(member => member.send('enterWorld'));
+      } else {
+        try {
+          const battleRoom = await matchMaker.createRoom('battle', {
+            mode: lobby.mode === 'duel' ? 'team_pvp' : (memberClients.length > 1 ? 'coop' : 'solo'),
+            expectedPlayers: memberClients.length,
+            teamSize: lobby.mode === 'duel' ? memberClients.length / 2 : memberClients.length,
+            rosterSize: 5,
+            enemyName: lobby.mode === 'training' ? 'Instrutor Kael' : 'Equipe Desafiante',
+          });
+          memberClients.forEach(member => member.send('startBattle', { roomId: battleRoom.roomId }));
+        } catch (error) {
+          console.error('[GameRoom] Failed to start custom lobby:', error);
+          client.send('customLobbyFeedback', { message: 'Não foi possível iniciar esta partida.' });
+          return;
+        }
+      }
+      this.customLobbies.delete(lobby.id);
+      this.publishCustomLobbies();
+    });
+
     // Start roaming interval for active monsters
     this.clock.setInterval(() => {
       this.roamMonsters();
@@ -596,6 +711,7 @@ export class GameRoom extends Room<{ state: MapState }> {
     player.status = "idle";
 
     this.state.players.set(client.sessionId, player);
+    client.send('customLobbies', Array.from(this.customLobbies.values()));
     console.log(`[GameRoom] Player ${player.username} (${client.sessionId}) joined room ${this.roomId}`);
   }
 
@@ -604,6 +720,8 @@ export class GameRoom extends Room<{ state: MapState }> {
     if (player) {
       console.log(`[GameRoom] Player ${player.username} (${client.sessionId}) left room ${this.roomId}`);
       this.state.players.delete(client.sessionId);
+      this.removeFromCustomLobbies(client.sessionId);
+      this.publishCustomLobbies();
     }
   }
 

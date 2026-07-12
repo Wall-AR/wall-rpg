@@ -238,7 +238,9 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [x] Caminho dourado login → lobby/perfil → mundo → NPC → lobby 5→3 → transição → Preparação
 - [x] Mundo controlável por teclado, click-to-move, joystick virtual e controle físico via Gamepad API
 - [x] Menu de opções com retorno ao lobby e reentrada livre no mundo
-- [x] Lobby com 9 tabs (Home, Profile, Inventory, Friends, Battles, Quests, Memories, GM, Settings)
+- [x] Hub cinematográfico responsivo com Início, Jogar, Heróis, Loja, Eventos, Perfil e menu secundário
+- [x] Portal de modos com Mundo RPG, Treino PvE, Duelo e prévia honesta do Brawl
+- [x] Salas personalizadas em tempo real: criar, listar, entrar, sair, liderança, código e início em grupo
 - [x] Inventário com exibição de nível e barra de XP para armas
 - [x] Integração do Lobby com API de Companions
 - [x] Tela de Batalha modularizada (BattleScreen refatorado de 103KB para 8 módulos)
@@ -276,7 +278,10 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [ ] Tela de Seleção de Save (estilo Zelda, antes do lobby)
 
 ### Fase 3: Telas e Fluxo
-- [ ] Transformar lobby em espaço social com seleção inicial de Mundo RPG, Duelo e Brawl
+- [x] Transformar lobby em hub social com seleção inicial de Mundo RPG, Duelo e Brawl
+- [ ] Persistir salas personalizadas entre processos e completar privacidade, convite direto, expulsão e reconexão
+- [ ] Conectar catálogo, preços, compra e entrega real da Loja (a tela atual é uma prévia sem transações)
+- [ ] Conectar Eventos e progresso de missões ao banco (a tela atual apresenta o contrato visual)
 - [ ] Persistir herói favorito e conectar o lobby pré-batalha cooperativo à coleção real (a seleção/posição/confirmacão já funcionam com roster temporário)
 - [ ] Implementar fundação do Brawl de oito jogadores: pareamento, preparação, resolução, vida e eliminação
 - [ ] Completar Ficha de Companheiro com dados reais do DB

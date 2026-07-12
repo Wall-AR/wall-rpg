@@ -186,6 +186,14 @@ Mario Party, Tetris, Tower Defense e outros modos clássicos poderão existir de
 
 O lobby, a conta e a coleção formam a plataforma compartilhada. Cada modo deve declarar quais itens/heróis usa e quais recompensas devolve ao metajogo, sem acoplar suas regras internas ao mundo RPG.
 
+### Arquitetura do hub implementada
+
+O hub usa uma hierarquia de jogo competitivo moderna: identidade e moedas no topo, personagem favorito como foco cinematográfico, ação **Jogar** dominante e atalhos persistentes para Heróis, Eventos e Loja. Perfil, inventário, amigos, missões, memórias, histórico, ferramentas do Mestre e ajustes ficam numa central secundária para reduzir ruído na tela inicial.
+
+As salas personalizadas usam a presença do `GameRoom`: o líder escolhe Mundo RPG, Treino PvE ou Duelo, define até 3 participantes para exploração/coop ou até 6 para duelo, recebe um código e inicia o transporte dos membros conectados. Esse registro é temporário em memória; persistência, privacidade, expulsão e reconexão permanecem evolução posterior.
+
+A Loja e os Eventos entregam, por enquanto, a arquitetura visual e a navegação. Não simulam compras nem recompensas: catálogo transacional e progresso persistido dependem de contratos próprios no servidor.
+
 Usar os mesmos colecionáveis não define automaticamente o balanceamento competitivo. Duelo e Brawl precisarão declarar se usam poder integral, faixas de poder, matchmaking por coleção ou algum tipo de normalização.
 
 ---

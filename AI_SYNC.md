@@ -233,6 +233,20 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Riscos/mocks mantidos: quest/horário/inventário rápido e partes do menu ainda são visuais; battle results/recrutamento ainda contêm textos hardcoded; HMR durante uma BattleRoom ativa pode exigir voltar ao mapa porque a sala solo só aceita um cliente
   - Branch/commit: codex/game-004-zero-pve-golden-path; este registro integra o commit de handoff
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [GAME-005] [FEAT] Redesenhar hub social e salas personalizadas
+  - Comportamento alterado: lobby administrativo substituído por hub cinematográfico responsivo com Início, Jogar, Heróis, Loja, Eventos, Perfil, menu secundário e destaque do personagem/roster real da conta
+  - Modos: Mundo RPG e Treino PvE continuam funcionais; Duelo direciona para salas; Brawl aparece explicitamente como em desenvolvimento; loja/eventos são prévias sem transações ou recompensas falsas
+  - Salas: GameRoom mantém registro em memória com criar/listar/entrar/sair, código, liderança, limite de jogadores e início coletivo para mundo, treino ou duelo
+  - Input e responsividade: mouse, foco/teclado (G abre Jogar, M abre central), Gamepad A na home e layout dedicado para desktop/mobile
+  - Arquivos criados: client/src/screens/lobby/HubPanels.tsx, client/src/screens/styles/lobby-hub.css
+  - Arquivos modificados: client/src/App.tsx, client/src/screens/LobbyScreen.tsx, client/src/screens/lobby/useLobbyData.ts, server/src/rooms/GameRoom.ts, GAME_DESIGN.md, PROJECT_ROADMAP.md, AI_SYNC.md
+  - Validação automatizada: lint raiz (PASS), build raiz (PASS), batalha 6/6 (PASS), git diff --check (PASS); bundle principal 913,52 kB com aviso conhecido de code splitting
+  - Playtest: zero/zero → hub desktop → atalho G → portal de modos → criar sala de Treino PvE → código/liderança → iniciar → lobby 5→3 contra Instrutor Kael; home também inspecionada em viewport 390×844
+  - Evidências: .ai/artifacts/game-005-hub-desktop.png e game-005-hub-mobile.png (arte original do projeto; hierarquia inspirada em hubs modernos)
+  - Limites mantidos: salas não persistem ao reiniciar o servidor; Brawl, compras e progresso de eventos ainda não têm runtime; PostgreSQL indisponível no playtest
+  - Branch/commit: codex/game-005-rift-inspired-lobby; este registro integra o commit de handoff
+  - Status: CONCLUÍDO
 ```
 
 ---
@@ -247,6 +261,7 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 | DOCS-003 | Consolidar Mana universal, ocupação 3×3, coop e modos iniciais | Codex | ✅ Concluído | `codex/docs-003-mana-modes-battle-contract` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | Mana, modos, ocupação e termos contraditórios validados |
 | GAME-003 | Implementar equipes 1–3, grade compartilhada e confirmação simultânea | Codex | ✅ Concluído | `codex/game-003-shared-team-battle` | `server/src/rooms/BattleRoom.ts`, `server/src/rooms/GameRoom.ts`, `server/src/schemas/BattleState.ts`, `server/src/battle/*`, `server/package.json`, `client/src/screens/battle/*`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | 5 testes + lint + build + smoke mundo: concluídos |
 | GAME-004 | Criar caminho dourado da conta zero até batalha PvE | Codex | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `server/src/index.ts`, `server/src/routes/{auth,companions}.ts`, `server/src/rooms/{GameRoom,BattleRoom}.ts`, `server/src/schemas/*`, `server/src/testing/*`, `server/src/battle/*`, `client/src/{main,App}.tsx`, `client/vite.config.ts`, `client/src/game/*`, `client/src/screens/{LoginScreen,LobbyScreen}.tsx`, `client/src/screens/{lobby,battle,menu}/*`, docs | 6 testes + lint + build + playtest completo: concluídos |
+| GAME-005 | Redesenhar hub/lobby inspirado na hierarquia do Wild Rift | Codex | ✅ Concluído | `codex/game-005-rift-inspired-lobby` | `client/src/screens/LobbyScreen.tsx`, `client/src/screens/lobby/*`, `client/src/screens/styles/lobby-hub.css`, `client/src/App.tsx`, `server/src/rooms/GameRoom.ts`, `AI_SYNC.md`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md` | Hub original + salas; lint/build + playtest desktop/mobile concluídos |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
 | BUG-001 | Corrigir proxy dev de `/companions` | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/vite.config.ts` | Roster autenticado de 5 heróis carregado no playtest |
 | BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/src/screens/lobby/useLobbyData.ts`, `client/src/game/GameCanvas.tsx` | Lobby e mundo validados com Callbacks.get(room) |

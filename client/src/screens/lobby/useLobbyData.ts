@@ -6,7 +6,7 @@ import { Callbacks } from '@colyseus/sdk';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
-export type TabType = 'home' | 'profile' | 'inventory' | 'friends' | 'battles' | 'quests' | 'gm' | 'settings' | 'memories';
+export type TabType = 'home' | 'play' | 'collection' | 'store' | 'events' | 'rooms' | 'profile' | 'inventory' | 'friends' | 'battles' | 'quests' | 'gm' | 'settings' | 'memories';
 
 export interface ChatMessage {
   sender: string;
@@ -24,9 +24,19 @@ export interface PartyInvitation {
   leaderUsername: string;
 }
 
+export interface CustomLobby {
+  id: string;
+  name: string;
+  hostSessionId: string;
+  hostUsername: string;
+  mode: 'world' | 'training' | 'duel';
+  maxPlayers: number;
+  members: Array<{ sessionId: string; username: string }>;
+}
+
 // ─── Hook ───────────────────────────────────────────────────────────────────────
 
-export function useLobbyData(onStartBattle: (roomId: string) => void) {
+export function useLobbyData(onStartBattle: (roomId: string) => void, onEnterWorld?: () => void) {
   const { token, logout, username } = useAuthStore();
 
   // Core state
@@ -55,6 +65,9 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
   // Duel & Party
   const [incomingDuel, setIncomingDuel] = useState<DuelInvitation | null>(null);
   const [incomingPartyInvite, setIncomingPartyInvite] = useState<PartyInvitation | null>(null);
+  const [customLobbies, setCustomLobbies] = useState<CustomLobby[]>([]);
+  const [currentCustomLobbyId, setCurrentCustomLobbyId] = useState<string | null>(null);
+  const [roomFeedback, setRoomFeedback] = useState<string>('');
 
   // Fusion & Evolution
   const [fuseTargetId, setFuseTargetId] = useState("");
@@ -175,9 +188,11 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
         const callbacks: any = Callbacks.get(activeRoom);
         
         const updateOnlinePlayers = () => {
-          setOnlineCount(activeRoom.state.players.size);
+          const players = activeRoom.state?.players;
+          if (!players) return;
+          setOnlineCount(players.size);
           const playersMap: Record<string, string> = {};
-          activeRoom.state.players.forEach((p: any, sessionId: string) => {
+          players.forEach((p: any, sessionId: string) => {
             playersMap[sessionId] = p.username;
           });
           setOnlinePlayers(playersMap);
@@ -215,6 +230,18 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
           onStartBattle(data.roomId);
         });
 
+        activeRoom.onMessage("customLobbies", (data: CustomLobby[]) => {
+          setCustomLobbies(data);
+          const mine = data.find(room => room.members.some(member => member.sessionId === activeRoom.sessionId));
+          setCurrentCustomLobbyId(mine?.id || null);
+        });
+
+        activeRoom.onMessage("customLobbyFeedback", (data: { message: string }) => {
+          setRoomFeedback(data.message);
+        });
+
+        activeRoom.onMessage("enterWorld", () => onEnterWorld?.());
+
         updateOnlinePlayers();
       } catch (err) {
         console.warn("Failed to connect to Colyseus presence room:", err);
@@ -230,7 +257,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
         activeRoom.leave();
       }
     };
-  }, [token]);
+  }, [token, onStartBattle, onEnterWorld]);
 
   useEffect(() => {
     if (activeTab === 'profile' || activeTab === 'memories') {
@@ -375,6 +402,28 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     if (!presenceRoom) return;
     presenceRoom.send("leaveParty");
     alert("Você saiu do grupo.");
+  };
+
+  const createCustomLobby = (name: string, mode: CustomLobby['mode'], maxPlayers: number) => {
+    if (!presenceRoom) return;
+    setRoomFeedback('Criando sala...');
+    presenceRoom.send('createCustomLobby', { name, mode, maxPlayers });
+  };
+
+  const joinCustomLobby = (roomId: string) => {
+    if (!presenceRoom) return;
+    setRoomFeedback('Entrando na sala...');
+    presenceRoom.send('joinCustomLobby', { roomId });
+  };
+
+  const leaveCustomLobby = () => {
+    if (!presenceRoom || !currentCustomLobbyId) return;
+    presenceRoom.send('leaveCustomLobby', { roomId: currentCustomLobbyId });
+  };
+
+  const startCustomLobby = () => {
+    if (!presenceRoom || !currentCustomLobbyId) return;
+    presenceRoom.send('startCustomLobby', { roomId: currentCustomLobbyId });
   };
 
   const handleFuseItems = async (e: React.FormEvent) => {
@@ -575,6 +624,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     // Duel & Party
     incomingDuel, setIncomingDuel,
     incomingPartyInvite, setIncomingPartyInvite,
+    customLobbies, currentCustomLobbyId, roomFeedback,
     // Fusion
     fuseTargetId, setFuseTargetId,
     isFusing, isEvolvingRarity,
@@ -595,6 +645,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
     handleTransferItem,
     handleRequestDuel, handleAcceptDuel, handleDeclineDuel,
     handleAcceptParty, handleInviteParty, handleLeaveParty,
+    createCustomLobby, joinCustomLobby, leaveCustomLobby, startCustomLobby,
     handleFuseItems, handleEvolveRarityAction,
     handleDismissCharacter,
     handleSwapCompanionActive, handleDisenchantCompanion, fetchCompanions,

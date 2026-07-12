@@ -27,6 +27,7 @@ export const App: React.FC = () => {
   // Estado da transição de encontro
   const [encounter, setEncounter] = useState<EncounterContext | null>(null);
   const [showTransition, setShowTransition] = useState(false);
+  const handleStartGame = useCallback(() => setCurrentScreen('game'), []);
 
   /**
    * handleEncounter — Chamado quando o jogador inicia um encontro.
@@ -108,7 +109,7 @@ export const App: React.FC = () => {
 
       {currentScreen === 'lobby' ? (
         <LobbyScreen 
-          onStartGame={() => setCurrentScreen('game')} 
+          onStartGame={handleStartGame}
           onStartBattle={handleDuelTrigger}
         />
       ) : currentScreen === 'battle' ? (
