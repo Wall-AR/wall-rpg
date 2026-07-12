@@ -204,6 +204,20 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Próximos passos: definir números da Mana e topologia do tabuleiro cooperativo antes de escrever o novo schema de batalha
   - Branch/commit: codex/docs-003-mana-modes-battle-contract; commit será criado após este registro
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [GAME-003] [FEAT] Implementar equipes 1–3, grade compartilhada e Mana autoritativa
+  - Comportamento alterado: encontros de parties com até 3 jogadores abrem batalha cooperativa; cada jogador controla 1 herói numa grade 3×3 comum, sem colisão de casas, e a Resolução aguarda todos confirmarem ou o timer de 30s
+  - PvP: desafios entre parties de mesmo tamanho agora abrem salas 2×2 ou 3×3; o duelo individual continua 1×1 e as equipes são preservadas por account ID independentemente da ordem de entrada
+  - Mana: curva v1 de 1 a 10 renovada por turno; ataque/defesa 0, reposicionamento 1, item 2, substituição 3 e habilidades com custos próprios; o servidor valida orçamento e propriedade das ações
+  - Arquivos criados: server/src/battle/teamBattle.ts, server/src/battle/teamBattle.test.ts
+  - Arquivos modificados: server/src/rooms/BattleRoom.ts, server/src/rooms/GameRoom.ts, server/src/schemas/BattleState.ts, server/package.json, client/src/screens/battle/BattleHUD.tsx, BattleScreen.tsx, ConfrontationPrep.tsx, PlanningPhase.tsx, battleTypes.ts, useBattleData.ts, GAME_DESIGN.md, PROJECT_ROADMAP.md, AI_SYNC.md
+  - Contratos: BattleState ganhou mode, expectedPlayers, maxTeamSize, planningDeadline, winnerTeamId, teamId/owner/gridSlot/entityType e Mana por jogador; mensagens lineup_rejected e plan_rejected informam falhas ao cliente
+  - Validação automatizada: npm run test:battle --workspace=server (5/5 PASS), npm run lint (PASS), npm run build (PASS), git diff --check (PASS)
+  - Teste manual: cadastro persistido, lobby e mundo carregaram com servidor Colyseus em fallback in-memory; grade e comandos foram inspecionados no navegador
+  - Não testado: batalha cooperativa visual com 2–3 navegadores reais e banco PostgreSQL; o atalho B do mundo ainda é placeholder e o encontro visual depende de colisão com monstro
+  - Limites mantidos: herói favorito ainda não é persistido e o lobby usa PREP_ROSTER temporário (GAME-002/BUG-001); substituição, entidades auxiliares, perfuração completa, reconexão e PvPvE seguem pendentes; Brawl possui somente o contrato de configuração, não o loop de oito jogadores
+  - Branch/commit: codex/game-003-shared-team-battle; este registro integra o commit de handoff da tarefa
+  - Status: CONCLUÍDO
 ```
 
 ---
@@ -216,6 +230,7 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 | OPS-001 | Estruturar base operacional dos agentes | Codex | ✅ Concluído | `codex/ops-001-agent-foundation` | `AGENTS.md`, `.ai/*`, `AI_SYNC.md` | Preflight + `git diff --check`: concluídos |
 | DOCS-002 | Consolidar visão macro, fluxo de batalha e decisão de exploração 3D | Codex | ✅ Concluído | `codex/docs-002-macro-game-design` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AGENTS.md`, `.ai/preflight.ps1`, `AI_SYNC.md` | Visão, imagem e compatibilidade R3F/React validadas |
 | DOCS-003 | Consolidar Mana universal, ocupação 3×3, coop e modos iniciais | Codex | ✅ Concluído | `codex/docs-003-mana-modes-battle-contract` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | Mana, modos, ocupação e termos contraditórios validados |
+| GAME-003 | Implementar equipes 1–3, grade compartilhada e confirmação simultânea | Codex | ✅ Concluído | `codex/game-003-shared-team-battle` | `server/src/rooms/BattleRoom.ts`, `server/src/rooms/GameRoom.ts`, `server/src/schemas/BattleState.ts`, `server/src/battle/*`, `server/package.json`, `client/src/screens/battle/*`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | 5 testes + lint + build + smoke mundo: concluídos |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
 | BUG-001 | Corrigir proxy dev de `/companions` | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/vite.config.ts` | Smoke: resposta JSON autenticada |
 | BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/screens/lobby/useLobbyData.ts` | Presença sem erros; 2 clientes entram/saem |
@@ -239,11 +254,14 @@ npm run lint
 # Build de produção dos dois workspaces
 npm run build
 
+# Testes unitários do contrato de batalha
+npm run test:battle --workspace=server
+
 # Somente quando o assignment inclui schema/migração
 npm run db:generate --workspace=server
 ```
 
-No momento não existe suíte automatizada. Até ela ser criada, mudanças de fluxo devem incluir um roteiro manual curto e reproduzível (login/cadastro, lobby, mundo, batalha ou tela afetada). Erros e warnings do console do navegador fazem parte do resultado.
+Existe uma suíte unitária inicial para o contrato de equipes, grade e Mana em `server/src/battle/teamBattle.test.ts`. Ela não substitui testes de integração Colyseus nem o roteiro manual curto e reproduzível (login/cadastro, lobby, mundo, batalha ou tela afetada). Erros e warnings do console do navegador fazem parte do resultado.
 
 ---
 

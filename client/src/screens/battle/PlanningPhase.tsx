@@ -16,6 +16,8 @@ interface PlanningPhaseProps {
   onConfirmStrategy: () => void;
   onFinishBattle: () => void;
   activeTeammateId: string;
+  availableMana: number;
+  strategyConfirmed: boolean;
 }
 
 export const PlanningPhase: React.FC<PlanningPhaseProps> = ({
@@ -33,6 +35,8 @@ export const PlanningPhase: React.FC<PlanningPhaseProps> = ({
   onConfirmStrategy,
   onFinishBattle,
   activeTeammateId,
+  availableMana,
+  strategyConfirmed,
 }) => {
   return (
     <footer className="w-full bg-[#121226]/50 border border-indigo-950 rounded-2xl p-4 shrink-0 grid grid-cols-1 lg:grid-cols-4 gap-4 items-center relative z-10">
@@ -114,7 +118,7 @@ export const PlanningPhase: React.FC<PlanningPhaseProps> = ({
             <div className="text-left space-y-1">
               <div className="flex justify-between items-center leading-none">
                 <span className="font-extrabold text-white text-xs uppercase">{activeSpell.name}</span>
-                <span className="text-[9px] font-black text-indigo-300">Custo: {activeSpell.cost} PA</span>
+                <span className="text-[9px] font-black text-indigo-300">Custo: {activeSpell.cost} Mana</span>
               </div>
               <p className="text-[9px] text-gray-400 leading-snug">
                 {activeSpell.desc}
@@ -139,25 +143,29 @@ export const PlanningPhase: React.FC<PlanningPhaseProps> = ({
             <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={onMovePosition}
-                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
+                disabled={strategyConfirmed}
+                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider disabled:opacity-35"
               >
                 Mover
               </button>
               <button
                 onClick={onSelectAttack}
-                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
+                disabled={strategyConfirmed}
+                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider disabled:opacity-35"
               >
                 Atacar
               </button>
               <button
                 onClick={onSelectDefend}
-                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
+                disabled={strategyConfirmed}
+                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider disabled:opacity-35"
               >
                 Defender
               </button>
               <button
                 onClick={onSelectSpell}
-                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider"
+                disabled={!activeSpell || activeSpell.cost > availableMana || strategyConfirmed}
+                className="command-btn py-1.5 px-1 rounded-lg text-[9px] font-extrabold text-center transition-all uppercase leading-none tracking-wider disabled:opacity-35 disabled:cursor-not-allowed"
               >
                 Feitiço
               </button>
@@ -166,9 +174,10 @@ export const PlanningPhase: React.FC<PlanningPhaseProps> = ({
             <div className="grid grid-cols-2 gap-2 mt-1">
               <button
                 onClick={onConfirmStrategy}
-                className="py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-black rounded-lg text-[9px] uppercase tracking-wider transition-all"
+                disabled={strategyConfirmed}
+                className="py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-black rounded-lg text-[9px] uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Confirmar
+                {strategyConfirmed ? 'Confirmado' : 'Confirmar'}
               </button>
               <button
                 onClick={onFinishBattle}

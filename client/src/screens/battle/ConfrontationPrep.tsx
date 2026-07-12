@@ -6,10 +6,16 @@ interface ConfrontationPrepProps {
   confrontationConfirmed: boolean;
   selectedLineup: string[];
   lineupPositions: Record<string, 'front' | 'mid' | 'back'>;
+  lineupSlots: Record<string, number>;
+  selectionLimit: number;
+  occupiedTeamSlots: number[];
+  mode: string;
+  strategyError: string | null;
   selectedRuneId: string;
   onToggleLineupCharacter: (char: Teammate) => void;
   onConfirmLineup: () => void;
   onResetLineup: () => void;
+  onSelectGridSlot: (heroId: string, gridSlot: number) => void;
   setSelectedRuneId: (id: string) => void;
   opponent: any;
 }
@@ -19,15 +25,23 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
   confrontationConfirmed,
   selectedLineup,
   lineupPositions,
+  lineupSlots,
+  selectionLimit,
+  occupiedTeamSlots,
+  mode,
+  strategyError,
   selectedRuneId,
   onToggleLineupCharacter,
   onConfirmLineup,
   onResetLineup,
+  onSelectGridSlot,
   setSelectedRuneId,
   opponent,
 }) => {
   const myTeamHpText = "18.945 / 18.945 (100%)";
   const rivalTeamHpText = "18.320 / 18.320 (100%)";
+  const isSharedTeamMode = selectionLimit === 1;
+  const selectedHeroId = selectedLineup[0];
 
   return (
     <div className="w-full bg-[#06060c] flex flex-col p-5 border border-[#b59441]/40 rounded-3xl overflow-hidden shadow-2xl min-h-[580px] confrontation-container select-none">
@@ -50,11 +64,13 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
         <div className="text-center">
           <h2 className="text-base font-black tracking-widest text-[#ffe082] uppercase leading-none font-sans">Preparação de Confronto</h2>
           <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-1.5">
-            Escolha 3 de 6 combatentes e configure runas antes da batalha.
+            {isSharedTeamMode
+              ? 'Escolha seu herói e uma casa livre da grade compartilhada.'
+              : 'Escolha 3 de 6 combatentes e configure a formação.'}
           </p>
           <div className="flex justify-center items-center gap-2 mt-2">
             <span className="text-[9px] px-2 py-0.5 bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-bold rounded-full">
-              Lobby de Duelo
+              {mode === 'coop' ? 'Cooperativo' : mode === 'team_pvp' ? 'PvP em Equipe' : mode === 'solo' ? 'Exploração Solo' : 'Duelo'}
             </span>
             <span className="text-lg font-black text-rose-500 font-mono tracking-widest animate-pulse">
               00:{confrontationTimer < 10 ? `0${confrontationTimer}` : confrontationTimer}
@@ -118,7 +134,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
               })}
             </div>
           </div>
-          <p className="text-[7px] text-gray-500 italic mt-2">Apenas 3 combatentes podem ser enviados para o confronto.</p>
+          <p className="text-[7px] text-gray-500 italic mt-2">Seleção deste modo: {selectionLimit} herói(s) por jogador.</p>
         </div>
 
         {/* Column 2 & 3: SUA FORMAÇÃO (3/3) & RUNAS */}
@@ -126,61 +142,65 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
           
           {/* Sua Formação area */}
           <div>
-            <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 text-center leading-none">Sua Formação (3/3)</h3>
-            
-            <div className="flex justify-between items-center gap-2">
-              {(['front', 'mid', 'back'] as const).map((slot, index) => {
-                const charId = Object.keys(lineupPositions).find(k => lineupPositions[k] === slot);
-                const char = charId ? PREP_ROSTER.find(c => c.id === charId) : null;
-                
-                return (
-                  <React.Fragment key={slot}>
-                    {index > 0 && <span className="connector-arrow">⬌</span>}
-                    
-                    <div
-                      className={`flex-1 rounded-xl p-3 flex flex-col justify-between confrontation-slot ${
-                        char ? 'has-char' : ''
-                      }`}
-                    >
-                      <div className="text-center border-b border-indigo-950/40 pb-1">
-                        <span className="text-[7px] text-gray-500 uppercase font-black block leading-none">
-                          {slot === 'back' ? 'Retaguarda' : slot === 'mid' ? 'Meio' : 'Frente'}
-                        </span>
-                      </div>
+            <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 text-center leading-none">
+              Grade Compartilhada 3×3
+            </h3>
 
-                      {char ? (
-                        <div className="flex flex-col items-center justify-center text-center my-2 gap-1">
-                          {char.portrait && (char.portrait.startsWith('/') || char.portrait.endsWith('.png')) ? (
-                            <img src={char.portrait} alt={char.name} className="w-10 h-10 object-contain filter drop-shadow-[0_2px_4px_rgba(59,130,246,0.4)]" />
-                          ) : (
-                            <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(59,130,246,0.4)]">{char.portrait}</span>
-                          )}
-                          <span className={`rank-badge text-[10px] ${char.rank === 'S+' ? 'rank-S-plus' : char.rank === 'S' ? 'rank-S' : char.rank === 'A' ? 'rank-A' : char.rank === 'D'}`}>{char.rank}</span>
-                          <span className="text-[8px] font-black text-white leading-none mt-0.5">{char.name}</span>
-                          <span className="text-[6.5px] text-gray-500 uppercase leading-none">{char.class}</span>
-                        </div>
-                      ) : (
-                        <div className="flex-1 flex items-center justify-center">
-                          <span className="text-[7px] text-gray-600 font-bold uppercase italic">Vazio</span>
-                        </div>
-                      )}
-                      
-                      <div className="text-center pt-1 border-t border-indigo-950/20">
-                        <span className="text-[6px] text-gray-500 font-bold leading-none">
-                          {char ? `Lv. ${char.level}` : 'Sem guerreiro'}
-                        </span>
-                      </div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
+            <div className="grid grid-cols-[42px_repeat(3,minmax(0,1fr))] gap-1.5 items-stretch">
+              {['Trás', 'Meio', 'Frente'].map((rowLabel, row) => (
+                <React.Fragment key={rowLabel}>
+                  <div className="flex items-center justify-center text-[7px] uppercase font-black text-gray-500 [writing-mode:vertical-rl] rotate-180">
+                    {rowLabel}
+                  </div>
+                  {Array.from({ length: 3 }).map((_, column) => {
+                    const gridSlot = row * 3 + column;
+                    const localHeroId = Object.keys(lineupSlots).find(heroId => lineupSlots[heroId] === gridSlot);
+                    const localHero = localHeroId ? PREP_ROSTER.find(hero => hero.id === localHeroId) : undefined;
+                    const occupiedByAlly = occupiedTeamSlots.includes(gridSlot);
+                    const isSelectedTarget = selectedHeroId && lineupSlots[selectedHeroId] === gridSlot;
+                    return (
+                      <button
+                        type="button"
+                        key={gridSlot}
+                        disabled={!selectedHeroId || occupiedByAlly || confrontationConfirmed}
+                        onClick={() => selectedHeroId && onSelectGridSlot(selectedHeroId, gridSlot)}
+                        className={`min-h-[72px] rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                          occupiedByAlly
+                            ? 'border-emerald-700/60 bg-emerald-950/25 text-emerald-300'
+                            : localHero
+                              ? 'border-blue-400 bg-indigo-900/40 shadow-[0_0_14px_rgba(59,130,246,.25)]'
+                              : isSelectedTarget
+                                ? 'border-blue-500/60 bg-blue-950/20'
+                                : 'border-indigo-950 bg-black/25 hover:border-indigo-600'
+                        } disabled:cursor-not-allowed`}
+                      >
+                        {occupiedByAlly ? (
+                          <><span className="text-lg">🤝</span><span className="text-[7px] font-black uppercase">Aliado</span></>
+                        ) : localHero ? (
+                          <>
+                            <span className="text-lg">{localHero.portrait.startsWith('/') ? '⚔️' : localHero.portrait}</span>
+                            <span className="text-[7px] font-black text-white truncate max-w-full px-1">{localHero.name}</span>
+                          </>
+                        ) : (
+                          <><span className="text-[9px] text-gray-700">◇</span><span className="text-[6px] text-gray-600">Casa {gridSlot + 1}</span></>
+                        )}
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
             </div>
 
             {/* Status indicators */}
             <div className="flex justify-between items-center mt-3 bg-black/25 px-3 py-1.5 rounded-lg border border-indigo-950/40 text-[8px] font-bold text-gray-400">
-              <span>👥 {selectedLineup.length}/3 selecionados</span>
-              <span>🔒 Equipamentos bloqueados nesta etapa</span>
+              <span>👥 {selectedLineup.length}/{selectionLimit} selecionado(s)</span>
+              <span>{isSharedTeamMode ? '🤝 Casas dos aliados ficam bloqueadas' : '🔒 Uma unidade por casa'}</span>
             </div>
+            {strategyError && (
+              <div className="mt-2 rounded-lg border border-rose-800/60 bg-rose-950/30 px-3 py-2 text-[8px] font-bold text-rose-300 text-center">
+                {strategyError}
+              </div>
+            )}
           </div>
 
           {/* Runas de Batalha box layout */}
@@ -252,7 +272,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
             {/* Glowing Confirm Button (Mockup matched compass blue button) */}
             <button
               onClick={onConfirmLineup}
-              disabled={selectedLineup.length !== 3 || confrontationConfirmed}
+              disabled={selectedLineup.length !== selectionLimit || selectedLineup.some(id => lineupSlots[id] === undefined) || confrontationConfirmed}
               className="w-full py-3 rounded-full text-xs font-black uppercase tracking-widest confirm-btn-glowing shadow-lg disabled:opacity-40"
             >
               {confrontationConfirmed ? "Confirmado" : "Confirmar"}

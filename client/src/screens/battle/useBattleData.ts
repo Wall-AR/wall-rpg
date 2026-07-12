@@ -12,9 +12,11 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
   // Confrontation pre-battle states
   const [selectedLineup, setSelectedLineup] = useState<string[]>([]);
   const [lineupPositions, setLineupPositions] = useState<Record<string, 'front' | 'mid' | 'back'>>({});
+  const [lineupSlots, setLineupSlots] = useState<Record<string, number>>({});
   const [selectedRuneId, setSelectedRuneId] = useState<string>('runa-guarda');
   const [confrontationTimer, setConfrontationTimer] = useState<number>(20);
   const [confrontationConfirmed, setConfrontationConfirmed] = useState<boolean>(false);
+  const [strategyError, setStrategyError] = useState<string | null>(null);
 
   // Transition overlay state
   const [playedTransition, setPlayedTransition] = useState<boolean>(false);
@@ -29,7 +31,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
   const [selectedSpellId, setSelectedSpellId] = useState<string>('nova-astral');
   const [selectedTargetId, setSelectedTargetId] = useState<string>('opp-nyxara');
   const [plannedActions, setPlannedActions] = useState<Record<string, { action: string; spellId?: string; targetId?: string }>>({});
-  const [timerSeconds, setTimerSeconds] = useState(12);
+  const [timerSeconds, setTimerSeconds] = useState(30);
 
   // Resolution simulation state
   const [resolutionStep, setResolutionStep] = useState<number>(-1);
@@ -73,6 +75,12 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     { id: 'opp-nyxara', name: 'Nyxara', class: 'Inimigo', level: 125, hp: 4220, maxHp: 4220, mp: 620, maxMp: 820, element: 'none', portrait: '🧙‍♀️', active: true }
   ]);
 
+  const lineupSelectionLimit = battleState?.mode === 'solo' ? 3 : 1;
+  const occupiedTeamSlots = blueTeam
+    .filter(member => member.ownerSessionId && !member.controllable)
+    .map(member => member.gridSlot)
+    .filter((slot): slot is number => slot !== undefined);
+
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   const waitForQte = (): Promise<'perfect' | 'fail' | 'miss'> => {
@@ -115,7 +123,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
         await delay(900);
       } 
       else if (event.type === 'attack') {
-        const isLocalAttacker = event.actorId.startsWith('char-');
+        const isLocalAttacker = event.actorId.startsWith(`${activeRoom.sessionId}--`);
         let qteRes: 'perfect' | 'fail' | 'miss' = 'fail';
 
         if (isLocalAttacker) {
@@ -248,12 +256,22 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
         activeRoom.onStateChange((state: any) => {
           setBattleState({
             status: state.status,
+            mode: state.mode,
             turn: state.turn,
+            expectedPlayers: state.expectedPlayers,
+            maxTeamSize: state.maxTeamSize,
+            planningDeadline: state.planningDeadline,
             winnerSessionId: state.winnerSessionId,
+            winnerTeamId: state.winnerTeamId,
             logs: Array.from(state.logs) as string[],
             players: Array.from(state.players.entries()).reduce((obj: any, [key, val]: any) => {
               obj[key] = {
                 username: val.username,
+                teamId: val.teamId,
+                isBot: val.isBot,
+                connected: val.connected,
+                mana: val.mana,
+                maxMana: val.maxMana,
                 hp: val.hp,
                 maxHp: val.maxHp,
                 mp: val.mp,
@@ -272,46 +290,25 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
           // Sync teams from server schema when not resolving animations
           if (state.status !== "resolving") {
             const localPlayer = state.players.get(activeRoom.sessionId);
-            if (localPlayer && localPlayer.combatants && localPlayer.combatants.size > 0) {
-              const newBlue: Teammate[] = [];
-              localPlayer.combatants.forEach((c: any) => {
-                const baseMeta = PREP_ROSTER.find(item => item.id === c.id) || {
-                  portrait: '👤',
-                  rank: 'A' as const,
-                  spells: []
-                };
-                newBlue.push({
-                  id: c.id,
-                  name: c.name,
-                  class: c.class,
-                  level: c.level,
-                  hp: c.hp,
-                  maxHp: c.maxHp,
-                  mp: c.mp,
-                  maxMp: c.maxMp,
-                  element: c.element as any,
-                  position: c.position as any,
-                  portrait: baseMeta.portrait,
-                  rank: baseMeta.rank,
-                  spells: baseMeta.spells,
-                });
-              });
-              setBlueTeam(newBlue);
-            }
-
-            const opponentSessionId = Array.from(state.players.keys()).find(id => id !== activeRoom.sessionId);
-            if (opponentSessionId) {
-              const oppPlayer = state.players.get(opponentSessionId);
-              if (oppPlayer && oppPlayer.combatants && oppPlayer.combatants.size > 0) {
-                const newRed: any[] = [];
-                oppPlayer.combatants.forEach((c: any) => {
-                  const baseMeta = PREP_ROSTER.find(item => item.id === c.id) || {
+            if (localPlayer) {
+              const localTeamId = localPlayer.teamId;
+              const allies: Teammate[] = [];
+              const opponents: Teammate[] = [];
+              state.players.forEach((player: any, ownerSessionId: string) => {
+                player.combatants?.forEach((c: any) => {
+                  const baseMeta = PREP_ROSTER.find(item => item.id === c.heroId) || {
                     portrait: '👤',
                     rank: 'A' as const,
-                    spells: []
+                    spells: [],
                   };
-                  newRed.push({
+                  const teammate: Teammate = {
                     id: c.id,
+                    heroId: c.heroId,
+                    ownerSessionId,
+                    teamId: player.teamId,
+                    gridSlot: c.gridSlot,
+                    entityType: c.entityType,
+                    controllable: ownerSessionId === activeRoom.sessionId,
                     name: c.name,
                     class: c.class,
                     level: c.level,
@@ -320,11 +317,24 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
                     mp: c.mp,
                     maxMp: c.maxMp,
                     element: c.element as any,
+                    position: c.position as any,
                     portrait: baseMeta.portrait,
+                    rank: baseMeta.rank,
+                    spells: baseMeta.spells,
                     active: c.hp > 0,
-                  });
+                  };
+                  if (player.teamId === localTeamId) allies.push(teammate);
+                  else opponents.push(teammate);
                 });
-                setRedTeam(newRed);
+              });
+              if (allies.length > 0) {
+                setBlueTeam(allies);
+                const controllable = allies.find(member => member.controllable && member.hp > 0);
+                if (controllable) setActiveTeammateId(current => allies.some(member => member.id === current && member.controllable) ? current : controllable.id);
+              }
+              if (opponents.length > 0) {
+                setRedTeam(opponents);
+                setSelectedTargetId(current => opponents.some(member => member.id === current && member.hp > 0) ? current : opponents[0].id);
               }
             }
           }
@@ -333,6 +343,14 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
         activeRoom.onMessage("round_resolved", (data: { events: any[] }) => {
           animateRoundEvents(data.events, activeRoom);
         });
+        activeRoom.onMessage("lineup_rejected", (data: { reason: string }) => {
+          setConfrontationConfirmed(false);
+          setStrategyError(data.reason);
+        });
+        activeRoom.onMessage("plan_rejected", (data: { reason: string }) => {
+          setStrategyError(data.reason);
+        });
+        activeRoom.onMessage("error", (message: string) => setStrategyError(message));
       } catch (err: any) {
         console.error("Battle room connection failed:", err);
         setConnectionError("Falha ao se conectar na arena de combate.");
@@ -358,22 +376,35 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
   // Turn planning countdown timer
   useEffect(() => {
     if (resolutionStep !== -1 || battleState?.status !== 'planning') return;
-    const timer = setInterval(() => {
-      setTimerSeconds(prev => (prev > 1 ? prev - 1 : 20));
-    }, 1000);
+    const updateTimer = () => {
+      const deadline = battleState.planningDeadline || Date.now() + 30000;
+      setTimerSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    };
+    updateTimer();
+    const timer = setInterval(updateTimer, 250);
     return () => clearInterval(timer);
-  }, [resolutionStep, battleState?.status]);
+  }, [resolutionStep, battleState?.status, battleState?.planningDeadline]);
 
   // Initialize plannedActions with default actions when entering planning phase
   useEffect(() => {
     if (battleState?.status === 'planning') {
       const initial: Record<string, any> = {};
-      blueTeam.forEach(t => {
-        initial[t.id] = { action: 'attack', targetId: 'opp-nyxara' };
+      blueTeam.filter(t => t.controllable).forEach(t => {
+        initial[t.id] = { action: 'attack', targetId: redTeam[0]?.id || '' };
       });
       setPlannedActions(initial);
     }
-  }, [battleState?.status, blueTeam]);
+  }, [battleState?.status, blueTeam, redTeam]);
+
+  useEffect(() => {
+    if (battleState?.status !== 'confrontation_prep' || lineupSelectionLimit !== 1 || selectedLineup.length > 0) return;
+    const defaultHero = PREP_ROSTER[0];
+    const preferredSlots = [7, 4, 1, 6, 8, 3, 5, 0, 2];
+    const slot = preferredSlots.find(candidate => !occupiedTeamSlots.includes(candidate)) ?? 0;
+    setSelectedLineup([defaultHero.id]);
+    setLineupSlots({ [defaultHero.id]: slot });
+    setLineupPositions({ [defaultHero.id]: slot >= 6 ? 'front' : slot >= 3 ? 'mid' : 'back' });
+  }, [battleState?.status, lineupSelectionLimit, occupiedTeamSlots.join(','), selectedLineup.length]);
 
   // Trigger battle transition when status changes from confrontation_prep to planning
   useEffect(() => {
@@ -519,6 +550,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
 
   const handleConfirmStrategy = () => {
     if (room) {
+      setStrategyError(null);
       room.send("plan_actions", { actions: plannedActions });
     }
   };
@@ -541,20 +573,42 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
         delete copy[char.id];
         return copy;
       });
+      setLineupSlots(prev => {
+        const copy = { ...prev };
+        delete copy[char.id];
+        return copy;
+      });
     } else {
-      if (selectedLineup.length >= 3) return;
+      if (selectedLineup.length >= lineupSelectionLimit) return;
       setSelectedLineup(prev => [...prev, char.id]);
+      const preferredSlots = [7, 4, 1, 6, 8, 3, 5, 0, 2];
+      const taken = [...Object.values(lineupSlots), ...occupiedTeamSlots];
+      const gridSlot = preferredSlots.find(slot => !taken.includes(slot)) ?? 0;
+      setLineupSlots(prev => ({ ...prev, [char.id]: gridSlot }));
       setLineupPositions(prev => {
-        const slots: ('front' | 'mid' | 'back')[] = ['front', 'mid', 'back'];
-        const occupied = Object.values(prev);
-        const free = slots.find(s => !occupied.includes(s)) || 'front';
-        return { ...prev, [char.id]: free };
+        const position = gridSlot >= 6 ? 'front' : gridSlot >= 3 ? 'mid' : 'back';
+        return { ...prev, [char.id]: position };
       });
     }
   };
 
+  const handleSelectGridSlot = (heroId: string, gridSlot: number) => {
+    if (confrontationConfirmed || occupiedTeamSlots.includes(gridSlot)) return;
+    setLineupSlots(prev => {
+      const ownerOfSlot = Object.keys(prev).find(id => prev[id] === gridSlot && id !== heroId);
+      if (ownerOfSlot) return prev;
+      return { ...prev, [heroId]: gridSlot };
+    });
+    setLineupPositions(prev => ({
+      ...prev,
+      [heroId]: gridSlot >= 6 ? 'front' : gridSlot >= 3 ? 'mid' : 'back',
+    }));
+  };
+
   const handleConfirmLineup = () => {
-    if (selectedLineup.length !== 3) return;
+    if (selectedLineup.length !== lineupSelectionLimit) return;
+    if (selectedLineup.some(id => lineupSlots[id] === undefined)) return;
+    setStrategyError(null);
     setConfrontationConfirmed(true);
     const chosen = PREP_ROSTER.filter(c => selectedLineup.includes(c.id));
     setBlueTeam(chosen);
@@ -569,6 +623,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     room.send("choose_lineup", {
       lineup: selectedLineup,
       positions: lineupPositions,
+      slots: lineupSlots,
       runeId: selectedRuneId,
     });
   };
@@ -577,6 +632,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     if (confrontationConfirmed) return;
     setSelectedLineup([]);
     setLineupPositions({});
+    setLineupSlots({});
   };
 
   const handleSelectAttack = (attackerId: string, targetId: string) => {
@@ -621,10 +677,14 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     connectionError,
     selectedLineup,
     lineupPositions,
+    lineupSlots,
+    lineupSelectionLimit,
+    occupiedTeamSlots,
     selectedRuneId,
     setSelectedRuneId,
     confrontationTimer,
     confrontationConfirmed,
+    strategyError,
     playedTransition,
     triggerTransition,
     setTriggerTransition,
@@ -655,6 +715,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     handleConfirmStrategy,
     handleMovePosition,
     handleToggleLineupCharacter,
+    handleSelectGridSlot,
     handleConfirmLineup,
     handleResetLineup,
     handleSelectAttack,

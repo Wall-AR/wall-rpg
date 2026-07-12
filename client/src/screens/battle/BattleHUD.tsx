@@ -8,6 +8,7 @@ interface BattleHUDProps {
   blueHpSum: number;
   redHpSum: number;
   opponent: any;
+  localPlayer: any;
 }
 
 export const BattleHUD: React.FC<BattleHUDProps> = ({
@@ -18,7 +19,13 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
   blueHpSum,
   redHpSum,
   opponent,
+  localPlayer,
 }) => {
+  const alliedHumans = Object.values(battleState.players || {}).filter((player: any) => (
+    !player.isBot && player.teamId === localPlayer?.teamId
+  )) as any[];
+  const confirmedAllies = alliedHumans.filter(player => player.hasSelectedAction).length;
+
   return (
     <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative">
       <div className="flex flex-col text-left max-w-[200px]">
@@ -70,8 +77,13 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
               00:{timerSeconds < 10 ? `0${timerSeconds}` : timerSeconds}
             </span>
           )}
-          <span className="text-[8px] text-gray-600 font-bold">/ 20s</span>
+          <span className="text-[8px] text-gray-600 font-bold">/ 30s</span>
         </div>
+        {!isResolution && alliedHumans.length > 1 && (
+          <div className="mt-1 text-[7px] font-black uppercase tracking-wider text-emerald-400">
+            Equipe confirmou {confirmedAllies}/{alliedHumans.length}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col text-right max-w-[200px]">
@@ -88,15 +100,15 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
       </div>
 
       <div className="absolute left-[220px] top-1/2 transform -translate-y-1/2 flex items-center gap-2 bg-[#121226]/40 border border-indigo-950/60 px-3 py-1 rounded-xl">
-        <span className="text-[8px] font-bold text-indigo-400">PA:</span>
+        <span className="text-[8px] font-bold text-indigo-400">Mana:</span>
         <div className="flex gap-1">
-          {Array.from({ length: 7 }).map((_, idx) => (
-            <span key={idx} className={`text-xs ${idx < (isResolution ? 2 : 4) ? 'text-blue-400' : 'text-gray-700'}`}>
+          {Array.from({ length: Math.max(1, localPlayer?.maxMana || 1) }).map((_, idx) => (
+            <span key={idx} className={`text-xs ${idx < (localPlayer?.mana || 0) ? 'text-blue-400' : 'text-gray-700'}`}>
               ♦
             </span>
           ))}
         </div>
-        <span className="text-[7px] text-gray-600 font-semibold leading-none">+1 PA em 03:12</span>
+        <span className="text-[7px] text-gray-500 font-semibold leading-none">{localPlayer?.mana || 0}/{localPlayer?.maxMana || 1}</span>
       </div>
     </header>
   );

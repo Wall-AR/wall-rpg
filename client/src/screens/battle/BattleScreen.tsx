@@ -8,7 +8,7 @@ import { BattleResults } from './BattleResults';
 import { QTESystem } from './QTESystem';
 import { RecruitmentRevealScreen } from '../RecruitmentRevealScreen';
 import { BattleTransition, EncounterContext } from '../../game/BattleTransition';
-import { Teammate, getCoordinates, getElementEmoji, getElementColorClass, PREP_ROSTER } from './battleTypes';
+import { Teammate, getGridCoordinates, getElementEmoji, getElementColorClass, PREP_ROSTER } from './battleTypes';
 import '../styles/battle.css';
 import '../styles/confrontation.css';
 import '../styles/results.css';
@@ -28,10 +28,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     connectionError,
     selectedLineup,
     lineupPositions,
+    lineupSlots,
+    lineupSelectionLimit,
+    occupiedTeamSlots,
     selectedRuneId,
     setSelectedRuneId,
     confrontationTimer,
     confrontationConfirmed,
+    strategyError,
     playedTransition,
     triggerTransition,
     setTriggerTransition,
@@ -60,6 +64,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     handleConfirmStrategy,
     handleMovePosition,
     handleToggleLineupCharacter,
+    handleSelectGridSlot,
     handleConfirmLineup,
     handleResetLineup,
     handleSelectAttack,
@@ -93,11 +98,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
     );
   }
 
-  const opponentSessionId = Object.keys(battleState.players).find(id => id !== room.sessionId);
+  const localPlayer = battleState.players[room.sessionId];
+  const opponentSessionId = Object.keys(battleState.players).find(id => battleState.players[id].teamId !== localPlayer?.teamId);
   const opponent = opponentSessionId ? battleState.players[opponentSessionId] : null;
 
   // Active teammate selection
-  const currentTeammate = blueTeam.find(t => t.id === activeTeammateId) || blueTeam[0] || PREP_ROSTER[0];
+  const currentTeammate = blueTeam.find(t => t.id === activeTeammateId && t.controllable)
+    || blueTeam.find(t => t.controllable)
+    || blueTeam[0]
+    || PREP_ROSTER[0];
   const activeSpell = currentTeammate.spells.find(s => s.id === selectedSpellId) || currentTeammate.spells[0];
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -145,7 +154,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   // TELA 3: BATTLE RESULTS SCREEN (finished)
   // ══════════════════════════════════════════════════════════════════════════
   if (battleState.status === "finished") {
-    const isWinner = battleState.winnerSessionId === room.sessionId;
+    const isWinner = Boolean(localPlayer && battleState.winnerTeamId === localPlayer.teamId);
     return (
       <BattleResults
         isWinner={isWinner}
@@ -168,10 +177,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
         confrontationConfirmed={confrontationConfirmed}
         selectedLineup={selectedLineup}
         lineupPositions={lineupPositions}
+        lineupSlots={lineupSlots}
+        selectionLimit={lineupSelectionLimit}
+        occupiedTeamSlots={occupiedTeamSlots}
+        mode={battleState.mode}
+        strategyError={strategyError}
         selectedRuneId={selectedRuneId}
         onToggleLineupCharacter={handleToggleLineupCharacter}
         onConfirmLineup={handleConfirmLineup}
         onResetLineup={handleResetLineup}
+        onSelectGridSlot={handleSelectGridSlot}
         setSelectedRuneId={setSelectedRuneId}
         opponent={opponent}
       />
@@ -218,6 +233,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           blueHpSum={blueHpSum}
           redHpSum={redHpSum}
           opponent={opponent}
+          localPlayer={localPlayer}
         />
 
         {/* Main Grid */}
@@ -232,11 +248,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                 <div
                   key={t.id}
                   onClick={() => {
-                    if (isResolution) return;
+                    if (isResolution || !t.controllable) return;
                     setActiveTeammateId(t.id);
                     setSelectedSpellId(t.spells[0]?.id || '');
                   }}
-                  className={`p-3 bg-indigo-955/10 border rounded-2xl flex flex-col gap-1.5 cursor-pointer hover:bg-indigo-955/20 transition-all ${
+                  className={`p-3 bg-indigo-955/10 border rounded-2xl flex flex-col gap-1.5 transition-all ${t.controllable ? 'cursor-pointer hover:bg-indigo-955/20' : 'cursor-default opacity-80'} ${
                     isActive ? 'pulse-selection-gold' : 'border-indigo-950'
                   }`}
                 >
@@ -289,11 +305,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                       </marker>
                     </defs>
                     {(() => {
-                      const activeCoord = getCoordinates('blue', positions[activeTeammateId]);
-                      const targetCoord = getCoordinates('red', positions[selectedTargetId]);
+                      const targetCoord = getGridCoordinates('red', redTeam.find(t => t.id === selectedTargetId)?.gridSlot);
+                      const localCoord = getGridCoordinates('blue', blueTeam.find(t => t.id === activeTeammateId)?.gridSlot);
                       return (
                         <line
-                          x1={activeCoord.x} y1={activeCoord.y}
+                          x1={localCoord.x} y1={localCoord.y}
                           x2={targetCoord.x} y2={targetCoord.y}
                           stroke="#f5d67b" strokeWidth="2"
                           markerEnd="url(#arrow)"
@@ -312,8 +328,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                       </marker>
                     </defs>
                     {(() => {
-                      const activeCoord = getCoordinates('blue', positions['char-raven']);
-                      const targetCoord = getCoordinates('red', positions['opp-nyxara']);
+                      const activeCoord = getGridCoordinates('blue', blueTeam[0]?.gridSlot);
+                      const targetCoord = getGridCoordinates('red', redTeam[0]?.gridSlot);
                       return (
                         <line
                           x1={activeCoord.x} y1={activeCoord.y}
@@ -330,19 +346,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
               {/* Blue Team circles & sprites */}
               {blueTeam.map(t => {
-                const pos = positions[t.id] || 'back';
-                const coord = getCoordinates('blue', pos);
+                const pos = t.position || positions[t.id] || 'back';
+                const coord = getGridCoordinates('blue', t.gridSlot);
                 const isActive = activeTeammateId === t.id;
                 
                 return (
                   <div
                     key={t.id}
                     onClick={() => {
-                      if (isResolution) return;
+                      if (isResolution || !t.controllable) return;
                       setActiveTeammateId(t.id);
                       setSelectedSpellId(t.spells[0]?.id || '');
                     }}
-                    className={`placement-circle circle-blue cursor-pointer character-node-${t.id} ${isActive ? 'active' : ''}`}
+                    className={`placement-circle circle-blue character-node-${t.id} ${t.controllable ? 'cursor-pointer' : 'cursor-default'} ${isActive ? 'active' : ''}`}
                     style={{ left: coord.x, top: coord.y }}
                   >
                     <div className="arena-character-sprite group">
@@ -357,7 +373,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                           {t.portrait}
                         </span>
                       )}
-                      {t.id === 'char-caelum' && resolutionStep === 2 && (
+                      {t.heroId === 'char-caelum' && resolutionStep === 2 && (
                         <div className="shield-bubble" />
                       )}
                       <span className="text-[7px] font-black text-white bg-black/60 px-1 py-0.5 rounded leading-none mt-1 uppercase border border-indigo-900/60 shadow-md">
@@ -365,22 +381,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                       </span>
                     </div>
 
-                    {t.id === 'char-caelum' && resolutionStep === 2 && (
+                    {t.heroId === 'char-caelum' && resolutionStep === 2 && (
                       <div className="absolute -top-12 text-[#60a5fa] font-black text-[9px] uppercase tracking-wider flex flex-col items-center">
                         <span className="bg-indigo-955/90 px-1.5 py-0.5 rounded border border-indigo-800">Protegido</span>
                         <span className="text-[7px] text-indigo-300 font-bold mt-0.5">Barreira Guardiã</span>
                       </div>
                     )}
 
-                    <span className="circle-label">{pos}</span>
+                    <span className="circle-label">{pos} · {(t.gridSlot ?? 0) + 1}</span>
                   </div>
                 );
               })}
 
               {/* Red Team circles & sprites */}
               {redTeam.map(t => {
-                const pos = positions[t.id] as 'front' | 'mid' | 'back';
-                const coord = getCoordinates('red', pos);
+                const coord = getGridCoordinates('red', t.gridSlot);
                 const isTargeted = selectedTargetId === t.id;
 
                 return (
@@ -414,13 +429,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                       <>
                         <div className="nova-astral-explosion" />
                         <div className="floating-damage text-purple-400" style={{ color: '#a855f7' }}>
-                          {t.id === 'opp-korr' ? '-1.082' : t.id === 'opp-lobo' ? '-1.136' : '-1.452'}
+                          {t.heroId === 'char-korr' ? '-1.082' : t.heroId === 'char-lobo' ? '-1.136' : '-1.452'}
                           <span className="block text-[7px] uppercase font-black text-purple-300 text-center leading-none mt-0.5">Vulnerável</span>
                         </div>
                       </>
                     )}
 
-                    {resolutionStep === 1 && t.id === 'opp-nyxara' && (
+                    {resolutionStep === 1 && t.id === selectedTargetId && (
                       <div 
                         className={`floating-damage ${qteResult === 'perfect' ? 'text-yellow-400 scale-125 font-black' : 'text-blue-400'}`} 
                         style={{ color: qteResult === 'perfect' ? '#fbbf24' : '#60a5fa' }}
@@ -433,13 +448,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
                     )}
 
                     <QTESystem
-                      showQte={showQte && t.id === 'opp-nyxara'}
+                      showQte={showQte && t.id === selectedTargetId}
                       qteScale={qteScale}
                       qteResult={qteResult}
                       onPress={evaluateQtePress}
                     />
 
-                    <span className="circle-label">{pos}</span>
+                    <span className="circle-label">{t.position || 'front'} · {(t.gridSlot ?? 0) + 1}</span>
                   </div>
                 );
               })}
@@ -508,6 +523,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
         </div>
 
+        {strategyError && !isResolution && (
+          <div className="mb-2 rounded-lg border border-rose-800/60 bg-rose-950/35 px-3 py-2 text-center text-[9px] font-bold text-rose-300">
+            {strategyError}
+          </div>
+        )}
+
         <PlanningPhase
           currentTeammate={currentTeammate}
           activeSpell={activeSpell}
@@ -534,6 +555,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           onConfirmStrategy={handleConfirmStrategy}
           onFinishBattle={onFinishBattle}
           activeTeammateId={activeTeammateId}
+          availableMana={localPlayer?.mana || 0}
+          strategyConfirmed={Boolean(localPlayer?.hasSelectedAction)}
         />
 
         <div className="w-full text-center text-[8px] text-gray-600 font-bold uppercase tracking-widest pt-2.5 mt-2.5 border-t border-indigo-950/30">

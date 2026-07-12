@@ -4,6 +4,7 @@ import { MapState } from '../schemas/MapState.js';
 import { PlayerState } from '../schemas/PlayerState.js';
 import { MonsterState } from '../schemas/MonsterState.js';
 import { JWT_SECRET } from '../middleware/auth.js';
+import { MAX_PARTY_SIZE } from '../battle/teamBattle.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -266,13 +267,65 @@ export class GameRoom extends Room<{ state: MapState }> {
 
       if (target && challenger) {
         try {
-          const battleRoom = await matchMaker.createRoom("battle", {});
-          const challengerClient = this.clients.find(c => c.sessionId === data.challengerSessionId);
-          
-          if (challengerClient) {
-            challengerClient.send("startDuel", { roomId: battleRoom.roomId });
+          const collectTeam = (captainSessionId: string, partyId: string) => {
+            const members: string[] = [];
+            if (partyId) {
+              this.state.players.forEach((player, sessionId) => {
+                if (player.partyId === partyId && members.length < MAX_PARTY_SIZE) members.push(sessionId);
+              });
+            } else {
+              members.push(captainSessionId);
+            }
+            return members;
+          };
+
+          const challengerTeam = collectTeam(data.challengerSessionId, challenger.partyId);
+          const targetTeam = collectTeam(client.sessionId, target.partyId);
+          const sameParty = challengerTeam.some(sessionId => targetTeam.includes(sessionId));
+          if (sameParty) {
+            client.send("error", "Jogadores da mesma equipe não podem iniciar um duelo entre si.");
+            return;
           }
-          client.send("startDuel", { roomId: battleRoom.roomId });
+          if (challengerTeam.length !== targetTeam.length) {
+            client.send("error", "Para este duelo, as equipes precisam ter o mesmo tamanho (1×1, 2×2 ou 3×3).");
+            return;
+          }
+
+          const teamAssignments: Record<string, 'blue' | 'red'> = {};
+          const assignAccounts = (sessionIds: string[], teamId: 'blue' | 'red') => {
+            sessionIds.forEach(sessionId => {
+              const memberClient = this.clients.find(candidate => candidate.sessionId === sessionId);
+              const accountId = (memberClient?.auth as { id?: string } | undefined)?.id;
+              if (accountId) teamAssignments[accountId] = teamId;
+            });
+          };
+          assignAccounts(challengerTeam, 'blue');
+          assignAccounts(targetTeam, 'red');
+
+          const teamSize = challengerTeam.length;
+          const battleRoom = await matchMaker.createRoom("battle", {
+            mode: teamSize === 1 ? 'duel' : 'team_pvp',
+            expectedPlayers: teamSize * 2,
+            teamSize,
+            teamAssignments,
+          });
+
+          [...challengerTeam, ...targetTeam].forEach(sessionId => {
+            const memberClient = this.clients.find(candidate => candidate.sessionId === sessionId);
+            memberClient?.send("startDuel", {
+              roomId: battleRoom.roomId,
+              mode: teamSize === 1 ? 'duel' : 'team_pvp',
+              teamSize,
+            });
+          });
+
+          if (teamSize > 1) {
+            this.broadcast("chat", {
+              sender: "Sistema",
+              text: `⚔️ Duelo ${teamSize}×${teamSize} iniciado entre as duas equipes!`,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+          }
         } catch (err) {
           console.error("Failed to create battle room for duel:", err);
         }
@@ -360,6 +413,14 @@ export class GameRoom extends Room<{ state: MapState }> {
 
       if (target && leader) {
         const partyId = leader.partyId || `party-${data.leaderSessionId}-${Date.now()}`;
+        let currentMembers = 0;
+        this.state.players.forEach(player => {
+          if (player.partyId === partyId || (!leader.partyId && player === leader)) currentMembers++;
+        });
+        if (currentMembers >= MAX_PARTY_SIZE) {
+          client.send("error", `A equipe já atingiu o limite de ${MAX_PARTY_SIZE} jogadores.`);
+          return;
+        }
         leader.partyId = partyId;
         target.partyId = partyId;
 
@@ -454,28 +515,28 @@ export class GameRoom extends Room<{ state: MapState }> {
       };
 
       try {
-        const battleRoom = await matchMaker.createRoom("battle", {});
-        encounterData.roomId = battleRoom.roomId;
-        
+        const members: string[] = [];
         if (player.partyId) {
-          const members: string[] = [];
           this.state.players.forEach((p: any, sid: string) => {
-            if (p.partyId === player.partyId) {
+            if (p.partyId === player.partyId && members.length < MAX_PARTY_SIZE) {
               members.push(sid);
             }
           });
-
-          members.forEach(sid => {
-            const memberClient = this.clients.find(c => c.sessionId === sid);
-            if (memberClient) {
-              memberClient.send("startBattle", encounterData);
-            }
-          });
         } else {
-          if (client) {
-            client.send("startBattle", encounterData);
-          }
+          members.push(sessionId);
         }
+
+        const battleRoom = await matchMaker.createRoom("battle", {
+          mode: members.length > 1 ? 'coop' : 'solo',
+          expectedPlayers: members.length,
+          teamSize: members.length,
+        });
+        encounterData.roomId = battleRoom.roomId;
+
+        members.forEach(sid => {
+          const memberClient = this.clients.find(c => c.sessionId === sid);
+          if (memberClient) memberClient.send("startBattle", encounterData);
+        });
 
         // Respawn the monster after 15 seconds in a random walkable tile
         this.clock.setTimeout(() => {

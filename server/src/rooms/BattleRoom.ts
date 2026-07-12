@@ -12,6 +12,19 @@ import {
   GROWTH_DEFENSE,
   GROWTH_SPEED
 } from '../constants/growth.js';
+import {
+  assignTeamForJoin,
+  BattleRoomConfig,
+  BattleRoomOptions,
+  BattleTeamId,
+  calculatePlanManaCost,
+  getDefaultGridSlots,
+  gridSlotToPosition,
+  manaForTurn,
+  normalizeBattleConfig,
+  PLANNING_SECONDS,
+  validateGridSelection,
+} from '../battle/teamBattle.js';
 
 const CHARACTER_DATABASE: Record<string, { name: string; class: string; level: number; hp: number; mp: number; speed: number; strength: number; intelligence: number; element: string }> = {
   'char-caelum': { name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, mp: 210, speed: 95, strength: 120, intelligence: 80, element: 'agua' },
@@ -51,6 +64,7 @@ const getElementModifier = (attackerEl: string, defenderEl: string): number => {
 
 export class BattleRoom extends Room<{ state: BattleState }> {
   override maxClients = 2;
+  private battleConfig: BattleRoomConfig = normalizeBattleConfig();
   private sessionAccounts = new Map<string, string>();
   private playerPerfectCombos = new Map<string, number>();
   private clientAnimationsComplete = new Set<string>();
@@ -69,8 +83,13 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     }
   }
 
-  override onCreate(options: any) {
+  override onCreate(options: BattleRoomOptions) {
+    this.battleConfig = normalizeBattleConfig(options);
+    this.maxClients = this.battleConfig.maxClients;
     this.setState(new BattleState());
+    this.state.mode = this.battleConfig.mode;
+    this.state.expectedPlayers = this.battleConfig.expectedPlayers;
+    this.state.maxTeamSize = this.battleConfig.teamSize;
 
     this.onMessage("report_performance", (client, data: { perfectCombos: number }) => {
       this.playerPerfectCombos.set(client.sessionId, data.perfectCombos || 0);
@@ -91,7 +110,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
       }
     });
 
-    // Action planning handler for all 3 team combatants
+    // Cada cliente planeja apenas os heróis que controla e confirma uma vez por turno.
     this.onMessage("plan_actions", (client, data: { actions: Record<string, { action: string; spellId?: string; targetId?: string }> }) => {
       if (this.state.status !== "planning") {
         client.send("error", "Não está na fase de planejamento de ações.");
@@ -100,12 +119,32 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
+      if (player.hasSelectedAction) {
+        client.send("plan_rejected", { reason: "Sua estratégia já foi confirmada neste turno." });
+        return;
+      }
+
+      const sanitizedActions: Record<string, { action: string; spellId?: string; targetId?: string }> = {};
+      for (const combatantId in data.actions || {}) {
+        const combatant = player.combatants.get(combatantId);
+        if (combatant && combatant.hp > 0) sanitizedActions[combatantId] = data.actions[combatantId];
+      }
+
+      const manaCost = calculatePlanManaCost(sanitizedActions);
+      if (manaCost > player.mana) {
+        client.send("plan_rejected", {
+          reason: `Mana insuficiente: a estratégia custa ${manaCost}, mas você possui ${player.mana}.`,
+          cost: manaCost,
+          mana: player.mana,
+        });
+        return;
+      }
 
       let plannedCount = 0;
-      for (const combatantId in data.actions) {
+      for (const combatantId in sanitizedActions) {
         const combatant = player.combatants.get(combatantId);
         if (combatant && combatant.hp > 0) {
-          const plan = data.actions[combatantId];
+          const plan = sanitizedActions[combatantId];
           combatant.selectedAction = plan.action;
           combatant.selectedSpellId = plan.spellId || "";
           combatant.selectedTargetId = plan.targetId || "";
@@ -119,23 +158,24 @@ export class BattleRoom extends Room<{ state: BattleState }> {
       player.combatants.forEach((c: any) => { if (c.hp > 0) totalAlive++; });
 
       if (plannedCount >= totalAlive || totalAlive === 0) {
+        player.mana -= manaCost;
         player.hasSelectedAction = true;
-        this.state.logs.push(`${player.username} planejou as ações táticas.`);
+        this.state.logs.push(`${player.username} confirmou a estratégia (${manaCost} Mana).`);
       }
 
-      // Check if both players have made their choices
-      let allReady = true;
-      this.state.players.forEach((p: any) => {
-        if (!p.hasSelectedAction) allReady = false;
-      });
-
-      if (allReady) {
+      if (this.areAllHumansReady('actions')) {
+        this.prepareBotActions();
         this.resolveRound();
       }
     });
 
-    // Confrontation Prep Selection: Choose 3 of 6 combatants + runes
-    this.onMessage("choose_lineup", async (client, data: { lineup: string[]; positions: Record<string, string>; runeId: string }) => {
+    // Solo escolhe 3 heróis; coop/PvP em equipe escolhem 1 herói por jogador.
+    this.onMessage("choose_lineup", async (client, data: {
+      lineup: string[];
+      positions?: Record<string, string>;
+      slots?: Record<string, number>;
+      runeId: string;
+    }) => {
       if (this.state.status !== "confrontation_prep") {
         client.send("error", "Não está na fase de Preparação de Confronto.");
         return;
@@ -143,6 +183,27 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
+      if (player.hasSelectedLineup) {
+        client.send("lineup_rejected", { reason: "Sua formação já foi confirmada." });
+        return;
+      }
+
+      const chosenLineup = Array.from(new Set(data.lineup || []));
+      if (chosenLineup.length !== this.battleConfig.lineupSizePerPlayer) {
+        client.send("lineup_rejected", {
+          reason: `Escolha exatamente ${this.battleConfig.lineupSizePerPlayer} herói(s) para este modo.`,
+        });
+        return;
+      }
+
+      const defaultSlots = getDefaultGridSlots(chosenLineup.length);
+      const requestedSlots = chosenLineup.map((heroId, index) => data.slots?.[heroId] ?? defaultSlots[index]);
+      const occupiedSlots = this.getOccupiedTeamSlots(player.teamId as BattleTeamId, client.sessionId);
+      const gridValidation = validateGridSelection(requestedSlots, occupiedSlots, chosenLineup.length);
+      if (!gridValidation.ok) {
+        client.send("lineup_rejected", { reason: gridValidation.reason });
+        return;
+      }
 
       const accountId = this.sessionAccounts.get(client.sessionId);
       let dbCompanions: any[] = [];
@@ -152,63 +213,22 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         } catch (_) {}
       }
 
-      // Popula combatentes ativos do time de 3 selecionados
-      const chosenLineup = data.lineup || [];
-      chosenLineup.forEach(charId => {
-        const combatant = new BattleCombatantState();
-        combatant.id = charId;
-        
-        // Tenta carregar do DB real
-        const dbCompanion = dbCompanions.find(c => c.id === charId);
-        
-        if (dbCompanion) {
-          combatant.name = dbCompanion.name;
-          combatant.class = dbCompanion.class;
-          combatant.level = dbCompanion.level;
-          combatant.hp = dbCompanion.stats.hp;
-          combatant.maxHp = dbCompanion.stats.maxHp || dbCompanion.stats.hp;
-          combatant.mp = dbCompanion.stats.mp;
-          combatant.maxMp = dbCompanion.stats.maxMp || dbCompanion.stats.mp;
-          combatant.speed = dbCompanion.stats.speed;
-          combatant.strength = dbCompanion.stats.strength;
-          combatant.intelligence = dbCompanion.stats.intelligence !== undefined ? dbCompanion.stats.intelligence : dbCompanion.stats.defense;
-          combatant.element = dbCompanion.element;
-        } else {
-          // Carrega do dicionário CHARACTER_DATABASE ou cria mock padrão
-          const dbStats = CHARACTER_DATABASE[charId] || CHARACTER_DATABASE['char-caelum'];
-          combatant.name = dbStats.name;
-          combatant.class = dbStats.class;
-          combatant.level = dbStats.level;
-          combatant.hp = dbStats.hp;
-          combatant.maxHp = dbStats.hp;
-          combatant.mp = dbStats.mp;
-          combatant.maxMp = dbStats.mp;
-          combatant.speed = dbStats.speed;
-          combatant.strength = dbStats.strength;
-          combatant.intelligence = dbStats.intelligence;
-          combatant.element = dbStats.element;
-        }
-        combatant.position = data.positions[charId] || "mid";
-        combatant.hasSelectedAction = false;
-        
-        // Aplica modificadores das runas
-        if (data.runeId === 'runa-vinculo') {
-          combatant.speed += 10; // Runa do Vínculo concede iniciativa extra
-        }
-
-        player.combatants.set(charId, combatant);
+      chosenLineup.forEach((heroId, index) => {
+        const combatant = this.buildCombatant(
+          client.sessionId,
+          player.teamId as BattleTeamId,
+          heroId,
+          requestedSlots[index],
+          dbCompanions.find(c => c.id === heroId),
+          data.runeId,
+        );
+        player.combatants.set(combatant.id, combatant);
       });
 
       player.hasSelectedLineup = true;
       this.state.logs.push(`${player.username} confirmou a formação.`);
 
-      // Check if both players are ready
-      let allReady = true;
-      this.state.players.forEach((p: any) => {
-        if (!p.hasSelectedLineup) allReady = false;
-      });
-
-      if (allReady) {
+      if (this.areAllHumansReady('lineup')) {
         this.startBattle();
       }
     });
@@ -332,10 +352,145 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     });
   }
 
+  private getHumanPlayers(): Array<[string, BattlePlayerState]> {
+    return Array.from(this.state.players.entries())
+      .filter(([, player]) => !player.isBot) as Array<[string, BattlePlayerState]>;
+  }
+
+  private areAllHumansReady(kind: 'lineup' | 'actions'): boolean {
+    const humans = this.getHumanPlayers();
+    if (humans.length < this.battleConfig.expectedPlayers) return false;
+    return humans.every(([, player]) => (
+      kind === 'lineup' ? player.hasSelectedLineup : player.hasSelectedAction
+    ));
+  }
+
+  private getOccupiedTeamSlots(teamId: BattleTeamId, excludingSessionId?: string): number[] {
+    const occupied: number[] = [];
+    this.state.players.forEach((player, sessionId) => {
+      if (player.teamId !== teamId || sessionId === excludingSessionId) return;
+      player.combatants.forEach(combatant => occupied.push(combatant.gridSlot));
+    });
+    return occupied;
+  }
+
+  private buildCombatant(
+    ownerSessionId: string,
+    teamId: BattleTeamId,
+    heroId: string,
+    gridSlot: number,
+    dbCompanion?: any,
+    runeId = '',
+  ): BattleCombatantState {
+    const combatant = new BattleCombatantState();
+    combatant.id = `${ownerSessionId}--${heroId}`;
+    combatant.heroId = heroId;
+    combatant.ownerSessionId = ownerSessionId;
+    combatant.teamId = teamId;
+    combatant.gridSlot = gridSlot;
+    combatant.position = gridSlotToPosition(gridSlot);
+
+    if (dbCompanion) {
+      combatant.name = dbCompanion.name;
+      combatant.class = dbCompanion.class;
+      combatant.level = dbCompanion.level;
+      combatant.hp = dbCompanion.stats.hp;
+      combatant.maxHp = dbCompanion.stats.maxHp || dbCompanion.stats.hp;
+      combatant.mp = dbCompanion.stats.mp;
+      combatant.maxMp = dbCompanion.stats.maxMp || dbCompanion.stats.mp;
+      combatant.speed = dbCompanion.stats.speed;
+      combatant.strength = dbCompanion.stats.strength;
+      combatant.intelligence = dbCompanion.stats.intelligence ?? dbCompanion.stats.defense;
+      combatant.element = dbCompanion.element;
+    } else {
+      const stats = CHARACTER_DATABASE[heroId] || CHARACTER_DATABASE['char-caelum'];
+      combatant.name = stats.name;
+      combatant.class = stats.class;
+      combatant.level = stats.level;
+      combatant.hp = stats.hp;
+      combatant.maxHp = stats.hp;
+      combatant.mp = stats.mp;
+      combatant.maxMp = stats.mp;
+      combatant.speed = stats.speed;
+      combatant.strength = stats.strength;
+      combatant.intelligence = stats.intelligence;
+      combatant.element = stats.element;
+    }
+
+    if (runeId === 'runa-vinculo') combatant.speed += 10;
+    return combatant;
+  }
+
+  private populateDefaultLineup(sessionId: string, player: BattlePlayerState) {
+    const lineupSize = this.battleConfig.lineupSizePerPlayer;
+    const heroIds = ['char-caelum', 'char-lyria', 'char-raven'].slice(0, lineupSize);
+    const occupied = this.getOccupiedTeamSlots(player.teamId as BattleTeamId, sessionId);
+    const available = getDefaultGridSlots(9).filter(slot => !occupied.includes(slot));
+    heroIds.forEach((heroId, index) => {
+      const combatant = this.buildCombatant(
+        sessionId,
+        player.teamId as BattleTeamId,
+        heroId,
+        available[index] ?? index,
+      );
+      player.combatants.set(combatant.id, combatant);
+    });
+    player.hasSelectedLineup = true;
+  }
+
+  private ensureBotOpponent() {
+    if (!this.battleConfig.usesBotOpponent || this.state.players.has('enemy-ai')) return;
+    const bot = new BattlePlayerState();
+    bot.username = 'Guardiões da Fenda';
+    bot.teamId = 'red';
+    bot.isBot = true;
+    bot.connected = true;
+    bot.hasSelectedLineup = true;
+    const botHeroes = ['char-korr', 'char-lobo', 'char-seraphina'];
+    getDefaultGridSlots(3).forEach((slot, index) => {
+      const combatant = this.buildCombatant('enemy-ai', 'red', botHeroes[index], slot);
+      bot.combatants.set(combatant.id, combatant);
+    });
+    this.state.players.set('enemy-ai', bot);
+  }
+
+  private getAliveTeamCombatants(teamId: BattleTeamId) {
+    const result: Array<{ player: BattlePlayerState; sessionId: string; combatant: BattleCombatantState }> = [];
+    this.state.players.forEach((player, sessionId) => {
+      if (player.teamId !== teamId) return;
+      player.combatants.forEach(combatant => {
+        if (combatant.hp > 0) result.push({ player, sessionId, combatant });
+      });
+    });
+    return result.sort((a, b) => b.combatant.gridSlot - a.combatant.gridSlot);
+  }
+
+  private prepareBotActions() {
+    this.state.players.forEach(player => {
+      if (!player.isBot) return;
+      const enemyTeam = player.teamId === 'blue' ? 'red' : 'blue';
+      const targets = this.getAliveTeamCombatants(enemyTeam);
+      player.combatants.forEach(combatant => {
+        if (combatant.hp <= 0) return;
+        combatant.selectedAction = 'attack';
+        combatant.selectedTargetId = targets[0]?.combatant.id || '';
+        combatant.hasSelectedAction = true;
+      });
+      player.hasSelectedAction = true;
+    });
+  }
+
   override async onJoin(client: Client, options: any, auth: any) {
     const player = new BattlePlayerState();
     player.username = auth.username || "Challenger";
     player.characterId = auth.characterId || "";
+    player.teamId = assignTeamForJoin(
+      this.battleConfig,
+      auth.id || '',
+      this.getHumanPlayers().length,
+    );
+    player.isBot = false;
+    player.connected = true;
 
     // 1. Load actual stats from database (with safe fallback)
     let charHp = 100;
@@ -393,44 +548,28 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
     console.log(`[BattleRoom] Player ${player.username} joined Battle ${this.roomId}`);
 
-    if (this.state.players.size === 2) {
+    if (this.getHumanPlayers().length >= this.battleConfig.expectedPlayers) {
+      this.ensureBotOpponent();
       this.startConfrontationPrep();
     }
   }
 
   private startConfrontationPrep() {
+    if (this.state.status !== 'waiting') return;
     this.state.status = "confrontation_prep";
-    this.state.logs.push("Preparação de Confronto: Escolham 3 de seus 6 combatentes e suas runas.");
+    const lineupInstruction = this.battleConfig.lineupSizePerPlayer === 1
+      ? 'Cada jogador deve escolher 1 herói e uma casa livre da grade compartilhada.'
+      : 'Escolha 3 de seus 6 heróis e suas casas na grade.';
+    this.state.logs.push(`Preparação de Confronto: ${lineupInstruction}`);
     
     // 20-second timeout for pre-battle setup
     this.clock.setTimeout(() => {
       if (this.state.status !== "confrontation_prep") return;
 
-      this.state.players.forEach((p: any) => {
-        if (!p.hasSelectedLineup) {
-          // Auto-select lineup with fallbacks
-          const defaultLineup = ['char-caelum', 'char-lyria', 'char-raven'];
-          defaultLineup.forEach(charId => {
-            const combatant = new BattleCombatantState();
-            combatant.id = charId;
-            const dbStats = CHARACTER_DATABASE[charId];
-            combatant.name = dbStats.name;
-            combatant.class = dbStats.class;
-            combatant.level = dbStats.level;
-            combatant.hp = dbStats.hp;
-            combatant.maxHp = dbStats.hp;
-            combatant.mp = dbStats.mp;
-            combatant.maxMp = dbStats.mp;
-            combatant.speed = dbStats.speed;
-            combatant.strength = dbStats.strength;
-            combatant.intelligence = dbStats.intelligence;
-            combatant.element = dbStats.element;
-            combatant.position = charId === 'char-caelum' ? 'front' : charId === 'char-raven' ? 'mid' : 'back';
-            combatant.hasSelectedAction = false;
-            p.combatants.set(charId, combatant);
-          });
-          p.hasSelectedLineup = true;
-          this.state.logs.push(`${p.username} não confirmou a tempo — formação padrão ativa.`);
+      this.getHumanPlayers().forEach(([sessionId, player]) => {
+        if (!player.hasSelectedLineup) {
+          this.populateDefaultLineup(sessionId, player);
+          this.state.logs.push(`${player.username} não confirmou a tempo — herói e posição padrão ativados.`);
         }
       });
 
@@ -441,6 +580,11 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   private startBattle() {
     this.state.status = "planning";
     this.state.turn = 1;
+    this.state.players.forEach(player => {
+      player.maxMana = manaForTurn(1);
+      player.mana = player.maxMana;
+      player.hasSelectedAction = false;
+    });
     this.state.logs.push("A batalha começou! Escolham suas ações na Fase de Planejamento.");
     this.startPlanningTimeout();
   }
@@ -450,10 +594,11 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     if (this.planningTimeout) {
       this.planningTimeout.clear();
     }
+    this.state.planningDeadline = Date.now() + PLANNING_SECONDS * 1000;
     this.planningTimeout = this.clock.setTimeout(() => {
       if (this.state.status !== 'planning') return;
 
-      this.state.players.forEach((p: any) => {
+      this.getHumanPlayers().forEach(([, p]) => {
         if (!p.hasSelectedAction) {
           p.combatants.forEach((c: any) => {
             if (c.hp > 0 && !c.hasSelectedAction) {
@@ -466,8 +611,9 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         }
       });
 
+      this.prepareBotActions();
       this.resolveRound();
-    }, 30000);
+    }, PLANNING_SECONDS * 1000);
   }
 
   private resolveRound() {
@@ -478,23 +624,20 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.state.status = "resolving";
     this.state.logs.push(`--- Turno ${this.state.turn}: Fase de Resolução ---`);
 
-    const sessions = Array.from(this.state.players.keys()) as string[];
-    
     interface CombatantActor {
       state: BattleCombatantState;
       ownerSessionId: string;
-      opponentSessionId: string;
+      opponentTeamId: BattleTeamId;
     }
 
     const actors: CombatantActor[] = [];
     this.state.players.forEach((player: any, sessionId: string) => {
-      const oppSessionId = sessions.find(id => id !== sessionId)!;
       player.combatants.forEach((c: any) => {
         if (c.hp > 0) {
           actors.push({
             state: c,
             ownerSessionId: sessionId,
-            opponentSessionId: oppSessionId
+            opponentTeamId: player.teamId === 'blue' ? 'red' : 'blue',
           });
         }
       });
@@ -514,7 +657,6 @@ export class BattleRoom extends Room<{ state: BattleState }> {
       if (combatant.hp <= 0) continue;
 
       const actorPlayer = this.state.players.get(actor.ownerSessionId)!;
-      const oppPlayer = this.state.players.get(actor.opponentSessionId)!;
 
       if (combatant.selectedAction === "defend") {
         const logMsg = `${combatant.name} (${actorPlayer.username}) assumiu postura defensiva.`;
@@ -528,12 +670,10 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         continue;
       }
 
-      // Acha alvo vivo
-      let target = oppPlayer.combatants.get(combatant.selectedTargetId);
-      if (!target || target.hp <= 0) {
-        // Redireciona para o primeiro inimigo vivo
-        target = (Array.from(oppPlayer.combatants.values()) as any[]).find(c => c.hp > 0);
-      }
+      const opponentCombatants = this.getAliveTeamCombatants(actor.opponentTeamId);
+      // Regra base: a casa viva mais à frente protege as casas atrás.
+      // Habilidades futuras poderão declarar alvo direto/perfuração no catálogo autoritativo.
+      const target = opponentCombatants[0]?.combatant;
 
       if (!target) continue; // Sem inimigos vivos
 
@@ -568,78 +708,47 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
       if (combatant.selectedAction === "spell") {
         if (combatant.selectedSpellId === "cure") {
-          const mpCost = 10;
-          if (combatant.mp < mpCost) {
-            const logMsg = `${combatant.name} tentou usar Cura mas não tem MP suficiente (${combatant.mp}/${mpCost}).`;
+          const allyTarget = this.getAliveTeamCombatants(actorPlayer.teamId as BattleTeamId)
+            .sort((a, b) => a.combatant.hp - b.combatant.hp)[0]?.combatant;
+          if (allyTarget) {
+            const heal = Math.floor(combatant.intelligence * 1.5) + Math.floor(Math.random() * 8);
+            allyTarget.hp = Math.min(allyTarget.maxHp, allyTarget.hp + heal);
+            const logMsg = `${combatant.name} curou ${allyTarget.name} restaurando ${heal} de HP.`;
             this.state.logs.push(logMsg);
             roundEvents.push({
-              type: 'spell_cure_fail',
+              type: 'spell_cure',
               actorId: combatant.id,
-              log: logMsg
+              targetId: allyTarget.id,
+              heal,
+              targetHp: allyTarget.hp,
+              log: logMsg,
             });
-          } else {
-            combatant.mp -= mpCost;
-            // Cura o aliado com menor HP
-            const allyTarget = (Array.from(actorPlayer.combatants.values()) as any[])
-              .filter(c => c.hp > 0)
-              .sort((a, b) => a.hp - b.hp)[0];
-            if (allyTarget) {
-              const heal = Math.floor(combatant.intelligence * 1.5) + Math.floor(Math.random() * 8);
-              allyTarget.hp = Math.min(allyTarget.maxHp, allyTarget.hp + heal);
-              const logMsg = `${combatant.name} curou ${allyTarget.name} restaurando ${heal} de HP. (MP: ${combatant.mp}/${combatant.maxMp})`;
-              this.state.logs.push(logMsg);
-              roundEvents.push({
-                type: 'spell_cure',
-                actorId: combatant.id,
-                targetId: allyTarget.id,
-                heal: heal,
-                actorMp: combatant.mp,
-                targetHp: allyTarget.hp,
-                log: logMsg
-              });
-            }
           }
         } else {
-          // Spell ofensiva
-          const mpCost = 15;
-          if (combatant.mp < mpCost) {
-            const logMsg = `${combatant.name} tentou lançar magia mas não tem MP suficiente (${combatant.mp}/${mpCost}).`;
-            this.state.logs.push(logMsg);
-            roundEvents.push({
-              type: 'spell_attack_fail',
-              actorId: combatant.id,
-              log: logMsg
-            });
-          } else {
-            combatant.mp -= mpCost;
-            const baseDmg = Math.floor(combatant.intelligence * 1.3) + Math.floor(Math.random() * 10) + 8;
-            const modifier = getElementModifier(combatant.element, target.element);
-            let finalDmg = Math.floor(baseDmg * modifier);
+          const baseDmg = Math.floor(combatant.intelligence * 1.3) + Math.floor(Math.random() * 10) + 8;
+          const modifier = getElementModifier(combatant.element, target.element);
+          let finalDmg = Math.floor(baseDmg * modifier);
 
-            if (target.selectedAction === "defend") {
-              finalDmg = Math.floor(finalDmg * 0.5);
-            }
+          if (target.selectedAction === "defend") finalDmg = Math.floor(finalDmg * 0.5);
 
-            target.hp = Math.max(0, target.hp - finalDmg);
+          target.hp = Math.max(0, target.hp - finalDmg);
 
-            let comment = "";
-            if (modifier > 1) comment = " (Super Efetivo! 🔥)";
-            if (modifier < 1) comment = " (Resistido... 🛡️)";
-            if (target.selectedAction === "defend") comment += " [Defendido]";
+          let comment = "";
+          if (modifier > 1) comment = " (Super Efetivo! 🔥)";
+          if (modifier < 1) comment = " (Resistido... 🛡️)";
+          if (target.selectedAction === "defend") comment += " [Defendido]";
 
-            const logMsg = `${combatant.name} lançou Magia em ${target.name} causando ${finalDmg} de dano${comment}. (MP: ${combatant.mp}/${combatant.maxMp})`;
-            this.state.logs.push(logMsg);
-            roundEvents.push({
-              type: 'spell_attack',
-              actorId: combatant.id,
-              targetId: target.id,
-              damage: finalDmg,
-              comment: comment,
-              actorMp: combatant.mp,
-              targetHp: target.hp,
-              log: logMsg
-            });
-          }
+          const logMsg = `${combatant.name} lançou Magia em ${target.name} causando ${finalDmg} de dano${comment}.`;
+          this.state.logs.push(logMsg);
+          roundEvents.push({
+            type: 'spell_attack',
+            actorId: combatant.id,
+            targetId: target.id,
+            damage: finalDmg,
+            comment,
+            targetHp: target.hp,
+            log: logMsg,
+          });
         }
       }
 
@@ -652,21 +761,21 @@ export class BattleRoom extends Room<{ state: BattleState }> {
           log: logMsg
         });
         
-        // Verifica se a equipe do oponente foi totalmente aniquilada
-        let oppAliveCount = 0;
-        oppPlayer.combatants.forEach((c: any) => { if (c.hp > 0) oppAliveCount++; });
-
-        if (oppAliveCount === 0) {
-          const logMsgOver = `🎉 A equipe de ${oppPlayer.username} foi totalmente derrotada!\n--- Batalha Encerrada. Vencedor: ${actorPlayer.username}! ---`;
+        if (this.getAliveTeamCombatants(actor.opponentTeamId).length === 0) {
+          const winnerTeamId = actorPlayer.teamId as BattleTeamId;
+          const winnerEntry = this.getHumanPlayers().find(([, player]) => player.teamId === winnerTeamId);
+          const logMsgOver = `🎉 A equipe ${actor.opponentTeamId} foi derrotada!\n--- Vencedor: equipe ${winnerTeamId}! ---`;
           this.state.logs.push(logMsgOver);
           roundEvents.push({
             type: 'battle_over',
-            winnerSessionId: actor.ownerSessionId,
+            winnerSessionId: winnerEntry?.[0] || actor.ownerSessionId,
+            winnerTeamId,
             log: logMsgOver
           });
           
           this.state.status = "finished";
-          this.state.winnerSessionId = actor.ownerSessionId;
+          this.state.winnerSessionId = winnerEntry?.[0] || actor.ownerSessionId;
+          this.state.winnerTeamId = winnerTeamId;
           
           this.broadcast("round_resolved", { events: roundEvents });
           this.saveBattleHistory();
@@ -693,6 +802,8 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     // Reset de escolhas para o próximo round
     this.state.players.forEach((p: any) => {
       p.hasSelectedAction = false;
+      p.maxMana = manaForTurn(this.state.turn + 1);
+      p.mana = p.maxMana;
       p.combatants.forEach((c: any) => {
         c.hasSelectedAction = false;
         c.selectedAction = "none";
@@ -726,7 +837,10 @@ export class BattleRoom extends Room<{ state: BattleState }> {
           const accountId = this.sessionAccounts.get(sessionId);
           if (!accountId) continue;
 
-          const isWinner = this.state.winnerSessionId === sessionId;
+          const playerForResult = this.state.players.get(sessionId);
+          const isWinner = Boolean(
+            playerForResult && this.state.winnerTeamId && playerForResult.teamId === this.state.winnerTeamId,
+          );
           let xpGained = isWinner ? 250 : 50;
 
           // Encontra ID do personagem do jogador
@@ -854,19 +968,30 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     
     if (this.state.status !== "finished" && this.state.players.has(client.sessionId)) {
       const leavingPlayer = this.state.players.get(client.sessionId)!;
-      this.state.logs.push(`${leavingPlayer.username} fugiu da batalha!`);
-      
-      const winnerSessionId = Array.from(this.state.players.keys()).find(id => id !== client.sessionId);
-      if (winnerSessionId) {
-        const winner = this.state.players.get(winnerSessionId)!;
+      leavingPlayer.connected = false;
+      leavingPlayer.hasSelectedAction = true;
+      leavingPlayer.combatants.forEach(combatant => {
+        combatant.selectedAction = 'defend';
+        combatant.hasSelectedAction = true;
+      });
+      this.state.logs.push(`${leavingPlayer.username} desconectou e recebeu WO individual.`);
+
+      const connectedTeammates = this.getHumanPlayers()
+        .filter(([sessionId, player]) => sessionId !== client.sessionId && player.teamId === leavingPlayer.teamId && player.connected);
+      const opponent = (Array.from(this.state.players.entries()) as Array<[string, BattlePlayerState]>)
+        .find(([, player]) => player.teamId !== leavingPlayer.teamId && player.connected);
+      if (connectedTeammates.length === 0 && opponent) {
         this.state.status = "finished";
-        this.state.winnerSessionId = winnerSessionId;
-        this.state.logs.push(`${winner.username} venceu por WO!`);
+        this.state.winnerSessionId = opponent[0];
+        this.state.winnerTeamId = opponent[1].teamId;
+        this.state.logs.push(`A equipe ${opponent[1].teamId} venceu por WO!`);
         await this.saveBattleHistory();
       }
     }
-    
-    this.state.players.delete(client.sessionId);
+
+    if (this.state.status === 'waiting' || this.state.status === 'confrontation_prep') {
+      this.state.players.delete(client.sessionId);
+    }
   }
 
   override onDispose() {

@@ -202,9 +202,25 @@ Exploração → encontro validado pelo servidor → transição
 
 - Cada jogador entra inicialmente com **um herói**, usando o herói marcado como favorito por padrão.
 - O jogador pode alterar essa escolha no lobby pré-batalha antes de confirmar.
+- A party cooperativa comporta **até três jogadores**.
+- Os participantes da mesma equipe compartilham **uma única grade 3×3**; cada jogador ocupa uma casa com seu herói e duas entidades aliadas nunca podem ocupar a mesma casa.
 - Cada participante decide a ação do próprio herói durante a Preparação.
+- A fase termina quando todos os participantes conectados confirmam ou quando o cronômetro do servidor chega ao fim; somente então começa a Resolução.
 - Uma substituição usa Mana e consome a ação daquele personagem no turno, seguindo a leitura estratégica de troca de Pokémon.
 - A composição do grupo surge da combinação dos heróis escolhidos pelos participantes, não de um único jogador controlando seis heróis.
+
+### PvP em equipes e PvPvE
+
+- O mesmo contrato comporta confrontos **1×1, 2×2 e 3×3**.
+- Cada jogador controla um herói e compartilha a grade 3×3 com os aliados da própria equipe.
+- As regras de casa exclusiva, confirmação simultânea, Mana e resolução autoritativa são as mesmas do cooperativo.
+- Encontros PvPvE podem acrescentar entidades controladas pelo servidor sem mudar a propriedade das ações dos jogadores.
+
+### Brawl
+
+- O Brawl reúne oito jogadores e preserva o ciclo Preparação → Resolução → Preparação.
+- Diferentemente do cooperativo e do PvP em equipes, **cada participante possui seu tabuleiro 3×3 completo**.
+- O pareamento por rodada, vida, eliminação e desempates do Brawl continuam como contrato futuro; a fundação de modo não significa que o modo completo já esteja jogável.
 
 ---
 
@@ -224,9 +240,9 @@ A orientação visual pode ser espelhada entre equipes, mas os identificadores l
 
 ### Ocupação
 
-- Três heróis começam em campo.
-- Os três heróis restantes ficam na reserva.
-- Cada jogador pode manter no máximo três heróis ativos simultaneamente.
+- No solo, três heróis começam em campo e os três heróis restantes ficam na reserva.
+- No cooperativo e no PvP em equipes, cada jogador começa com um herói e a equipe pode ter até três heróis de jogadores ativos na grade compartilhada.
+- Cada casa comporta no máximo uma entidade, independentemente de ela ser herói, clone, token, barreira ou invocação.
 - Heróis da reserva podem substituir heróis ativos durante a Preparação mediante custo de Mana e condição válidos.
 - Casas sem herói podem ser ocupadas por clones, tokens, barreiras e invocações criados por habilidades ou itens.
 - Unidades auxiliares não aumentam o limite de três heróis, mas podem preencher o tabuleiro e criar estratégias de ocupação.
@@ -327,9 +343,13 @@ A curva de Mana cria momentos diferentes dentro da mesma batalha:
 - **Mid game:** habilidades de sinergia, substituições e disputas por posição.
 - **Late game:** habilidades de alto impacto, combos e condições de vitória construídas ao longo dos turnos.
 
-### Números ainda abertos
+### Curva técnica v1
 
-Ainda precisam ser definidos: Mana inicial, crescimento por rodada, limite máximo, regras de renovação, custos de substituição e efeitos permitidos de aceleração/desconto.
+- Turno 1 começa com 1 Mana; o máximo cresce em 1 por turno até o teto de 10.
+- A Mana disponível é renovada até o máximo no início de cada Preparação.
+- Ataque básico e defesa custam 0; reposicionamento custa 1; item custa 2; substituição custa 3.
+- Habilidades usam custos individuais entre 3 e 8 na implementação inicial.
+- Os valores são uma primeira curva jogável e devem ser balanceados com telemetria e playtests; efeitos permitidos de aceleração, desconto e transferência ainda precisam ser definidos.
 
 ### Guardrails necessários
 
@@ -414,14 +434,14 @@ Estas questões não devem ser implementadas por suposição:
 2. Qual é o custo padrão para substituir/descer um herói?
 3. Quais interações de suporte com Mana são permitidas sem quebrar a curva de lategame?
 4. O que acontece quando o timer acaba sem confirmação: defesa automática, último plano válido ou outra regra?
-5. Uma casa comporta exatamente uma entidade? Barreiras e tokens substituem ou compartilham espaço?
+5. Quais regras de duração, prioridade e destruição serão usadas por barreiras, tokens, clones e invocações que ocupam uma casa exclusiva?
 6. Como linhas, colunas e lacunas alteram prioridade e perfuração?
 7. Como o jogador escolhe entre múltiplos alvos igualmente prioritários?
 8. Qual é a janela de reconexão antes de uma derrota por WO?
 9. Quais punições de ranking, fila ou recompensa acompanham o WO em cada modo competitivo?
 10. Como desconexão funciona em PvE cooperativo e campanha, onde ranking pode não ser aplicável?
-11. No cooperativo, todos compartilham uma única grade 3×3 ou cada jogador possui seu próprio tabuleiro?
-12. Quantos participantes podem ocupar a mesma batalha cooperativa e como áreas/efeitos atravessam seus tabuleiros?
+11. Como efeitos de área, linha e coluna atravessam a grade compartilhada e distinguem aliados, inimigos e entidades neutras?
+12. Como o PvPvE posiciona entidades neutras e define sua prioridade de alvo sem conflitar com as duas equipes?
 13. Como o emparelhamento, vida do jogador e eliminação funcionam no Brawl de oito jogadores?
 14. Duelo e Brawl usam poder persistente integral, matchmaking por faixa ou normalização competitiva?
 15. Qual regra antistall impede ciclos indefinidos de defesa gratuita?
