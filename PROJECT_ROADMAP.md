@@ -216,6 +216,8 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 
 ### Backend (Servidor)
 - [x] Sistema de autenticação JWT (login/register)
+- [x] Conta contínua de teste `zero` (`zero` / `zero`), persistida/reparada no PostgreSQL quando disponível e determinística no fallback
+- [x] Encontro PvE determinístico disparado pelo NPC Instrutor Kael
 - [x] Seed de 6 companheiros ao criar conta
 - [x] API REST de Companions (listar, detalhar, swap, disenchant)
 - [x] API REST de Inventário (listar com level/xp, transferir, fundir, evoluir raridade)
@@ -233,6 +235,9 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 
 ### Frontend (Cliente)
 - [x] Tela de Login/Cadastro
+- [x] Caminho dourado login → lobby/perfil → mundo → NPC → lobby 5→3 → transição → Preparação
+- [x] Mundo controlável por teclado, click-to-move, joystick virtual e controle físico via Gamepad API
+- [x] Menu de opções com retorno ao lobby e reentrada livre no mundo
 - [x] Lobby com 9 tabs (Home, Profile, Inventory, Friends, Battles, Quests, Memories, GM, Settings)
 - [x] Inventário com exibição de nível e barra de XP para armas
 - [x] Integração do Lobby com API de Companions
@@ -254,14 +259,14 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 
 ### Fase 2: Sistemas Core
 - [ ] Remover credencial GM padrão (`gm-master-key`) e exigir `GM_SECRET` seguro em produção
-- [ ] Corrigir proxy local de `/companions` no Vite (a rota hoje retorna o HTML da SPA em desenvolvimento)
-- [ ] Migrar listeners de presença para `Callbacks.get(room)` do Colyseus 0.17
+- [x] Corrigir proxy local de `/companions` no Vite
+- [x] Migrar listeners de presença e mundo para `Callbacks.get(room)` do Colyseus 0.17
 - [ ] Fechar contratos restantes da batalha: entidades auxiliares, lacunas/colunas, perfuração completa, reconexão e punições de WO
 - [ ] Extrair de `GameCanvas.tsx` input, rede, entidades, interação e HUD antes da migração 3D
 - [ ] Construir vertical slice R3F: personagem, câmera, chão, colisão, NPC e segundo jogador sincronizado
 - [ ] Validar performance e sensação da exploração 3D antes de retirar o renderer PixiJS
-- [ ] Separar HUD/missão mockados do estado real (`Lv. 128`, poder da equipe e quest padrão ainda são visuais estáticos)
-- [ ] Conectar `PREP_ROSTER` do client ao endpoint `/companions`
+- [ ] Separar quest, horário, inventário rápido e painéis restantes do estado visual mockado (nome, nível e poder pessoal já vêm da conta)
+- [x] Conectar o roster do lobby pré-batalha ao endpoint `/companions`, com fallback local
 - [ ] Completar roster/reserva e entidades auxiliares sobre a grade 3×3 (a base de posições e equipes já existe)
 - [ ] Implementar frente/meio/trás com alcance, proteção e efeito real
 - [ ] Expandir catálogo de magias (8 spells com custos e efeitos)
@@ -282,7 +287,7 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 
 ### Fase 4: Polish e Conteúdo
 - [ ] Criar testes automatizados mínimos para auth, rotas core e ciclo de batalha
-- [ ] Adicionar smoke test de navegador para cadastro → lobby → mundo
+- [x] Executar smoke test de navegador para login zero → perfil → mundo → NPC → seleção 5→3 → Preparação
 - [ ] Implementar code splitting no client (bundle principal atual: ~887KB minificado / ~262KB gzip)
 - [ ] Seed de `items_base` com catálogo completo
 - [ ] Dragoon Level system (transformação temporária)
@@ -306,13 +311,14 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 3. **TailwindCSS no client:** Classes utilitárias aplicadas diretamente nos componentes.
 4. **CHARACTER_DATABASE ainda existe:** Array estático no `BattleRoom.ts` como fallback. Manter até DB estar garantido.
 5. **Colyseus rooms:** `GameRoom` é persistente. `BattleRoom` é criada por demanda.
-6. **Proxy de desenvolvimento incompleto:** `client/vite.config.ts` ainda não encaminha `/companions` para a porta 3001.
-7. **Callbacks Colyseus 0.17:** O lobby ainda usa o padrão legado `state.players.onAdd/onRemove`; migrar para `Callbacks.get(room)`.
-8. **Mocks visuais no overworld:** O HUD de `GameCanvas.tsx` ainda mostra nível, poder da equipe e quest padrão estáticos, diferentes do personagem real carregado no lobby.
-9. **Cobertura de testes:** A CI executa typecheck e build, mas o repositório ainda não possui testes automatizados.
+6. **Proxy de desenvolvimento:** `/companions` já é encaminhado para a porta 3001 junto das demais APIs.
+7. **Callbacks Colyseus 0.17:** Lobby e mundo usam `Callbacks.get(room)`; não reintroduzir atribuições diretas em `MapSchema`.
+8. **Mocks visuais no overworld:** nome, nível e poder pessoal vêm da conta; quest, horário, inventário rápido e parte dos painéis continuam temporários.
+9. **Cobertura de testes:** existe uma suíte unitária inicial para equipes, grade, Mana e roster; auth e ciclo Colyseus completo ainda dependem de smoke test.
 10. **Credencial GM de desenvolvimento:** `GameRoom.ts` aceita `gm-master-key` quando `GM_SECRET` não está definido. O fallback precisa ser bloqueado em produção antes de qualquer implantação pública.
 11. **Migração 3D:** PixiJS representa o estado atual, não a arquitetura final da exploração. Não remover o overworld existente antes de uma vertical slice R3F atingir paridade mínima de rede, input, interação e desempenho.
-12. **Batalha-alvo diferente da implementação atual:** o backend atual é 3v3 simples. O design canônico agora prevê roster de 6, máximo de 3 heróis ativos por jogador, Mana universal e grade 3×3 ocupável por heróis e entidades auxiliares; a transição exige novo contrato de estado.
+12. **Batalha em evolução:** seleção 5→3, Mana, posições 3×3 e equipes já funcionam; reserva em combate, substituição, clones, barreiras, tokens e invocações ainda não estão completos.
+13. **Conta zero e persistência:** no fallback sem PostgreSQL, conta e roster reaparecem com IDs estáveis, mas XP/loot entre reinicializações só são duráveis quando a conexão real com a base está ativa.
 
 ---
 

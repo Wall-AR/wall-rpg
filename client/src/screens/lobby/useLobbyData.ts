@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../stores/auth';
 import { Character } from '../../types';
 import { client } from '../../game/colyseus';
+import { Callbacks } from '@colyseus/sdk';
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -171,6 +172,7 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
       try {
         activeRoom = await client.joinOrCreate("game", { token });
         setPresenceRoom(activeRoom);
+        const callbacks: any = Callbacks.get(activeRoom);
         
         const updateOnlinePlayers = () => {
           setOnlineCount(activeRoom.state.players.size);
@@ -181,8 +183,8 @@ export function useLobbyData(onStartBattle: (roomId: string) => void) {
           setOnlinePlayers(playersMap);
         };
 
-        activeRoom.state.players.onAdd = updateOnlinePlayers;
-        activeRoom.state.players.onRemove = updateOnlinePlayers;
+        callbacks.onAdd("players", updateOnlinePlayers, true);
+        callbacks.onRemove("players", updateOnlinePlayers);
         activeRoom.onStateChange(() => {
           updateOnlinePlayers();
         });

@@ -30,6 +30,7 @@ export default defineConfig({
       '/character': 'http://localhost:3001',
       '/inventory': 'http://localhost:3001',
       '/friends': 'http://localhost:3001',
+      '/companions': 'http://localhost:3001',
     },
   },
 });

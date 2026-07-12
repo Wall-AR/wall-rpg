@@ -16,6 +16,7 @@ test('cooperative rooms accept one to three humans on the same team', () => {
   assert.equal(config.expectedPlayers, 3);
   assert.equal(config.maxClients, 3);
   assert.equal(config.lineupSizePerPlayer, 1);
+  assert.equal(config.rosterSize, 5);
   assert.equal(config.usesBotOpponent, true);
   assert.equal(assignTeamForJoin(config, 'a', 0), 'blue');
   assert.equal(assignTeamForJoin(config, 'b', 1), 'blue');
@@ -57,4 +58,9 @@ test('mana follows a Hearthstone-like one-to-ten curve', () => {
     a: { action: 'attack' },
     b: { action: 'spell', spellId: 'cure' },
   }), 4);
+});
+
+test('test duel roster is clamped to five candidates', () => {
+  assert.equal(normalizeBattleConfig({ mode: 'solo', rosterSize: 99 }).rosterSize, 5);
+  assert.equal(normalizeBattleConfig({ mode: 'solo', rosterSize: 3, enemyName: 'Instrutor Kael' }).enemyName, 'Instrutor Kael');
 });

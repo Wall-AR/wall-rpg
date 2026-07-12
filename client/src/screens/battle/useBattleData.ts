@@ -2,12 +2,14 @@ import { useEffect, useState, useRef } from 'react';
 import { client } from '../../game/colyseus';
 import { sounds } from '../../game/sound';
 import { gsap } from 'gsap';
-import { Teammate, PREP_ROSTER, BattleStateData, getElementEmoji } from './battleTypes';
+import { Teammate, PREP_ROSTER, BattleStateData, companionToTeammate, getElementEmoji } from './battleTypes';
 
 export const useBattleData = (roomId: string | null, token: string | null, onFinishBattle: () => void) => {
   const [room, setRoom] = useState<any>(null);
   const [battleState, setBattleState] = useState<BattleStateData | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [battleRoster, setBattleRoster] = useState<Teammate[]>(PREP_ROSTER.slice(0, 5));
+  const battleRosterRef = useRef<Teammate[]>(PREP_ROSTER.slice(0, 5));
 
   // Confrontation pre-battle states
   const [selectedLineup, setSelectedLineup] = useState<string[]>([]);
@@ -17,6 +19,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
   const [confrontationTimer, setConfrontationTimer] = useState<number>(20);
   const [confrontationConfirmed, setConfrontationConfirmed] = useState<boolean>(false);
   const [strategyError, setStrategyError] = useState<string | null>(null);
+  const [focusedRosterIndex, setFocusedRosterIndex] = useState(0);
 
   // Transition overlay state
   const [playedTransition, setPlayedTransition] = useState<boolean>(false);
@@ -53,14 +56,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
   });
 
   // Action log planning simulation
-  const [actionLog, setActionLog] = useState<string[]>([
-    'Caelum: Defender linha de frente',
-    'Lyria: Feitiço "Nova Astral"',
-    'Raven: Avançar e marcar Nyxara',
-    'Korr: Investida',
-    'Thorn: Golpe Perfurante em Raven',
-    'Nyxara: Maldição Sombria',
-  ]);
+  const [actionLog, setActionLog] = useState<string[]>([]);
 
   // Teammates details
   const [blueTeam, setBlueTeam] = useState<Teammate[]>([
@@ -82,6 +78,26 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     .filter((slot): slot is number => slot !== undefined);
 
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    fetch('/companions', { headers: { Authorization: `Bearer ${token}` } })
+      .then(response => {
+        if (!response.ok) throw new Error('Falha ao carregar os heróis da conta.');
+        return response.json();
+      })
+      .then((companions: any[]) => {
+        if (cancelled || !Array.isArray(companions)) return;
+        const roster = companions.slice(0, 5).map(companionToTeammate);
+        if (roster.length >= 3) {
+          battleRosterRef.current = roster;
+          setBattleRoster(roster);
+        }
+      })
+      .catch(error => console.warn('[battle] Using local roster fallback:', error));
+    return () => { cancelled = true; };
+  }, [token]);
 
   const waitForQte = (): Promise<'perfect' | 'fail' | 'miss'> => {
     return new Promise((resolve) => {
@@ -260,6 +276,8 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
             turn: state.turn,
             expectedPlayers: state.expectedPlayers,
             maxTeamSize: state.maxTeamSize,
+            rosterSize: state.rosterSize,
+            encounterName: state.encounterName,
             planningDeadline: state.planningDeadline,
             winnerSessionId: state.winnerSessionId,
             winnerTeamId: state.winnerTeamId,
@@ -287,6 +305,10 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
             }, {} as any) as any,
           });
 
+          if (state.status !== 'resolving') {
+            setActionLog((Array.from(state.logs) as string[]).slice(-8).reverse());
+          }
+
           // Sync teams from server schema when not resolving animations
           if (state.status !== "resolving") {
             const localPlayer = state.players.get(activeRoom.sessionId);
@@ -296,7 +318,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
               const opponents: Teammate[] = [];
               state.players.forEach((player: any, ownerSessionId: string) => {
                 player.combatants?.forEach((c: any) => {
-                  const baseMeta = PREP_ROSTER.find(item => item.id === c.heroId) || {
+                  const baseMeta = battleRosterRef.current.find(item => item.id === c.heroId) || PREP_ROSTER.find(item => item.id === c.heroId) || {
                     portrait: '👤',
                     rank: 'A' as const,
                     spells: [],
@@ -398,13 +420,14 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
 
   useEffect(() => {
     if (battleState?.status !== 'confrontation_prep' || lineupSelectionLimit !== 1 || selectedLineup.length > 0) return;
-    const defaultHero = PREP_ROSTER[0];
+    const defaultHero = battleRoster[0];
+    if (!defaultHero) return;
     const preferredSlots = [7, 4, 1, 6, 8, 3, 5, 0, 2];
     const slot = preferredSlots.find(candidate => !occupiedTeamSlots.includes(candidate)) ?? 0;
     setSelectedLineup([defaultHero.id]);
     setLineupSlots({ [defaultHero.id]: slot });
     setLineupPositions({ [defaultHero.id]: slot >= 6 ? 'front' : slot >= 3 ? 'mid' : 'back' });
-  }, [battleState?.status, lineupSelectionLimit, occupiedTeamSlots.join(','), selectedLineup.length]);
+  }, [battleState?.status, lineupSelectionLimit, occupiedTeamSlots.join(','), selectedLineup.length, battleRoster]);
 
   // Trigger battle transition when status changes from confrontation_prep to planning
   useEffect(() => {
@@ -610,7 +633,7 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     if (selectedLineup.some(id => lineupSlots[id] === undefined)) return;
     setStrategyError(null);
     setConfrontationConfirmed(true);
-    const chosen = PREP_ROSTER.filter(c => selectedLineup.includes(c.id));
+    const chosen = battleRoster.filter(c => selectedLineup.includes(c.id));
     setBlueTeam(chosen);
     setPositions(prev => {
       const newPos = { ...prev };
@@ -634,6 +657,72 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     setLineupPositions({});
     setLineupSlots({});
   };
+
+  useEffect(() => {
+    if (battleState?.status !== 'confrontation_prep' || confrontationConfirmed || battleRoster.length === 0) return;
+    const cycleFocus = (direction: number) => {
+      setFocusedRosterIndex(current => (current + direction + battleRoster.length) % battleRoster.length);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      const numericIndex = Number(event.key) - 1;
+      if (Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < battleRoster.length) {
+        event.preventDefault();
+        setFocusedRosterIndex(numericIndex);
+        handleToggleLineupCharacter(battleRoster[numericIndex]);
+        return;
+      }
+      if (['q', 'Q', 'ArrowLeft'].includes(event.key)) {
+        event.preventDefault();
+        cycleFocus(-1);
+      } else if (['e', 'E', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault();
+        cycleFocus(1);
+      } else if (event.key === ' ') {
+        event.preventDefault();
+        handleToggleLineupCharacter(battleRoster[focusedRosterIndex]);
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        handleConfirmLineup();
+      } else if (event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        handleResetLineup();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    let frame = 0;
+    let previousA = false;
+    let previousStart = false;
+    let axisReady = true;
+    const pollGamepad = () => {
+      const gamepad = navigator.getGamepads?.()[0];
+      if (gamepad) {
+        const aPressed = Boolean(gamepad.buttons[0]?.pressed);
+        const startPressed = Boolean(gamepad.buttons[9]?.pressed || gamepad.buttons[7]?.pressed);
+        if (aPressed && !previousA) handleToggleLineupCharacter(battleRoster[focusedRosterIndex]);
+        if (startPressed && !previousStart) handleConfirmLineup();
+        previousA = aPressed;
+        previousStart = startPressed;
+        const horizontal = gamepad.axes[0] || 0;
+        const left = gamepad.buttons[14]?.pressed || horizontal < -0.65;
+        const right = gamepad.buttons[15]?.pressed || horizontal > 0.65;
+        if (axisReady && (left || right)) {
+          cycleFocus(left ? -1 : 1);
+          axisReady = false;
+        } else if (!left && !right) {
+          axisReady = true;
+        }
+      }
+      frame = requestAnimationFrame(pollGamepad);
+    };
+    frame = requestAnimationFrame(pollGamepad);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      cancelAnimationFrame(frame);
+    };
+  }, [battleState?.status, confrontationConfirmed, battleRoster, focusedRosterIndex, selectedLineup, lineupSlots, lineupSelectionLimit, room]);
 
   const handleSelectAttack = (attackerId: string, targetId: string) => {
     const attacker = blueTeam.find(t => t.id === attackerId);
@@ -675,6 +764,8 @@ export const useBattleData = (roomId: string | null, token: string | null, onFin
     room,
     battleState,
     connectionError,
+    battleRoster,
+    focusedHeroId: battleRoster[focusedRosterIndex]?.id,
     selectedLineup,
     lineupPositions,
     lineupSlots,

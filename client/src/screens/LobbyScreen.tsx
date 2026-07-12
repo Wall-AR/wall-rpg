@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   useLobbyData, TabType,
   HomeTab, ProfileTab, InventoryTab, FriendsTab,
@@ -24,6 +24,32 @@ const TAB_CONFIG: { key: TabType; icon: string; label: string }[] = [
 
 export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onStartGame, onStartBattle }) => {
   const lobby = useLobbyData(onStartBattle);
+
+  useEffect(() => {
+    let frame = 0;
+    let previousA = false;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      if (lobby.activeTab === 'home' && (event.key === 'Enter' || event.key.toLowerCase() === 'g')) {
+        event.preventDefault();
+        onStartGame();
+      }
+    };
+    const pollGamepad = () => {
+      const gamepad = navigator.getGamepads?.()[0];
+      const aPressed = Boolean(gamepad?.buttons[0]?.pressed);
+      if (lobby.activeTab === 'home' && aPressed && !previousA) onStartGame();
+      previousA = aPressed;
+      frame = requestAnimationFrame(pollGamepad);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    frame = requestAnimationFrame(pollGamepad);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      cancelAnimationFrame(frame);
+    };
+  }, [lobby.activeTab, onStartGame]);
 
   const renderTabContent = () => {
     if (lobby.loading) {

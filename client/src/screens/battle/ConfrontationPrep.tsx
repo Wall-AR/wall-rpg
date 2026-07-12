@@ -1,5 +1,5 @@
 import React from 'react';
-import { Teammate, RUNES_LIST, PREP_ROSTER, getElementEmoji } from './battleTypes';
+import { Teammate, RUNES_LIST, getElementEmoji } from './battleTypes';
 
 interface ConfrontationPrepProps {
   confrontationTimer: number;
@@ -18,6 +18,10 @@ interface ConfrontationPrepProps {
   onSelectGridSlot: (heroId: string, gridSlot: number) => void;
   setSelectedRuneId: (id: string) => void;
   opponent: any;
+  roster: Teammate[];
+  playerName: string;
+  enemyName: string;
+  focusedHeroId?: string;
 }
 
 export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
@@ -37,9 +41,14 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
   onSelectGridSlot,
   setSelectedRuneId,
   opponent,
+  roster,
+  playerName,
+  enemyName,
+  focusedHeroId,
 }) => {
-  const myTeamHpText = "18.945 / 18.945 (100%)";
-  const rivalTeamHpText = "18.320 / 18.320 (100%)";
+  const rosterHp = roster.reduce((total, hero) => total + hero.maxHp, 0);
+  const myTeamHpText = `${rosterHp.toLocaleString()} HP no roster`;
+  const rivalTeamHpText = `${roster.length} candidatos`;
   const isSharedTeamMode = selectionLimit === 1;
   const selectedHeroId = selectedLineup[0];
 
@@ -50,8 +59,8 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
       <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative">
         <div className="flex flex-col text-left max-w-[200px]">
           <div className="flex items-center gap-1.5">
-            <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">Wall</span>
-            <span className="text-[8px] text-gray-500 font-bold">Poder da Equipe 52.843</span>
+            <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">{playerName}</span>
+            <span className="text-[8px] text-gray-500 font-bold">Roster: {roster.length} heróis</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <div className="w-32 h-2 bg-slate-950 border border-indigo-950 rounded-full overflow-hidden">
@@ -66,7 +75,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
           <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-1.5">
             {isSharedTeamMode
               ? 'Escolha seu herói e uma casa livre da grade compartilhada.'
-              : 'Escolha 3 de 6 combatentes e configure a formação.'}
+              : `Escolha 3 de ${roster.length} combatentes e configure a formação.`}
           </p>
           <div className="flex justify-center items-center gap-2 mt-2">
             <span className="text-[9px] px-2 py-0.5 bg-indigo-950/40 border border-indigo-800/40 text-indigo-300 font-bold rounded-full">
@@ -81,8 +90,8 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
 
         <div className="flex flex-col text-right max-w-[200px]">
           <div className="flex items-center gap-1.5 justify-end">
-            <span className="text-[8px] text-gray-500 font-bold">Poder da Equipe 51.276</span>
-            <span className="text-rose-400 text-sm font-black uppercase red-glow-text">Isaac</span>
+            <span className="text-[8px] text-gray-500 font-bold">Roster rival: {roster.length}</span>
+            <span className="text-rose-400 text-sm font-black uppercase red-glow-text">{enemyName}</span>
           </div>
           <div className="flex items-center gap-2 mt-1 justify-end">
             <span className="text-[8px] font-bold text-rose-400">{rivalTeamHpText}</span>
@@ -99,17 +108,19 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
         {/* Column 1: SUA EQUIPE (6) */}
         <div className="lg:col-span-1 border-r border-indigo-950/30 pr-4 flex flex-col justify-between overflow-y-auto">
           <div>
-            <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 pb-1 border-b border-indigo-950/40 leading-none">Sua Equipe (6)</h3>
+            <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 pb-1 border-b border-indigo-950/40 leading-none">Seus Heróis ({roster.length})</h3>
             <div className="confrontation-roster-grid">
-              {PREP_ROSTER.map(c => {
+              {roster.map((c, index) => {
                 const isSelected = selectedLineup.includes(c.id);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={c.id}
                     onClick={() => onToggleLineupCharacter(c)}
+                    aria-pressed={isSelected}
                     className={`p-2.5 rounded-xl cursor-pointer text-left flex flex-col justify-between confrontation-char-card relative min-h-[110px] ${
                       isSelected ? 'selected' : ''
-                    } ${confrontationConfirmed ? 'opacity-50 pointer-events-none' : ''}`}
+                    } ${focusedHeroId === c.id ? 'ring-2 ring-[#ffe082]/80' : ''} ${confrontationConfirmed ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     <div className="flex justify-between items-center leading-none">
                       <span className="element-badge-mini" style={{ color: c.element === 'agua' ? '#60a5fa' : c.element === 'terra' ? '#34d399' : c.element === 'fogo' ? '#f87171' : '#a78bfa' }}>
@@ -128,8 +139,9 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
                       <span className="text-[7px] text-gray-400 font-bold block leading-none">Lv. {c.level}</span>
                       <h5 className="font-extrabold text-[9px] text-white truncate leading-none mt-0.5">{c.name}</h5>
                       <span className="text-[7px] text-gray-500 uppercase block mt-0.5">{c.class}</span>
+                      <span className="text-[6px] text-indigo-400 uppercase block mt-1">Tecla {index + 1}</span>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -155,7 +167,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
                   {Array.from({ length: 3 }).map((_, column) => {
                     const gridSlot = row * 3 + column;
                     const localHeroId = Object.keys(lineupSlots).find(heroId => lineupSlots[heroId] === gridSlot);
-                    const localHero = localHeroId ? PREP_ROSTER.find(hero => hero.id === localHeroId) : undefined;
+                    const localHero = localHeroId ? roster.find(hero => hero.id === localHeroId) : undefined;
                     const occupiedByAlly = occupiedTeamSlots.includes(gridSlot);
                     const isSelectedTarget = selectedHeroId && lineupSlots[selectedHeroId] === gridSlot;
                     return (
@@ -242,7 +254,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
             <h3 className="text-[10px] font-black text-[#ffe082] uppercase tracking-widest mb-3 pb-1 border-b border-indigo-950/40 leading-none text-right">Formação do Oponente</h3>
             
             <div className="grid grid-cols-3 gap-2">
-              {Array.from({ length: 3 }).map((_, idx) => {
+              {Array.from({ length: Math.max(3, roster.length) }).map((_, idx) => {
                 const rivalConfirmed = opponent?.hasSelectedLineup;
                 return (
                   <div
@@ -265,7 +277,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
           <div className="flex flex-col gap-2.5">
             <div className="text-center bg-rose-950/20 p-2.5 rounded-xl border border-rose-900/30">
               <span className="text-[8px] font-black text-rose-300 block leading-none uppercase tracking-wide">
-                {opponent?.hasSelectedLineup ? " Isaac confirmou a formação! ✔" : "⚔️ Isaac confirmou 2/3"}
+                {opponent?.hasSelectedLineup ? ` ${enemyName} confirmou a formação! ✔` : `⚔️ ${enemyName} prepara cinco heróis`}
               </span>
             </div>
 
@@ -284,7 +296,7 @@ export const ConfrontationPrep: React.FC<ConfrontationPrepProps> = ({
 
       {/* Footer shortcuts matching mockup */}
       <footer className="w-full text-center text-[7px] text-gray-600 font-bold uppercase tracking-widest pt-3 border-t border-indigo-950/30 shrink-0">
-        Enter: Confirmar Formação | R: Resetar | Q / E: Alternar Personagem | Tab: Ver Regras | Esc: Cancelar
+        1–5: Selecionar | Q / E: Navegar | Espaço: Marcar | Enter: Confirmar | R: Resetar
       </footer>
 
     </div>

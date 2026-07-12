@@ -3,6 +3,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { companions, retiredCharacters, accounts } from '../db/schema.js';
 import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
+import { ZERO_ACCOUNT_ID, ZERO_TEST_COMPANIONS } from '../testing/zeroAccount.js';
 
 const router = Router();
 
@@ -18,6 +19,14 @@ router.get('/', authenticateToken, async (req, res) => {
         .where(eq(companions.accountId, accountId));
       return res.json(list);
     } else {
+      if (accountId === ZERO_ACCOUNT_ID) {
+        return res.json(ZERO_TEST_COMPANIONS.map(companion => ({
+          ...companion,
+          accountId,
+          xp: 0,
+          battlesFought: 0,
+        })));
+      }
       // Mock fallback
       return res.json([
         {

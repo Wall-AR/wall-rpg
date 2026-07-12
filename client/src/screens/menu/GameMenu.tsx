@@ -12,13 +12,14 @@ import './styles/menu.css';
 
 interface GameMenuProps {
   onClose: () => void;
+  onReturnToLobby?: () => void;
 }
 
 const TAB_ORDER: MenuTabType[] = [
   'team', 'characters', 'inventory', 'skills', 'equipment', 'quests', 'map', 'memories', 'settings'
 ];
 
-export const GameMenu: React.FC<GameMenuProps> = ({ onClose }) => {
+export const GameMenu: React.FC<GameMenuProps> = ({ onClose, onReturnToLobby }) => {
   const menu = useMenuData(onClose);
 
   // ─── Keyboard Navigation (Q/E to switch tabs, Escape to close) ─────────────
@@ -118,6 +119,14 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onClose }) => {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/85 z-[45] p-6 game-menu-container select-none">
       <div className="menu-gold-frame w-full h-full max-w-5xl rounded-3xl flex flex-col justify-between overflow-hidden shadow-2xl relative">
+        {onReturnToLobby && (
+          <button
+            onClick={onReturnToLobby}
+            className="absolute right-5 top-5 z-30 rounded-lg border border-indigo-700 bg-indigo-950/90 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-indigo-200 hover:bg-indigo-900 focus:ring-2 focus:ring-indigo-400"
+          >
+            Voltar ao Lobby
+          </button>
+        )}
         {/* Corner Decors */}
         <div className="menu-corner corner-tl rounded-tl-2xl" />
         <div className="menu-corner corner-tr rounded-tr-2xl" />

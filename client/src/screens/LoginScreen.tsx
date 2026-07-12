@@ -77,6 +77,7 @@ export const LoginScreen: React.FC = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Digite seu nome de usuário..."
+              autoComplete="username"
               className="w-full px-4 py-3 bg-[#0f0f1a] border border-indigo-950 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-600 text-sm transition-all"
             />
           </div>
@@ -93,6 +94,7 @@ export const LoginScreen: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
               className="w-full px-4 py-3 bg-[#0f0f1a] border border-indigo-950 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-600 text-sm transition-all"
             />
           </div>
@@ -133,6 +135,24 @@ export const LoginScreen: React.FC = () => {
             )}
           </button>
         </form>
+
+        {!isRegister && (
+          <div className="mt-5 rounded-xl border border-emerald-900/50 bg-emerald-950/20 p-4 text-left">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-emerald-300">Conta contínua de teste</p>
+                <p className="mt-1 text-[11px] text-gray-400">Usuário: <strong className="text-white">zero</strong> · Senha: <strong className="text-white">zero</strong></p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setUsername('zero'); setPassword('zero'); setError(null); }}
+                className="shrink-0 rounded-lg border border-emerald-700 bg-emerald-800/60 px-3 py-2 text-[10px] font-black uppercase text-emerald-100 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-400"
+              >
+                Usar zero
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 text-center border-t border-indigo-950/80 pt-5 text-sm">
           <p className="text-gray-400">

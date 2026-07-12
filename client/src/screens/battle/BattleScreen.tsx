@@ -20,12 +20,14 @@ interface BattleScreenProps {
 }
 
 export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBattle }) => {
-  const { token } = useAuthStore();
+  const { token, username } = useAuthStore();
   
   const {
     room,
     battleState,
     connectionError,
+    battleRoster,
+    focusedHeroId,
     selectedLineup,
     lineupPositions,
     lineupSlots,
@@ -106,6 +108,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
   const currentTeammate = blueTeam.find(t => t.id === activeTeammateId && t.controllable)
     || blueTeam.find(t => t.controllable)
     || blueTeam[0]
+    || battleRoster[0]
     || PREP_ROSTER[0];
   const activeSpell = currentTeammate.spells.find(s => s.id === selectedSpellId) || currentTeammate.spells[0];
 
@@ -127,7 +130,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           skill: 'Golpe Perfurante',
           stats: { hp: 1800, mp: 90, strength: 75, defense: 60, speed: 55 }
         }}
-        teamMembers={PREP_ROSTER}
+        teamMembers={battleRoster}
         onAccept={() => {
           alert("Thorn foi adicionado à sua equipe!");
           onFinishBattle();
@@ -138,7 +141,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
           onFinishBattle();
         }}
         onReplace={(substituteId) => {
-          const replacedChar = PREP_ROSTER.find(c => c.id === substituteId);
+          const replacedChar = battleRoster.find(c => c.id === substituteId);
           room.send("recruit_substitute", { substituteCharacterId: substituteId });
           alert(`Você desencantou ${replacedChar?.name} e adicionou Thorn à sua equipe!`);
           onFinishBattle();
@@ -189,6 +192,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
         onSelectGridSlot={handleSelectGridSlot}
         setSelectedRuneId={setSelectedRuneId}
         opponent={opponent}
+        roster={battleRoster.slice(0, battleState.rosterSize || 5)}
+        playerName={username || localPlayer?.username || 'Jogador'}
+        enemyName={battleState.encounterName || opponent?.username || 'Instrutor Kael'}
+        focusedHeroId={focusedHeroId}
       />
     );
   }
@@ -202,7 +209,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ roomId, onFinishBatt
 
   const encounterContext: EncounterContext = {
     type: opponent ? 'duel' : 'wild',
-    enemyName: opponent?.username || "Guerreiro Rival",
+    enemyName: battleState.encounterName || opponent?.username || "Guerreiro Rival",
     enemyLevel: 125,
     enemyElement: opponent?.weaponElement || "none",
     roomId: roomId || "unknown",

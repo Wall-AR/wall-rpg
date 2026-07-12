@@ -450,6 +450,32 @@ export class GameRoom extends Room<{ state: MapState }> {
       this.triggerBattleForPlayer(client.sessionId, data.monsterId);
     });
 
+    // Encontro PvE determinístico usado pelo NPC Instrutor Kael no caminho dourado.
+    this.onMessage("startTestBattle", async (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player) return;
+      try {
+        const battleRoom = await matchMaker.createRoom("battle", {
+          mode: 'solo',
+          expectedPlayers: 1,
+          teamSize: 1,
+          rosterSize: 5,
+          enemyName: 'Instrutor Kael',
+        });
+        client.send("startBattle", {
+          roomId: battleRoom.roomId,
+          type: 'wild',
+          enemyName: 'Instrutor Kael',
+          enemyLevel: 10,
+          enemyElement: 'none',
+          source: 'training_npc',
+        });
+      } catch (error) {
+        console.error('[GameRoom] Failed to create the training battle:', error);
+        client.send("error", "Não foi possível abrir o duelo de teste.");
+      }
+    });
+
     // Start roaming interval for active monsters
     this.clock.setInterval(() => {
       this.roamMonsters();

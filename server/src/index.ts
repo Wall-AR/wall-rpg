@@ -24,6 +24,7 @@ import characterRouter from './routes/character.js';
 import friendsRouter from './routes/friends.js';
 import inventoryRouter from './routes/inventory.js';
 import companionsRouter from './routes/companions.js';
+import { ensureZeroTestAccount } from './testing/zeroAccount.js';
 
 const port = Number(process.env.PORT || 3001);
 const app = express();
@@ -106,6 +107,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Start Server via Colyseus to bind matchmaking routes
+await ensureZeroTestAccount();
+
 gameServer.listen(port).then(() => {
   console.log(`[server] Colyseus game server running on port ${port}`);
 }).catch((err) => {

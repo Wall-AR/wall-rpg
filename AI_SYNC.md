@@ -218,6 +218,21 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Limites mantidos: herói favorito ainda não é persistido e o lobby usa PREP_ROSTER temporário (GAME-002/BUG-001); substituição, entidades auxiliares, perfuração completa, reconexão e PvPvE seguem pendentes; Brawl possui somente o contrato de configuração, não o loop de oito jogadores
   - Branch/commit: codex/game-003-shared-team-battle; este registro integra o commit de handoff da tarefa
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [GAME-004] [FEAT] Entregar caminho dourado da conta zero até a Preparação PvE
+  - Comportamento alterado: conta zero/zero pronta no desenvolvimento, lobby e perfil reais, navegação livre lobby↔mundo, menu Esc com retorno, NPC Instrutor Kael, pergunta de confirmação, sala PvE, roster real de 5, seleção de 3, transição e Fase de Preparação
+  - Input: mundo aceita WASD/setas, click-to-move, joystick virtual e Gamepad API; NPC aceita Enter/E/click/A; lobby aceita mouse, 1–5, Q/E, Espaço, Enter e controle físico
+  - Persistência: server/src/testing/zeroAccount.ts cria/repara conta, personagem e 5 companions no PostgreSQL; no fallback offline, IDs/credenciais/roster são determinísticos, mas progressão entre reinicializações não é durável
+  - Contratos: BattleRoomOptions/BattleState ganharam rosterSize e encounterName; startTestBattle cria encontro solo de treinamento; cliente usa /companions em vez de PREP_ROSTER fixo
+  - Correções integradas: proxy /companions, Callbacks.get(room), conexão duplicada causada por StrictMode em salas maxClients=1, logs reais da sala e transição que reiniciava a cada atualização do timer
+  - Arquivos criados: server/src/testing/zeroAccount.ts
+  - Arquivos modificados: server/src/index.ts, routes/auth.ts, routes/companions.ts, rooms/GameRoom.ts, rooms/BattleRoom.ts, schemas/BattleState.ts, battle/teamBattle.ts + teste; client main/App, LoginScreen, LobbyScreen, GameCanvas, BattleTransition, GameMenu, lobby/useLobbyData, batalha e vite.config.ts; GAME_DESIGN.md, PROJECT_ROADMAP.md, AI_SYNC.md
+  - Validação automatizada: npm run test:battle --workspace=server (6/6 PASS), npm run lint (PASS), npm run build (PASS; aviso de chunk principal 905,50 kB), git diff --check (PASS)
+  - Playtest completo: login zero → Perfil → mundo → movimento por teclado → NPC → diálogo/pergunta → aceitar → cinco heróis reais → teclas 1/2/3 → Enter → transição limpa → Preparação com Mana 1/1 e logs autoritativos; menu Esc → Voltar ao Lobby também validado
+  - Não testado: joystick físico real não estava conectado (integração Gamepad API validada por código); PostgreSQL estava indisponível, portanto o seed durável foi compilado mas o playtest usou fallback determinístico
+  - Riscos/mocks mantidos: quest/horário/inventário rápido e partes do menu ainda são visuais; battle results/recrutamento ainda contêm textos hardcoded; HMR durante uma BattleRoom ativa pode exigir voltar ao mapa porque a sala solo só aceita um cliente
+  - Branch/commit: codex/game-004-zero-pve-golden-path; este registro integra o commit de handoff
+  - Status: CONCLUÍDO
 ```
 
 ---
@@ -231,11 +246,12 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 | DOCS-002 | Consolidar visão macro, fluxo de batalha e decisão de exploração 3D | Codex | ✅ Concluído | `codex/docs-002-macro-game-design` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AGENTS.md`, `.ai/preflight.ps1`, `AI_SYNC.md` | Visão, imagem e compatibilidade R3F/React validadas |
 | DOCS-003 | Consolidar Mana universal, ocupação 3×3, coop e modos iniciais | Codex | ✅ Concluído | `codex/docs-003-mana-modes-battle-contract` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | Mana, modos, ocupação e termos contraditórios validados |
 | GAME-003 | Implementar equipes 1–3, grade compartilhada e confirmação simultânea | Codex | ✅ Concluído | `codex/game-003-shared-team-battle` | `server/src/rooms/BattleRoom.ts`, `server/src/rooms/GameRoom.ts`, `server/src/schemas/BattleState.ts`, `server/src/battle/*`, `server/package.json`, `client/src/screens/battle/*`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | 5 testes + lint + build + smoke mundo: concluídos |
+| GAME-004 | Criar caminho dourado da conta zero até batalha PvE | Codex | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `server/src/index.ts`, `server/src/routes/{auth,companions}.ts`, `server/src/rooms/{GameRoom,BattleRoom}.ts`, `server/src/schemas/*`, `server/src/testing/*`, `server/src/battle/*`, `client/src/{main,App}.tsx`, `client/vite.config.ts`, `client/src/game/*`, `client/src/screens/{LoginScreen,LobbyScreen}.tsx`, `client/src/screens/{lobby,battle,menu}/*`, docs | 6 testes + lint + build + playtest completo: concluídos |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
-| BUG-001 | Corrigir proxy dev de `/companions` | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/vite.config.ts` | Smoke: resposta JSON autenticada |
-| BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/screens/lobby/useLobbyData.ts` | Presença sem erros; 2 clientes entram/saem |
+| BUG-001 | Corrigir proxy dev de `/companions` | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/vite.config.ts` | Roster autenticado de 5 heróis carregado no playtest |
+| BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/src/screens/lobby/useLobbyData.ts`, `client/src/game/GameCanvas.tsx` | Lobby e mundo validados com Callbacks.get(room) |
 | GAME-001 | Refatorar GameCanvas.tsx | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/game/*` | Depende de separar mocks do estado real |
-| GAME-002 | Conectar PREP_ROSTER ao `/companions` | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/screens/battle/battleTypes.ts`, `ConfrontationPrep.tsx`, consumidores | Depende de BUG-001 |
+| GAME-002 | Conectar PREP_ROSTER ao `/companions` | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/src/screens/battle/battleTypes.ts`, `ConfrontationPrep.tsx`, `useBattleData.ts` | Cinco companions reais exibidos e usados pelo servidor |
 | UI-001 | Criar Tela de Save Select | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/screens/SaveSelectScreen.tsx` (novo), `client/src/App.tsx` | Aprovação do fluxo de saves |
 | INV-001 | Sistema de equipar/desequipar | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/routes/inventory.ts`, lobby tabs | Definir contrato + fallback |
 | QUEST-001 | Quest system no DB | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/routes/quests.ts` (novo), schema, migrations | Lock de schema/migração obrigatório |

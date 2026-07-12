@@ -25,6 +25,7 @@ import {
   PLANNING_SECONDS,
   validateGridSelection,
 } from '../battle/teamBattle.js';
+import { ZERO_ACCOUNT_ID, ZERO_TEST_COMPANIONS } from '../testing/zeroAccount.js';
 
 const CHARACTER_DATABASE: Record<string, { name: string; class: string; level: number; hp: number; mp: number; speed: number; strength: number; intelligence: number; element: string }> = {
   'char-caelum': { name: 'Caelum', class: 'Tanque', level: 128, hp: 8645, mp: 210, speed: 95, strength: 120, intelligence: 80, element: 'agua' },
@@ -69,6 +70,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   private playerPerfectCombos = new Map<string, number>();
   private clientAnimationsComplete = new Set<string>();
   private planningTimeout: any = null;
+  private availableCompanions = new Map<string, any[]>();
 
   override async onAuth(client: Client, options: any, request?: any) {
     const token = options.token;
@@ -90,6 +92,8 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.state.mode = this.battleConfig.mode;
     this.state.expectedPlayers = this.battleConfig.expectedPlayers;
     this.state.maxTeamSize = this.battleConfig.teamSize;
+    this.state.rosterSize = this.battleConfig.rosterSize;
+    this.state.encounterName = this.battleConfig.enemyName;
 
     this.onMessage("report_performance", (client, data: { perfectCombos: number }) => {
       this.playerPerfectCombos.set(client.sessionId, data.perfectCombos || 0);
@@ -205,12 +209,10 @@ export class BattleRoom extends Room<{ state: BattleState }> {
         return;
       }
 
-      const accountId = this.sessionAccounts.get(client.sessionId);
-      let dbCompanions: any[] = [];
-      if (db && accountId) {
-        try {
-          dbCompanions = await db.select().from(companions).where(eq(companions.accountId, accountId));
-        } catch (_) {}
+      const availableCompanions = this.availableCompanions.get(client.sessionId) || [];
+      if (availableCompanions.length > 0 && chosenLineup.some(heroId => !availableCompanions.some(companion => companion.id === heroId))) {
+        client.send("lineup_rejected", { reason: "Um dos heróis escolhidos não pertence ao roster deste encontro." });
+        return;
       }
 
       chosenLineup.forEach((heroId, index) => {
@@ -219,7 +221,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
           player.teamId as BattleTeamId,
           heroId,
           requestedSlots[index],
-          dbCompanions.find(c => c.id === heroId),
+          availableCompanions.find(c => c.id === heroId),
           data.runeId,
         );
         player.combatants.set(combatant.id, combatant);
@@ -423,15 +425,17 @@ export class BattleRoom extends Room<{ state: BattleState }> {
 
   private populateDefaultLineup(sessionId: string, player: BattlePlayerState) {
     const lineupSize = this.battleConfig.lineupSizePerPlayer;
-    const heroIds = ['char-caelum', 'char-lyria', 'char-raven'].slice(0, lineupSize);
+    const roster = this.availableCompanions.get(sessionId) || [];
+    const heroIds = (roster.length > 0 ? roster.map(companion => companion.id) : ['char-caelum', 'char-lyria', 'char-raven']).slice(0, lineupSize);
     const occupied = this.getOccupiedTeamSlots(player.teamId as BattleTeamId, sessionId);
-    const available = getDefaultGridSlots(9).filter(slot => !occupied.includes(slot));
+    const availableSlots = getDefaultGridSlots(9).filter(slot => !occupied.includes(slot));
     heroIds.forEach((heroId, index) => {
       const combatant = this.buildCombatant(
         sessionId,
         player.teamId as BattleTeamId,
         heroId,
-        available[index] ?? index,
+        availableSlots[index] ?? index,
+        roster.find(companion => companion.id === heroId),
       );
       player.combatants.set(combatant.id, combatant);
     });
@@ -441,7 +445,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
   private ensureBotOpponent() {
     if (!this.battleConfig.usesBotOpponent || this.state.players.has('enemy-ai')) return;
     const bot = new BattlePlayerState();
-    bot.username = 'Guardiões da Fenda';
+    bot.username = this.battleConfig.enemyName;
     bot.teamId = 'red';
     bot.isBot = true;
     bot.connected = true;
@@ -543,6 +547,16 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     player.hasSelectedLineup = false;
 
     this.sessionAccounts.set(client.sessionId, auth.id || "");
+    if (db && auth.id) {
+      try {
+        const roster = await db.select().from(companions).where(eq(companions.accountId, auth.id));
+        this.availableCompanions.set(client.sessionId, roster.slice(0, this.battleConfig.rosterSize));
+      } catch (_) {
+        this.availableCompanions.set(client.sessionId, []);
+      }
+    } else if (auth.id === ZERO_ACCOUNT_ID) {
+      this.availableCompanions.set(client.sessionId, ZERO_TEST_COMPANIONS.slice(0, this.battleConfig.rosterSize));
+    }
     this.state.players.set(client.sessionId, player);
     this.state.logs.push(`${player.username} entrou na sala de combate.`);
 
@@ -559,7 +573,7 @@ export class BattleRoom extends Room<{ state: BattleState }> {
     this.state.status = "confrontation_prep";
     const lineupInstruction = this.battleConfig.lineupSizePerPlayer === 1
       ? 'Cada jogador deve escolher 1 herói e uma casa livre da grade compartilhada.'
-      : 'Escolha 3 de seus 6 heróis e suas casas na grade.';
+      : `Escolha 3 de seus ${this.battleConfig.rosterSize} heróis e suas casas na grade.`;
     this.state.logs.push(`Preparação de Confronto: ${lineupInstruction}`);
     
     // 20-second timeout for pre-battle setup

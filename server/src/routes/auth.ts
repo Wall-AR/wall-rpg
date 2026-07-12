@@ -6,6 +6,13 @@ import crypto from 'crypto';
 import { db } from '../db/index.js';
 import { accounts, characters, companions } from '../db/schema.js';
 import { JWT_SECRET } from '../middleware/auth.js';
+import {
+  isZeroTestAccountEnabled,
+  ZERO_ACCOUNT_ID,
+  ZERO_CHARACTER_ID,
+  ZERO_PASSWORD_HASH,
+  ZERO_TEST_USERNAME,
+} from '../testing/zeroAccount.js';
 
 const router = Router();
 
@@ -17,6 +24,14 @@ interface InMemoryAccount {
   characterId: string;
 }
 const inMemoryAccounts = new Map<string, InMemoryAccount>();
+if (isZeroTestAccountEnabled()) {
+  inMemoryAccounts.set(ZERO_TEST_USERNAME, {
+    id: ZERO_ACCOUNT_ID,
+    username: ZERO_TEST_USERNAME,
+    passwordHash: ZERO_PASSWORD_HASH,
+    characterId: ZERO_CHARACTER_ID,
+  });
+}
 
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;

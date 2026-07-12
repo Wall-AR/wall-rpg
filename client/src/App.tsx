@@ -96,7 +96,15 @@ export const App: React.FC = () => {
 
 
       {/* ═══ Global GameMenu Overlay ═══ */}
-      {menuOpen && <GameMenu onClose={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <GameMenu
+          onClose={() => setMenuOpen(false)}
+          onReturnToLobby={currentScreen === 'game' ? () => {
+            setMenuOpen(false);
+            setCurrentScreen('lobby');
+          } : undefined}
+        />
+      )}
 
       {currentScreen === 'lobby' ? (
         <LobbyScreen 

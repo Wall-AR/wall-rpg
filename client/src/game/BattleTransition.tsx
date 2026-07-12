@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 
 /**
  * EncounterContext — informação sobre o encontro que será exibida na transição.
@@ -33,15 +33,19 @@ export const BattleTransition: React.FC<BattleTransitionProps> = ({ encounter, o
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const handleComplete = onTransitionComplete || onComplete;
+  const handleCompleteRef = useRef(handleComplete);
+  useEffect(() => {
+    handleCompleteRef.current = handleComplete;
+  }, [handleComplete]);
 
   // Determine o gradiente do elemento
-  const elementGradient = {
+  const elementGradient = useMemo(() => ({
     fogo: ['#e94560', '#ff6b35'],
     agua: ['#1e90ff', '#00bfff'],
     terra: ['#8b5e3c', '#d4a574'],
     vento: ['#00e676', '#76ff03'],
     none: ['#7c3aed', '#a855f7'],
-  }[encounter.enemyElement?.toLowerCase() || 'none'] || ['#7c3aed', '#a855f7'];
+  }[encounter.enemyElement?.toLowerCase() || 'none'] || ['#7c3aed', '#a855f7']), [encounter.enemyElement]);
 
   const encounterLabel = {
     wild: '⚔️ ENCONTRO SELVAGEM',
@@ -57,10 +61,10 @@ export const BattleTransition: React.FC<BattleTransitionProps> = ({ encounter, o
     timers.push(setTimeout(() => setPhase('encounter'), 1800));
     timers.push(setTimeout(() => setPhase('fade_out'), 3300));
     timers.push(setTimeout(() => {
-      if (handleComplete) handleComplete();
+      handleCompleteRef.current?.();
     }, 4000));
     return () => timers.forEach(clearTimeout);
-  }, [handleComplete]);
+  }, []);
 
   // ─── Canvas Shatter Effect ────────────────────────────────────────────────
   useEffect(() => {

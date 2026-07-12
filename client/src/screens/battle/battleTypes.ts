@@ -34,6 +34,8 @@ export interface BattleStateData {
   turn: number;
   expectedPlayers: number;
   maxTeamSize: number;
+  rosterSize: number;
+  encounterName: string;
   planningDeadline: number;
   winnerSessionId: string | null;
   winnerTeamId: string | null;
@@ -72,6 +74,24 @@ export const PREP_ROSTER: Teammate[] = [
   { id: 'char-lobo', name: 'Lobo Cinzento', class: 'Companheiro', level: 132, hp: 5980, maxHp: 5980, mp: 160, maxMp: 240, element: 'vento', position: 'mid', portrait: '🐺', rank: 'D', spells: [{ id: 'wolf-bite', name: 'Mordida Voraz', cost: 3, desc: 'Ataca sangrando o alvo por 2 turnos.' }] },
   { id: 'char-korr', name: 'Korr', class: 'Lanceiro', level: 119, hp: 8120, maxHp: 8120, mp: 180, maxMp: 250, element: 'fogo', position: 'front', portrait: '/assets/characters/korr_face.png', rank: 'A', spells: [{ id: 'fire-charge', name: 'Investida Ígnea', cost: 5, desc: 'Avança causando dano com chance de aplicar queimadura.' }] }
 ];
+
+export const companionToTeammate = (companion: any): Teammate => ({
+  id: companion.id,
+  heroId: companion.id,
+  name: companion.name,
+  class: companion.class,
+  level: companion.level,
+  hp: companion.stats?.hp ?? 100,
+  maxHp: companion.stats?.maxHp ?? companion.stats?.hp ?? 100,
+  mp: companion.stats?.mp ?? 20,
+  maxMp: companion.stats?.maxMp ?? companion.stats?.mp ?? 20,
+  element: companion.element || 'none',
+  position: 'mid',
+  portrait: companion.portrait || '⚔️',
+  rank: ['S+', 'S', 'A', 'D'].includes(companion.rarity) ? companion.rarity : 'A',
+  spells: Array.isArray(companion.skills) ? companion.skills : [],
+  active: true,
+});
 
 export const getElementColorClass = (elem: string) => {
   return `text-element-${elem.toLowerCase()}`;

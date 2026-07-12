@@ -113,6 +113,20 @@ Descobrir herói/arma → adquirir → testar composição
 3. Recebe seu primeiro herói.
 4. Entra na cidade inicial e começa a explorar o mundo.
 
+### Caminho dourado de validação
+
+O protótipo mantém a conta de desenvolvimento `zero` para validar continuidade entre versões. Em desenvolvimento, ela usa as credenciais `zero` / `zero`, possui personagem principal e cinco heróis estáveis. Quando PostgreSQL está disponível, a fixture é criada ou reparada na base; sem banco, os mesmos IDs e dados são recriados no fallback local, mas progresso entre reinicializações exige PostgreSQL.
+
+```text
+Login zero → Lobby → Perfil/personagem → Entrar no Mundo
+  → mover por teclado, mouse, joystick virtual ou controle físico
+  → falar com Instrutor Kael → aceitar duelo PvE
+  → lobby com 5 heróis → selecionar 3 → confirmar
+  → transição de encontro → Fase de Preparação
+```
+
+O menu abre com `Esc`; tanto o cabeçalho do mundo quanto o menu oferecem retorno explícito ao lobby. A conta permanece autenticada ao alternar livremente entre lobby e mundo.
+
 ### Variações previstas para o primeiro herói
 
 - **Entrada comum:** herói inicial aleatório, apresentado como uma descoberta misteriosa inspirada no sentimento de receber um primeiro Pokémon.
@@ -197,6 +211,7 @@ Exploração → encontro validado pelo servidor → transição
 - Permite posicionar os titulares em casas válidas da grade 3×3.
 - Pode permitir escolher runa, consumíveis ou modificadores pré-batalha, quando esses sistemas estiverem definidos.
 - Ao confirmar, a formação inicial torna-se uma ordem enviada ao servidor.
+- O duelo de treinamento usa cinco candidatos por lado, três titulares e seleção por mouse, teclas `1–5`, `Q/E`, `Espaço`, `Enter` ou controle físico.
 
 ### Campanha cooperativa
 

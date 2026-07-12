@@ -5,6 +5,7 @@ import { client } from './colyseus';
 import { generateTextures } from './textures';
 import { LOBBY_MAP, isWalkable } from './map';
 import { EncounterContext } from './BattleTransition';
+import { Callbacks } from '@colyseus/sdk';
 import '../screens/styles/hud.css';
 
 interface GameCanvasProps {
@@ -43,6 +44,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   const [narrationText, setNarrationText] = useState<string | null>(null);
   const [activeQuest, setActiveQuest] = useState<any>(null);
   const [showPortalMenu, setShowPortalMenu] = useState(false);
+  const [worldCharacter, setWorldCharacter] = useState<any>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch('/character/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(response => response.ok ? response.json() : null)
+      .then(character => character && setWorldCharacter(character))
+      .catch(() => undefined);
+  }, [token]);
 
   // GM DevTool states
   const [isGm, setIsGm] = useState(false);
@@ -135,6 +145,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   const [dialogLineIndex, setDialogLineIndex] = useState(0);
   const [dialogDisplayed, setDialogDisplayed] = useState('');
   const dialogOpenRef = useRef(false);
+  const dialogLinesRef = useRef<string[]>([]);
+  const dialogLineIndexRef = useRef(0);
+  const dialogDisplayedRef = useRef('');
+  const dialogOnCompleteRef = useRef<(() => void) | null>(null);
+  const [isNearTrainingNpc, setIsNearTrainingNpc] = useState(false);
+  const isNearTrainingNpcRef = useRef(false);
+  const [showTrainingChoice, setShowTrainingChoice] = useState(false);
+  const showTrainingChoiceRef = useRef(false);
 
   // MMO Chat states
   const [activeChatTab, setActiveChatTab] = useState<'global' | 'team' | 'guild' | 'system'>('global');
@@ -150,8 +168,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   const dialogTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Setup dialog controls
-  const triggerNPCConversation = (lines: string[]) => {
+  const triggerNPCConversation = (lines: string[], onComplete?: () => void) => {
     if (lines.length === 0) return;
+    dialogLinesRef.current = lines;
+    dialogLineIndexRef.current = 0;
+    dialogOnCompleteRef.current = onComplete || null;
     setDialogLines(lines);
     setDialogLineIndex(0);
     setDialogOpen(true);
@@ -162,10 +183,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   const startTypewriter = (text: string) => {
     if (dialogTimerRef.current) clearInterval(dialogTimerRef.current);
     let index = 0;
+    dialogDisplayedRef.current = '';
     setDialogDisplayed('');
     
     dialogTimerRef.current = setInterval(() => {
-      setDialogDisplayed(prev => prev + text.charAt(index));
+      dialogDisplayedRef.current += text.charAt(index);
+      setDialogDisplayed(dialogDisplayedRef.current);
       index++;
       if (index >= text.length) {
         if (dialogTimerRef.current) clearInterval(dialogTimerRef.current);
@@ -174,24 +197,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
   };
 
   const advanceDialog = () => {
-    const currentLine = dialogLines[dialogLineIndex];
-    if (dialogDisplayed.length < currentLine.length) {
+    const currentLine = dialogLinesRef.current[dialogLineIndexRef.current] || '';
+    if (dialogDisplayedRef.current.length < currentLine.length) {
       // Skip typewriter and reveal full line
       if (dialogTimerRef.current) clearInterval(dialogTimerRef.current);
+      dialogDisplayedRef.current = currentLine;
       setDialogDisplayed(currentLine);
       return;
     }
 
-    if (dialogLineIndex < dialogLines.length - 1) {
-      const nextIndex = dialogLineIndex + 1;
+    if (dialogLineIndexRef.current < dialogLinesRef.current.length - 1) {
+      const nextIndex = dialogLineIndexRef.current + 1;
+      dialogLineIndexRef.current = nextIndex;
       setDialogLineIndex(nextIndex);
-      startTypewriter(dialogLines[nextIndex]);
+      startTypewriter(dialogLinesRef.current[nextIndex]);
     } else {
       // Close dialogue
       setDialogOpen(false);
       dialogOpenRef.current = false;
       if (dialogTimerRef.current) clearInterval(dialogTimerRef.current);
+      const onComplete = dialogOnCompleteRef.current;
+      dialogOnCompleteRef.current = null;
+      onComplete?.();
     }
+  };
+
+  const startTrainingConversation = () => {
+    if (dialogOpenRef.current || showTrainingChoiceRef.current) return;
+    triggerNPCConversation([
+      'Saudações. Eu sou Kael, instrutor do Coliseu.',
+      'Antes de enfrentar as fendas, quero testar sua formação e suas decisões.',
+      'Você terá cinco heróis disponíveis e deverá escolher três para o duelo.',
+      'Deseja iniciar agora um duelo de treinamento PvE?'
+    ], () => {
+      showTrainingChoiceRef.current = true;
+      setShowTrainingChoice(true);
+    });
+  };
+
+  const closeTrainingChoice = () => {
+    showTrainingChoiceRef.current = false;
+    setShowTrainingChoice(false);
+  };
+
+  const acceptTrainingBattle = () => {
+    closeTrainingChoice();
+    setLoading(true);
+    roomRef.current?.send('startTestBattle');
   };
 
   // Game Menu state from props
@@ -223,6 +275,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           y: spawnY
         });
         roomRef.current = room;
+        const callbacks: any = Callbacks.get(room);
 
         room.onMessage("narration", (data: { text: string }) => {
           setNarrationText(data.text);
@@ -417,9 +470,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
 
         // Initialize and listen to room state grid updates
         drawMap();
-        room.state.grid.onAdd = drawMap;
-        room.state.grid.onChange = drawMap;
-        room.state.grid.onRemove = drawMap;
+        callbacks.onChange("grid", drawMap);
 
         // Add visual overlays for portals/chests
         const chestSprite = new Sprite(textures.flowers);
@@ -470,6 +521,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         spawnLamppost(9, 13);
         spawnLamppost(22, 13);
 
+        // Instrutor Kael: NPC fixo do caminho dourado de batalha PvE.
+        const trainingNpcSprite = new Sprite(textures.playerDown[0]);
+        const trainingNpcIso = toIsometric(12 * size, 9 * size);
+        trainingNpcSprite.x = trainingNpcIso.x;
+        trainingNpcSprite.y = trainingNpcIso.y;
+        trainingNpcSprite.width = size;
+        trainingNpcSprite.height = size;
+        trainingNpcSprite.anchor.set(0.5, 1.0);
+        trainingNpcSprite.tint = 0x8b5cf6;
+        trainingNpcSprite.eventMode = 'static';
+        trainingNpcSprite.cursor = 'pointer';
+        trainingNpcSprite.on('pointerdown', () => {
+          const state = gameStateRef.current;
+          const distance = Math.abs(Math.floor(state.flatX / size) - 12) + Math.abs(Math.floor(state.flatY / size) - 9);
+          if (distance <= 2) startTrainingConversation();
+        });
+        playerContainer.addChild(trainingNpcSprite);
+
         // Spawning player sprite
         const playerSprite = new Sprite(textures.playerDown[0]);
         playerSprite.width = size;
@@ -514,7 +583,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         // Sync other players sprites
         const otherPlayersMap = new Map<string, Sprite>();
         
-        room.state.players.onAdd = (otherPlayer: any, sessionId: string) => {
+        callbacks.onAdd("players", (otherPlayer: any, sessionId: string) => {
           if (sessionId === room.sessionId) return;
           const otherSprite = new Sprite(textures.playerDown[0]);
           otherSprite.width = size;
@@ -528,22 +597,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           playerContainer.addChild(otherSprite);
           otherPlayersMap.set(sessionId, otherSprite);
 
-          otherPlayer.onChange = () => {
-            // Decoupled coordinates update: gameLoop handles smooth slide transition
-          };
-        };
+        }, true);
 
-        room.state.players.onRemove = (otherPlayer: any, sessionId: string) => {
+        callbacks.onRemove("players", (otherPlayer: any, sessionId: string) => {
           const sprite = otherPlayersMap.get(sessionId);
           if (sprite) {
             playerContainer.removeChild(sprite);
             otherPlayersMap.delete(sessionId);
           }
-        };
+        });
 
         // Sync monster spawns
         const monsterSpritesMap = new Map<string, Sprite>();
-        room.state.monsters.onAdd = (monster: any, key: string) => {
+        callbacks.onAdd("monsters", (monster: any, key: string) => {
           const monSprite = new Sprite(textures.monster);
           monSprite.width = size;
           monSprite.height = size;
@@ -556,18 +622,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           playerContainer.addChild(monSprite);
           monsterSpritesMap.set(key, monSprite);
 
-          monster.onChange = () => {
-            // Decoupled coordinates update: gameLoop handles smooth slide transition
-          };
-        };
+        }, true);
 
-        room.state.monsters.onRemove = (monster: any, key: string) => {
+        callbacks.onRemove("monsters", (monster: any, key: string) => {
           const sprite = monsterSpritesMap.get(key);
           if (sprite) {
             playerContainer.removeChild(sprite);
             monsterSpritesMap.delete(key);
           }
-        };
+        });
 
         // Monitor battle room triggers
         room.onMessage("startBattle", (data: { roomId: string; enemyName?: string; enemyLevel?: number; enemyElement?: string }) => {
@@ -583,18 +646,36 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         // Input Keyboard handlers
         const keys: Record<string, boolean> = gameStateRef.current.keys;
         const handleKeyDown = (e: KeyboardEvent) => {
-          if (menuOpenRef.current) return;
           const isTyping = document.activeElement?.tagName === 'INPUT' || 
                            document.activeElement?.tagName === 'TEXTAREA';
           if (isTyping) return;
 
-          keys[e.key.toLowerCase()] = true;
+          if (showTrainingChoiceRef.current) {
+            if (e.key === 'Enter' || e.key.toLowerCase() === 'y') {
+              e.preventDefault();
+              acceptTrainingBattle();
+            } else if (e.key === 'Escape' || e.key.toLowerCase() === 'n') {
+              e.preventDefault();
+              closeTrainingChoice();
+            }
+            return;
+          }
 
-          // Space to advance dialogs
-          if (e.key === ' ' && dialogOpenRef.current) {
+          if (dialogOpenRef.current && (e.key === ' ' || e.key === 'Enter' || e.key.toLowerCase() === 'e')) {
             e.preventDefault();
             advanceDialog();
+            return;
           }
+
+          if (!menuOpenRef.current && isNearTrainingNpcRef.current && (e.key === 'Enter' || e.key.toLowerCase() === 'e')) {
+            e.preventDefault();
+            startTrainingConversation();
+            return;
+          }
+
+          if (menuOpenRef.current) return;
+
+          keys[e.key.toLowerCase()] = true;
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
@@ -618,8 +699,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           const dt = Math.min(0.1, (time - lastTime) / 1000); // normalized time step in seconds
           lastTime = time;
 
+          const gamepad = navigator.getGamepads?.()[0];
+          const gamepadConfirm = Boolean(gamepad?.buttons[0]?.pressed);
+          if (gamepadConfirm && !state.gamepadConfirmPressed) {
+            if (showTrainingChoiceRef.current) acceptTrainingBattle();
+            else if (dialogOpenRef.current) advanceDialog();
+            else if (isNearTrainingNpcRef.current) startTrainingConversation();
+          }
+          state.gamepadConfirmPressed = gamepadConfirm;
+
           // If menu open, freeze movement
           if (menuOpenRef.current) return;
+          if (dialogOpenRef.current || showTrainingChoiceRef.current) return;
           const isTyping = document.activeElement?.tagName === 'INPUT' || 
                            document.activeElement?.tagName === 'TEXTAREA';
           if (isTyping) return;
@@ -637,6 +728,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           if (down) dy = 1;
           if (left) dx = -1;
           if (right) dx = 1;
+
+          // Controle físico: analógico esquerdo e direcional digital usam o mesmo vetor.
+          if (gamepad) {
+            const axisX = Math.abs(gamepad.axes[0] || 0) >= 0.18 ? gamepad.axes[0] : 0;
+            const axisY = Math.abs(gamepad.axes[1] || 0) >= 0.18 ? gamepad.axes[1] : 0;
+            const dpadX = (gamepad.buttons[15]?.pressed ? 1 : 0) - (gamepad.buttons[14]?.pressed ? 1 : 0);
+            const dpadY = (gamepad.buttons[13]?.pressed ? 1 : 0) - (gamepad.buttons[12]?.pressed ? 1 : 0);
+            if (axisX || axisY || dpadX || dpadY) {
+              dx = dpadX || axisX;
+              dy = dpadY || axisY;
+            }
+          }
 
           // Normalize diagonal vector to prevent moving faster diagonally
           if (dx !== 0 && dy !== 0) {
@@ -765,17 +868,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             const playerGridX = Math.floor(state.flatX / size);
             const playerGridY = Math.floor(state.flatY / size);
             const currentTile = room.state.grid[playerGridY * (room.state.width || 32) + playerGridX];
+            const nearTrainingNpc = Math.abs(playerGridX - 12) + Math.abs(playerGridY - 9) <= 2;
+            if (nearTrainingNpc !== isNearTrainingNpcRef.current) {
+              isNearTrainingNpcRef.current = nearTrainingNpc;
+              setIsNearTrainingNpc(nearTrainingNpc);
+            }
 
             if (currentTile === 3) {
               setShowPortalMenu(true);
-              keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
-              keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
-            } else if (playerGridX === 12 && playerGridY === 9) {
-              triggerNPCConversation([
-                "Saudações, Nobre Guerreiro! Bem-vindo à Cidade-Portal de Veylar.",
-                "O Portal Dimensional à esquerda conecta locais de combate por todo o Coliseu.",
-                "Explore o Coliseu, derrote feras e forje sua lenda na Arena Dimensional!"
-              ]);
               keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
               keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
             } else if (playerGridX === 24 && playerGridY === 5) {
@@ -893,7 +993,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
           <div className="text-left min-w-0">
             <h4 className="font-extrabold text-white text-xs leading-none flex items-center gap-1.5">
               <span>{username || 'Wall'}</span>
-              <span className="text-[7px] text-gray-500 font-bold">Lv. 128</span>
+              <span className="text-[7px] text-gray-500 font-bold">Lv. {worldCharacter?.level ?? 1}</span>
             </h4>
             <div className="space-y-1 mt-1.5">
               <div className="w-28 h-1.5 bg-black/60 rounded-full overflow-hidden relative">
@@ -903,7 +1003,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
                 <div className="h-full bg-blue-500" style={{ width: '100%' }}></div>
               </div>
             </div>
-            <span className="text-[7px] text-gray-400 block font-bold mt-1.5">Poder da Equipe: 52.843</span>
+            <span className="text-[7px] text-gray-400 block font-bold mt-1.5">Poder pessoal: {(worldCharacter?.stats?.strength ?? 15) + (worldCharacter?.stats?.defense ?? 10) + (worldCharacter?.stats?.speed ?? 8)}</span>
           </div>
         </div>
 
@@ -1049,10 +1149,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-3.5 pointer-events-auto">
         
         {/* Dialogue prompt alert box (Falar com a Guarda de Veylar) */}
-        {!dialogOpen && (
+        {!dialogOpen && isNearTrainingNpc && !showTrainingChoice && (
           <div className="hud-prompt-box px-8 py-2 rounded text-center">
             <span className="text-[9px] font-extrabold text-[#ffe082] uppercase tracking-widest leading-none">
-              Enter — Falar com Guarda de Veylar
+              Enter / E / A — Falar com Instrutor Kael
             </span>
           </div>
         )}
@@ -1141,7 +1241,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
         >
           <div className="bg-[#0a0a18] border-2 border-[#b59441] rounded-2xl p-4.5 mx-auto max-w-xl shadow-[0_4px_25px_rgba(0,0,0,0.85)] relative">
             <div className="absolute -top-3 left-5 bg-indigo-950 px-3 py-0.5 rounded border border-[#b59441]">
-              <span className="text-[8px] font-extrabold text-[#ffe082] uppercase tracking-widest font-mono">🗡️ Guarda de Veylar</span>
+              <span className="text-[8px] font-extrabold text-[#ffe082] uppercase tracking-widest font-mono">⚔️ Instrutor Kael</span>
             </div>
 
             <p className="text-gray-200 text-xs font-mono leading-relaxed mt-1 min-h-[2.5rem]">
@@ -1160,6 +1260,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ menuOpen, onTriggerBattl
             <div className="absolute -bottom-2 right-5 bg-slate-950 px-2 py-0.5 rounded border border-indigo-900">
               <span className="text-[7px] font-bold text-indigo-400 font-mono">{dialogLineIndex + 1}/{dialogLines.length}</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showTrainingChoice && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-6 pointer-events-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="training-title" className="max-w-md w-full rounded-2xl border-2 border-[#b59441] bg-[#0a0a18] p-6 shadow-2xl text-center">
+            <span className="text-4xl block mb-3">⚔️</span>
+            <h3 id="training-title" className="text-lg font-black text-[#ffe082] uppercase tracking-wider">Duelo de Treinamento</h3>
+            <p className="mt-3 text-sm text-gray-300 leading-relaxed">Deseja escolher três dos seus cinco heróis e enfrentar a equipe de Kael?</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button autoFocus onClick={acceptTrainingBattle} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-500 focus:ring-2 focus:ring-emerald-300">Sim — Iniciar</button>
+              <button onClick={closeTrainingChoice} className="rounded-xl border border-indigo-800 bg-indigo-950 px-4 py-3 text-sm font-bold text-indigo-200 hover:bg-indigo-900 focus:ring-2 focus:ring-indigo-400">Agora não</button>
+            </div>
+            <p className="mt-4 text-[9px] uppercase tracking-widest text-gray-500">Enter/A: confirmar · Esc/N: cancelar</p>
           </div>
         </div>
       )}

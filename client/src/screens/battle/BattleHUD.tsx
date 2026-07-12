@@ -30,8 +30,8 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
     <header className="flex justify-between items-center border-b border-indigo-950/40 pb-4 mb-4 shrink-0 relative">
       <div className="flex flex-col text-left max-w-[200px]">
         <div className="flex items-center gap-1.5">
-          <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">Wall</span>
-          <span className="text-[8px] text-gray-500 font-bold">Poder: 52.843</span>
+          <span className="text-indigo-400 text-sm font-black uppercase blue-glow-text">{localPlayer?.username || 'Jogador'}</span>
+          <span className="text-[8px] text-gray-500 font-bold">Equipe: {blueHpSum > 0 ? '3 heróis' : 'sem heróis'}</span>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <div className="w-32 h-2 bg-slate-950 border border-indigo-950 rounded-full overflow-hidden">
@@ -88,7 +88,7 @@ export const BattleHUD: React.FC<BattleHUDProps> = ({
 
       <div className="flex flex-col text-right max-w-[200px]">
         <div className="flex items-center gap-1.5 justify-end">
-          <span className="text-[8px] text-gray-500 font-bold">Poder: 51.276</span>
+          <span className="text-[8px] text-gray-500 font-bold">Equipe rival</span>
           <span className="text-rose-400 text-sm font-black uppercase red-glow-text">{opponent?.username || "Isaac"}</span>
         </div>
         <div className="flex items-center gap-2 mt-1 justify-end">

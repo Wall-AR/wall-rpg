@@ -10,6 +10,8 @@ export interface BattleRoomOptions {
   mode?: BattleMode;
   expectedPlayers?: number;
   teamSize?: number;
+  rosterSize?: number;
+  enemyName?: string;
   teamAssignments?: Record<string, BattleTeamId>;
 }
 
@@ -20,6 +22,8 @@ export interface BattleRoomConfig {
   maxClients: number;
   usesBotOpponent: boolean;
   lineupSizePerPlayer: number;
+  rosterSize: number;
+  enemyName: string;
   teamAssignments: Record<string, BattleTeamId>;
 }
 
@@ -31,6 +35,10 @@ const clampInteger = (value: unknown, min: number, max: number, fallback: number
 
 export const normalizeBattleConfig = (options: BattleRoomOptions = {}): BattleRoomConfig => {
   const mode = options.mode || 'duel';
+  const rosterSize = clampInteger(options.rosterSize, 3, 5, 5);
+  const enemyName = typeof options.enemyName === 'string' && options.enemyName.trim()
+    ? options.enemyName.trim().slice(0, 60)
+    : 'Guardiões da Fenda';
 
   if (mode === 'solo') {
     return {
@@ -40,6 +48,8 @@ export const normalizeBattleConfig = (options: BattleRoomOptions = {}): BattleRo
       maxClients: 1,
       usesBotOpponent: true,
       lineupSizePerPlayer: 3,
+      rosterSize,
+      enemyName,
       teamAssignments: options.teamAssignments || {},
     };
   }
@@ -53,6 +63,8 @@ export const normalizeBattleConfig = (options: BattleRoomOptions = {}): BattleRo
       maxClients: expectedPlayers,
       usesBotOpponent: true,
       lineupSizePerPlayer: 1,
+      rosterSize,
+      enemyName,
       teamAssignments: options.teamAssignments || {},
     };
   }
@@ -66,6 +78,8 @@ export const normalizeBattleConfig = (options: BattleRoomOptions = {}): BattleRo
       maxClients: teamSize * 2,
       usesBotOpponent: false,
       lineupSizePerPlayer: 1,
+      rosterSize,
+      enemyName,
       teamAssignments: options.teamAssignments || {},
     };
   }
@@ -78,6 +92,8 @@ export const normalizeBattleConfig = (options: BattleRoomOptions = {}): BattleRo
       maxClients: 8,
       usesBotOpponent: false,
       lineupSizePerPlayer: 3,
+      rosterSize,
+      enemyName,
       teamAssignments: options.teamAssignments || {},
     };
   }
@@ -89,6 +105,8 @@ export const normalizeBattleConfig = (options: BattleRoomOptions = {}): BattleRo
     maxClients: 2,
     usesBotOpponent: false,
     lineupSizePerPlayer: 1,
+    rosterSize,
+    enemyName,
     teamAssignments: options.teamAssignments || {},
   };
 };

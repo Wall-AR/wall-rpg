@@ -62,6 +62,8 @@ export class BattleState extends Schema {
   @type("number") turn: number = 1;
   @type("number") expectedPlayers: number = 2;
   @type("number") maxTeamSize: number = 1;
+  @type("number") rosterSize: number = 5;
+  @type("string") encounterName: string = "";
   @type("number") planningDeadline: number = 0;
   @type({ map: BattlePlayerState }) players = new MapSchema<BattlePlayerState>();
   @type(["string"]) logs = new ArraySchema<string>();
