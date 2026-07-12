@@ -274,12 +274,13 @@ A orientação visual pode ser espelhada entre equipes, mas os identificadores l
 
 - Ataques comuns priorizam o alvo válido mais à frente.
 - Unidades e barreiras à frente protegem o conteúdo posicionado atrás.
-- **Sem perfuração:** atinge somente o primeiro alvo válido.
-- **Perfurante 1:** atravessa o primeiro alvo e alcança os dois primeiros da linha de prioridade.
-- **Perfurante 2:** alcança os três primeiros da linha de prioridade.
+- **Sem perfuração:** atinge somente o alvo primário válido da faixa prioritária.
+- **Perfurante 1:** atravessa o alvo primário e alcança a próxima entidade atrás na mesma linha.
+- **Perfurante 2:** continua a trajetória e alcança até três entidades na mesma linha.
+- Alcance de perfuração não utilizado é perdido; o efeito não salta para outra linha.
 - Habilidades podem declarar exceções, alvo direto, área, linha, coluna ou regras próprias.
 
-A distribuição exata entre linhas/colunas e o comportamento quando existem lacunas ainda precisam de um contrato visual e lógico fechado.
+A distribuição entre profundidade, linhas, lacunas e perfuração está fechada para a v1 em `BATTLE_SYSTEM_SPEC.md`: frente protege globalmente ataques básicos; o jogador escolhe entre alvos na mesma prioridade; efeitos em linha atravessam lacunas e perfuração continua atrás do alvo na mesma linha.
 
 ---
 
@@ -341,8 +342,10 @@ A referência visual enviada por Wall define a direção macro:
 - grade e faixas posicionais legíveis;
 - Mana visível e ações com custo explícito;
 - painel da ação selecionada;
-- log separado entre ações planejadas e histórico resolvido;
+- log fechado por padrão, aberto como gaveta com plano local, turno atual, histórico e sistema;
 - grande comando de confirmação da estratégia.
+
+A composição, os estados, controles, responsividade, contratos de alvo e critérios de aceite estão definidos em `BATTLE_SYSTEM_SPEC.md`. A imagem continua sendo referência de direção; esse documento é o contrato canônico implementável.
 
 ---
 
@@ -453,30 +456,27 @@ O mundo permanente e a campanha compartilham conta, coleção, armas, economia e
 
 Estas questões não devem ser implementadas por suposição:
 
-1. Qual é a fórmula exata de Mana: valor inicial, crescimento, teto e renovação?
-2. Qual é o custo padrão para substituir/descer um herói?
-3. Quais interações de suporte com Mana são permitidas sem quebrar a curva de lategame?
-4. O que acontece quando o timer acaba sem confirmação: defesa automática, último plano válido ou outra regra?
-5. Quais regras de duração, prioridade e destruição serão usadas por barreiras, tokens, clones e invocações que ocupam uma casa exclusiva?
-6. Como linhas, colunas e lacunas alteram prioridade e perfuração?
-7. Como o jogador escolhe entre múltiplos alvos igualmente prioritários?
-8. Qual é a janela de reconexão antes de uma derrota por WO?
-9. Quais punições de ranking, fila ou recompensa acompanham o WO em cada modo competitivo?
-10. Como desconexão funciona em PvE cooperativo e campanha, onde ranking pode não ser aplicável?
-11. Como efeitos de área, linha e coluna atravessam a grade compartilhada e distinguem aliados, inimigos e entidades neutras?
-12. Como o PvPvE posiciona entidades neutras e define sua prioridade de alvo sem conflitar com as duas equipes?
-13. Como o emparelhamento, vida do jogador e eliminação funcionam no Brawl de oito jogadores?
-14. Duelo e Brawl usam poder persistente integral, matchmaking por faixa ou normalização competitiva?
-15. Qual regra antistall impede ciclos indefinidos de defesa gratuita?
-16. O mundo 3D usa câmera fixa por cena, câmera orbital limitada ou seguimento livre?
-17. Qual é o primeiro hardware e viewport alvo: desktop apenas ou mobile desde o início?
-18. Como progressão infinita evita tornar regiões antigas e novos jogadores irrelevantes?
+As decisões de Mana v1, custo de substituição, timeout, profundidade, lacunas, escolha entre alvos e direção antistall agora possuem contrato em `BATTLE_SYSTEM_SPEC.md`. Continuam abertas:
+
+1. Quais interações de suporte com Mana são permitidas sem quebrar a curva de lategame?
+2. Quais regras específicas de duração e destruição serão usadas por cada barreira, token, clone e invocação?
+3. Qual é a janela de reconexão antes de uma derrota por WO?
+4. Quais punições de ranking, fila ou recompensa acompanham o WO em cada modo competitivo?
+5. Como desconexão funciona em PvE cooperativo e campanha, onde ranking pode não ser aplicável?
+6. Como efeitos de área distinguem aliados, inimigos e entidades neutras em cada catálogo de habilidade?
+7. Como o PvPvE posiciona entidades neutras e define sua tabela de ameaça?
+8. Como emparelhamento, vida do jogador e eliminação funcionam no Brawl de oito jogadores?
+9. Duelo e Brawl usam poder persistente integral, matchmaking por faixa ou normalização competitiva?
+10. Quais valores finais da Pressão do Coliseu impedem stall sem apagar estratégias defensivas?
+11. O mundo 3D usa câmera fixa por cena, câmera orbital limitada ou seguimento livre?
+12. Qual é o primeiro hardware mínimo alvo para exploração 3D?
+13. Como progressão infinita evita tornar regiões antigas e novos jogadores irrelevantes?
 
 ---
 
 ## 14. Ordem Recomendada para os Próximos Aprofundamentos
 
-1. **Contrato da batalha:** curva de Mana, substituição, ocupação, prioridade, perfuração, resolução, WO e desconexão.
+1. **Implementação do contrato da batalha:** executar `BATTLE_SYSTEM_SPEC.md` em etapas, começando pela fundação visual e eventos tipados; reconexão/WO e valores de balanceamento continuam parametrizáveis.
 2. **Mundo persistente versus campanha:** instâncias, transporte, isolamento e retorno seguro.
 3. **Progressão e economia:** heróis, armas infinitas, itens, venda, upgrade e equilíbrio de longo prazo.
 4. **Exploração 3D:** câmera, movimentação, visual, assets, colisão e vertical slice.

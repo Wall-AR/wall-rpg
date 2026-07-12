@@ -247,6 +247,19 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Limites mantidos: salas não persistem ao reiniciar o servidor; Brawl, compras e progresso de eventos ainda não têm runtime; PostgreSQL indisponível no playtest
   - Branch/commit: codex/game-005-rift-inspired-lobby; este registro integra o commit de handoff
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [DOCS-004] [DESIGN] Especificar visual e lógica completos da batalha
+  - Contrato criado: composição 16:9 visual-first, HUD nas bordas, câmera 2.5D, âncoras normalizadas dos slots, personagens, dock de ações, Mana, confirmação, ordem e log fechado em gaveta
+  - Mecânica fechada para v1: profundidade global, escolha entre alvos equivalentes, linhas/lacunas, perfuração na mesma linha, timeout com defesa, reservas/substituição, prioridade antes de velocidade e privacidade de planos
+  - Modos e input: solo, coop, PvP 1×1/2×2/3×3, PvPvE e Brawl documentados para mouse, teclado, controle e mobile paisagem
+  - Arquivo criado: BATTLE_SYSTEM_SPEC.md (25 seções; auditoria, layout, estados, controles, contratos, implementação e aceite)
+  - Arquivos modificados: GAME_DESIGN.md, PROJECT_ROADMAP.md, AI_SYNC.md
+  - Runtime, API, schema e migrations: nenhum alterado; o documento identifica explicitamente as lacunas do código atual e a sequência segura de implementação
+  - Validação: batalha.png inspecionada em resolução original; regras confrontadas com BattleState, BattleRoom, teamBattle e UI atual; git diff --check (PASS); buscas de consistência Mana/PA, roster, alvos, log e perfuração (PASS)
+  - Não testado: nenhuma tela foi implementada neste assignment; acessibilidade, responsividade, animação e leitura em movimento exigem implementação e playtest
+  - Parâmetros ainda ajustáveis: Pressão do Coliseu, multiplicadores, prioridades numéricas, QTE, reconexão/WO, PvPvE e Brawl completo
+  - Branch/commit: codex/docs-004-battle-ui-spec; este registro integra o commit de handoff
+  - Status: CONCLUÍDO
 ```
 
 ---
@@ -262,6 +275,7 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 | GAME-003 | Implementar equipes 1–3, grade compartilhada e confirmação simultânea | Codex | ✅ Concluído | `codex/game-003-shared-team-battle` | `server/src/rooms/BattleRoom.ts`, `server/src/rooms/GameRoom.ts`, `server/src/schemas/BattleState.ts`, `server/src/battle/*`, `server/package.json`, `client/src/screens/battle/*`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | 5 testes + lint + build + smoke mundo: concluídos |
 | GAME-004 | Criar caminho dourado da conta zero até batalha PvE | Codex | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `server/src/index.ts`, `server/src/routes/{auth,companions}.ts`, `server/src/rooms/{GameRoom,BattleRoom}.ts`, `server/src/schemas/*`, `server/src/testing/*`, `server/src/battle/*`, `client/src/{main,App}.tsx`, `client/vite.config.ts`, `client/src/game/*`, `client/src/screens/{LoginScreen,LobbyScreen}.tsx`, `client/src/screens/{lobby,battle,menu}/*`, docs | 6 testes + lint + build + playtest completo: concluídos |
 | GAME-005 | Redesenhar hub/lobby inspirado na hierarquia do Wild Rift | Codex | ✅ Concluído | `codex/game-005-rift-inspired-lobby` | `client/src/screens/LobbyScreen.tsx`, `client/src/screens/lobby/*`, `client/src/screens/styles/lobby-hub.css`, `client/src/App.tsx`, `server/src/rooms/GameRoom.ts`, `AI_SYNC.md`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md` | Hub original + salas; lint/build + playtest desktop/mobile concluídos |
+| DOCS-004 | Especificar visual e lógica completos da batalha | Codex | ✅ Concluído | `codex/docs-004-battle-ui-spec` | `BATTLE_SYSTEM_SPEC.md`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | Auditoria + contrato visual/mecânico + revisão documental concluídos |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
 | BUG-001 | Corrigir proxy dev de `/companions` | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/vite.config.ts` | Roster autenticado de 5 heróis carregado no playtest |
 | BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/src/screens/lobby/useLobbyData.ts`, `client/src/game/GameCanvas.tsx` | Lobby e mundo validados com Callbacks.get(room) |

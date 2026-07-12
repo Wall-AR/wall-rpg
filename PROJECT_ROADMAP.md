@@ -118,6 +118,7 @@ D:\MEGACOLISEUM\
 │       └── 0003_first_selene.sql       # Colunas level/xp no inventory
 │
 ├── PROJECT_ROADMAP.md               # Este documento
+├── BATTLE_SYSTEM_SPEC.md             # Contrato visual, mecânico e responsivo da batalha
 └── AI_SYNC.md                       # Protocolo de sincronização entre IAs
 ```
 
@@ -174,7 +175,7 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - **QTE (Quick Time Events):** Inspirado em Legend of Dragoon — timing perfeito dá combo bonus.
 - **Resultado:** XP distribuída para personagem e arma equipada. Drops de loot. Chance de recrutamento.
 - **Curva técnica v1:** 1 Mana no turno 1, +1 por turno até 10, renovada a cada Preparação; ataque/defesa 0, reposicionamento 1, item 2 e substituição 3.
-- **Decisões abertas:** balanceamento da curva, lacunas/colunas, entidades auxiliares, reconexão, punições de WO, PvPvE e regras completas do Brawl. Não implementar por suposição; consultar `GAME_DESIGN.md`.
+- **Contrato visual/mecânico:** `BATTLE_SYSTEM_SPEC.md` fecha composição, alvos, profundidade, lacunas, perfuração, timeout, controles e pipeline-alvo. Balanceamento, entidades específicas, reconexão, punições de WO, PvPvE e Brawl completo continuam parametrizáveis/abertos.
 
 ### 3.3 Modos Compartilhados
 - **Mundo RPG:** exploração persistente, PvE, farming, quests e campanhas cooperativas do Mestre.
@@ -227,6 +228,7 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [x] BattleRoom Colyseus (solo 3 heróis; cooperativo e PvP em equipes com 1 herói por jogador, QTE e resolução autoritativa)
 - [x] Equipes de 1–3 jogadores com grade 3×3 compartilhada, bloqueio de colisão e confirmação simultânea
 - [x] Mana v1 compartilhada entre os modos (curva 1–10, custos por ação e validação no servidor)
+- [x] Especificação completa da batalha: HUD visual-first, campo 2.5D, grade, menus, alvos, reservas, Resolução, inputs e responsividade
 - [x] Integração da BattleRoom com tabela `companions` (stats reais do DB)
 - [x] Evolução infinita de armas no BattleRoom (XP pós-combate)
 - [x] Constantes de crescimento compartilhadas (`growth.ts`)
@@ -263,7 +265,8 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [ ] Remover credencial GM padrão (`gm-master-key`) e exigir `GM_SECRET` seguro em produção
 - [x] Corrigir proxy local de `/companions` no Vite
 - [x] Migrar listeners de presença e mundo para `Callbacks.get(room)` do Colyseus 0.17
-- [ ] Fechar contratos restantes da batalha: entidades auxiliares, lacunas/colunas, perfuração completa, reconexão e punições de WO
+- [ ] Implementar o contrato de `BATTLE_SYSTEM_SPEC.md`: eventos tipados, alvo autoritativo, reposição, substituição, itens, perfuração e nova composição visual
+- [ ] Fechar parâmetros restantes: entidades auxiliares específicas, reconexão, punições de WO, balanceamento antistall e normalização competitiva
 - [ ] Extrair de `GameCanvas.tsx` input, rede, entidades, interação e HUD antes da migração 3D
 - [ ] Construir vertical slice R3F: personagem, câmera, chão, colisão, NPC e segundo jogador sincronizado
 - [ ] Validar performance e sensação da exploração 3D antes de retirar o renderer PixiJS
