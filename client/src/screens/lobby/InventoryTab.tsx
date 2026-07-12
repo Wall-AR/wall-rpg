@@ -40,6 +40,11 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
               <span className="text-[9px] text-gray-300 font-semibold truncate max-w-full text-center">
                 {item.name}
               </span>
+              {item.type === 'weapon' && item.level > 1 && (
+                <span className="absolute bottom-1 left-1 text-[7px] px-1 bg-amber-900/80 border border-amber-700 text-amber-300 font-bold rounded">
+                  Lv.{item.level}
+                </span>
+              )}
               {item.equippedCharacterId && (
                 <span className="absolute top-1 right-1 text-[8px] px-1 bg-indigo-900 border border-indigo-700 text-indigo-300 font-bold rounded">
                   E
@@ -65,7 +70,20 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
             </div>
 
             <div className="text-xs text-gray-400 space-y-1 border-t border-indigo-950 pt-3">
-              <p>Nível: <span className="text-white font-semibold">Lv. {selectedItem.metadata?.level || 1} / 10</span></p>
+              {selectedItem.type === 'weapon' ? (
+                <>
+                  <p>Nível da Arma: <span className="text-amber-400 font-semibold">Lv. {selectedItem.level || 1} ∞</span></p>
+                  <div className="w-full bg-slate-800 rounded-full h-2 mt-1 mb-1">
+                    <div
+                      className="bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(((selectedItem.xp || 0) / ((selectedItem.level || 1) * 100)) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[9px] text-gray-500">XP: {selectedItem.xp || 0} / {(selectedItem.level || 1) * 100}</p>
+                </>
+              ) : (
+                <p>Nível: <span className="text-white font-semibold">Lv. {selectedItem.metadata?.level || 1} / 10</span></p>
+              )}
               <p>Bônus de Ataque: <span className="text-emerald-400 font-semibold">+{selectedItem.metadata?.atkBonus || 0} ATK</span></p>
               <p>Equipado: <span className="text-white font-semibold">{selectedItem.equippedCharacterId ? "Sim" : "Não"}</span></p>
               {selectedItem.metadata?.element && (
@@ -94,6 +112,10 @@ export const InventoryTab: React.FC<InventoryTabProps> = ({
                   const identicalItems = inventoryList.filter(
                     (i: any) => i.itemId === selectedItem.itemId && i.id !== selectedItem.id && !i.equippedCharacterId
                   );
+                  // Armas evoluem infinitamente via batalha, não por fusão
+                  if (selectedItem.type === 'weapon') {
+                    return <p className="text-[9px] text-amber-400 italic">⚔️ Armas evoluem infinitamente ao ganhar batalhas.</p>;
+                  }
                   const currentLvl = selectedItem.metadata?.level || 1;
                   if (currentLvl >= 10) {
                     return <p className="text-[9px] text-emerald-400 italic">✓ Item atingiu o nível máximo (Lv. 10)</p>;

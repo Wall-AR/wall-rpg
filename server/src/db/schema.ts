@@ -61,6 +61,8 @@ export const inventory = pgTable('inventory', {
     .references(() => characters.id, { onDelete: 'set null' }),
   slot: integer('slot').notNull(), // -1 if backpack, 0 weapon, 1 armor, etc.
   quantity: integer('quantity').default(1).notNull(),
+  level: integer('level').default(1).notNull(),
+  xp: integer('xp').default(0).notNull(),
   metadata: jsonb('metadata').$type<Record<string, any>>().default({}).notNull(),
 });
 

@@ -787,6 +787,40 @@ export class BattleRoom extends Room<{ state: BattleState }> {
                 if (levelUpOccurred) {
                   this.state.logs.push(`⭐ ${char.name} subiu para o nível ${newLevel}!`);
                 }
+
+                // Evoluir a arma equipada do personagem (Progressão Infinita)
+                try {
+                  const equippedWeapon = await db.select()
+                    .from(inventory)
+                    .where(and(eq(inventory.equippedCharacterId, playerState.characterId), eq(inventory.slot, 0)))
+                    .limit(1);
+
+                  if (equippedWeapon.length > 0) {
+                    const weapon = equippedWeapon[0];
+                    let weaponXp = weapon.xp + xpGained;
+                    let weaponLevel = weapon.level;
+                    let weaponLevelUp = false;
+
+                    // Evolução infinita de armas: cada nível exige level * 100 de XP
+                    while (weaponXp >= weaponLevel * 100) {
+                      weaponXp -= weaponLevel * 100;
+                      weaponLevel += 1;
+                      weaponLevelUp = true;
+                    }
+
+                    await db.update(inventory)
+                      .set({ xp: weaponXp, level: weaponLevel })
+                      .where(eq(inventory.id, weapon.id));
+
+                    if (weaponLevelUp) {
+                      const meta = (weapon.metadata || {}) as Record<string, any>;
+                      const weaponName = meta.name || "Arma Equipada";
+                      this.state.logs.push(`⚔️ A arma [${weaponName}] subiu para o Nível ${weaponLevel}!`);
+                    }
+                  }
+                } catch (weaponErr) {
+                  console.error("[BattleRoom] Falha ao evoluir arma:", weaponErr);
+                }
               }
             } catch (err) {
               console.error("[BattleRoom] Falha ao atualizar XP no banco:", err);
