@@ -179,6 +179,19 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Próximos passos: todo agente deve ler AGENTS.md e registrar claim/handoff no AI_SYNC.md
   - Branch/commit: codex/ops-001-agent-foundation; commit será criado após este registro
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [DOCS-002] [DESIGN] Consolidar visão macro, batalha e exploração 3D
+  - Comportamento alterado: visão canônica separa mundo persistente, campanha instanciada do Mestre, coleção/progressão, exploração 3D e batalha Preparação/Resolução
+  - Arquivos criados: GAME_DESIGN.md
+  - Arquivos modificados: PROJECT_ROADMAP.md, AGENTS.md, .ai/preflight.ps1, AI_SYNC.md
+  - Contratos, APIs ou migrations: nenhum runtime alterado; documentado alvo futuro de 3 titulares, até 6 ativos e grade 3×3 por lado
+  - Validação automatizada: .ai/preflight.ps1 (PASS), git diff --check (PASS), busca de contradições 2D/3v3 (PASS)
+  - Teste manual: imagem batalha.png inspecionada em resolução original e confrontada com timer, PA, posições, confirmação, ordem e log de ações
+  - Não testado: exploração 3D e nova batalha ainda não foram implementadas
+  - Riscos, mocks e fallbacks mantidos: PixiJS e BattleRoom 3v3 continuam sendo a implementação atual; nenhuma dependência R3F foi instalada
+  - Próximos passos: aprofundar contrato de PA/convocação, cooperação, grid, timeout e desconexão antes da implementação
+  - Branch/commit: codex/docs-002-macro-game-design; commit será criado após este registro
+  - Status: CONCLUÍDO
 ```
 
 ---
@@ -189,6 +202,7 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 |:---|:---|:---|:---|:---|:---|:---|
 | DOCS-001 | Auditar projeto e fortalecer protocolo multi-IA | Codex | ✅ Concluído | `main` (sessão exclusiva anterior ao protocolo 2.0) | `AI_SYNC.md`, `PROJECT_ROADMAP.md` | lint + build + smoke test: concluídos |
 | OPS-001 | Estruturar base operacional dos agentes | Codex | ✅ Concluído | `codex/ops-001-agent-foundation` | `AGENTS.md`, `.ai/*`, `AI_SYNC.md` | Preflight + `git diff --check`: concluídos |
+| DOCS-002 | Consolidar visão macro, fluxo de batalha e decisão de exploração 3D | Codex | ✅ Concluído | `codex/docs-002-macro-game-design` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AGENTS.md`, `.ai/preflight.ps1`, `AI_SYNC.md` | Visão, imagem e compatibilidade R3F/React validadas |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
 | BUG-001 | Corrigir proxy dev de `/companions` | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/vite.config.ts` | Smoke: resposta JSON autenticada |
 | BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/screens/lobby/useLobbyData.ts` | Presença sem erros; 2 clientes entram/saem |

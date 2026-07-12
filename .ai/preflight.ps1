@@ -20,6 +20,7 @@ Set-Location $repoRoot
 $requiredFiles = @(
     'AGENTS.md',
     'AI_SYNC.md',
+    'GAME_DESIGN.md',
     'PROJECT_ROADMAP.md',
     '.ai/README.md',
     '.ai/TASK_TEMPLATE.md',

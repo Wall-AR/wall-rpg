@@ -4,17 +4,19 @@
 > **Mantido por:** Antigravity (AI) + Wall (Game Master / Owner)
 > **Repositório:** https://github.com/Wall-AR/wall-rpg
 > **Diretório local:** `D:\MEGACOLISEUM\`
+> **Design canônico:** consulte `GAME_DESIGN.md` para visão, loops, batalha e decisões abertas.
 
 ---
 
 ## 📖 1. Visão do Projeto
 
 ### O que é o MEGACOLISEUM?
-Um **RPG multiplayer online** com sistema de batalha por turnos (inspirado em Final Fantasy, Legend of Dragoon, e Pokémon), exploração de mundo isométrica (estilo Pokémon de Game Boy), e uma forte identidade de **colecionismo** e **progressão infinita de armas**.
+Um **RPG multiplayer online persistente** com exploração 3D, campanha episódica dirigida por um Mestre, batalha tática por fases, colecionismo de heróis e **progressão duradoura/infinita de armas**. O mundo continua jogável entre capítulos, mesmo quando o Mestre leva meses para preparar a próxima campanha.
 
 ### Proposta Central
 - **Jogue sozinho:** Explore fendas, farme XP, evolua armas e colete companheiros mesmo quando o grupo não está online.
-- **Jogue junto:** O Mestre (GM) pode entrar a qualquer momento para narrar campanhas ao vivo, spawnar bosses, criar quests, e conduzir histórias com os jogadores em tempo real.
+- **Jogue junto:** Amigos formam grupos, enfrentam conteúdo e evoluem dentro do mesmo universo persistente.
+- **Viva uma campanha:** O Mestre pode reunir/transportar participantes, isolar uma área, narrar capítulos ao vivo, controlar eventos e conceder consequências persistentes.
 - **Colecionismo emocional:** Companheiros descartados vão para o "Livro de Memórias" — nunca são apagados, apenas aposentados com seus legados preservados.
 
 ### Para quem é?
@@ -29,10 +31,11 @@ Um **RPG multiplayer online** com sistema de batalha por turnos (inspirado em Fi
 ### Stack
 | Camada | Tecnologia | Notas |
 |:---|:---|:---|
-| **Frontend** | React 18 + TypeScript + Vite | SPA com PixiJS para o canvas isométrico |
+| **Frontend** | React 18 + TypeScript + Vite | SPA; React continua responsável por HUD, menus e aplicação |
 | **Backend** | Node.js + Express + Colyseus | Colyseus gerencia salas multiplayer em tempo real |
 | **Banco de Dados** | PostgreSQL + Drizzle ORM | O servidor degrada graciosamente para modo in-memory quando o DB está offline |
-| **Canvas/Gráficos** | PixiJS 8 (`pixi.js` 8.19 + `@pixi/react` 8) | Renderização isométrica tile-based para o overworld |
+| **Renderer atual** | PixiJS 8 (`pixi.js` 8.19 + `@pixi/react` 8) | Overworld isométrico legado, mantido até a migração atingir paridade |
+| **Renderer 3D proposto** | React Three Fiber 8 + Three.js | Compatível com o React 18 atual; exige vertical slice antes da substituição definitiva |
 | **Animações** | GSAP | Animações de batalha, transições e efeitos visuais |
 | **Auth** | JWT (jsonwebtoken) | Token-based, sem sessões server-side |
 | **Build** | TypeScript ESM | Server usa `"type": "module"` — imports precisam de extensão `.js` |
@@ -138,21 +141,28 @@ D:\MEGACOLISEUM\
 
 ### 3.1 Fluxo do Jogador
 ```
-Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
-                                ↓
-                    [Portais para diferentes modos de jogo]
-                                ↓
-                    Portal 1: Mundo RPG (exploração + batalha)
-                    Portal 2: Mario Party Board (futuro)
-                    Portal 3: Mini-games (futuro)
+Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
+                         ↓
+            Cidade inicial / Mundo Persistente 3D
+                         ↓
+      Explorar → Farmar → Batalhar → Coletar/Vender/Aprimorar
+                         ↓
+       [Quando o Mestre publica um capítulo de campanha]
+                         ↓
+ Reunir/transportar grupo → Área isolada → Narrativa/Encontros
+                         ↓
+ Recompensas e consequências → Retorno ao mundo persistente
 ```
 
-### 3.2 Sistema de Batalha (Turnos - 3v3)
-- **Preparação de Confronto:** Escolher 3 de 6 companheiros + runa ativa.
-- **Planejamento Tático:** Cada jogador escolhe ações para seus 3 combatentes (atacar, defender, magia).
-- **Resolução:** Ações são resolvidas por ordem de velocidade.
+### 3.2 Sistema de Batalha (3 titulares, até 6 ativos, grade 3×3)
+- **Encontro:** O servidor valida o gatilho durante a exploração e abre a transição.
+- **Lobby de Batalha:** Escolher 3 titulares entre até 6 heróis e definir posições iniciais na grade 3×3.
+- **Preparação:** Planejamento simultâneo com cronômetro e PA; atacar, defender, usar habilidade/feitiço/item, reposicionar ou colocar reservas em campo.
+- **Campo:** Cada lado possui 9 casas em três faixas — frente, meio e trás — e pode chegar a 6 heróis ativos.
+- **Resolução:** O servidor bloqueia os planos e resolve ações por prioridade, velocidade e modificadores.
 - **QTE (Quick Time Events):** Inspirado em Legend of Dragoon — timing perfeito dá combo bonus.
 - **Resultado:** XP distribuída para personagem e arma equipada. Drops de loot. Chance de recrutamento.
+- **Decisões abertas:** economia exata de PA/convocação, alcance posicional, cooperação entre jogadores, timeout e desconexão. Não implementar por suposição; consultar `GAME_DESIGN.md`.
 
 ### 3.3 Progressão (Decisão em Aberto — Proposta A recomendada)
 
@@ -175,11 +185,12 @@ Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
 - **Armas:** Coleção de armas com níveis visíveis e histórico de evolução.
 
 ### 3.5 Ferramentas do Mestre (GM)
-- **Pintura de mapa:** DevTool in-game para pintar tiles no canvas PixiJS.
-- **Spawn de monstros:** Chat command para materializar NPCs no mapa.
-- **Narração:** Comando para enviar texto narrativo a todos os jogadores.
-- **Quests ao vivo:** Criar e disparar missões em tempo real.
-- **Decisão de abordagem:** Modelo Híbrido (visual para pintura + JSON para quests complexas).
+- **Preparação:** Criar capítulos, áreas, cenas, NPCs, encontros, objetivos e recompensas.
+- **Reunião:** Selecionar participantes e transportar o grupo para a sessão.
+- **Controle de área:** Abrir, fechar ou isolar regiões da campanha e recuperar jogadores presos por falha.
+- **Execução ao vivo:** Narrar, controlar NPCs/inimigos, disparar quests, cenas, batalhas e consequências.
+- **Auditoria:** Registrar comandos privilegiados e recompensas concedidas.
+- **Abordagem:** Ferramentas visuais para operação ao vivo + dados estruturados para conteúdo complexo.
 
 ---
 
@@ -225,10 +236,14 @@ Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
 - [ ] Remover credencial GM padrão (`gm-master-key`) e exigir `GM_SECRET` seguro em produção
 - [ ] Corrigir proxy local de `/companions` no Vite (a rota hoje retorna o HTML da SPA em desenvolvimento)
 - [ ] Migrar listeners de presença para `Callbacks.get(room)` do Colyseus 0.17
-- [ ] Refatorar `GameCanvas.tsx` (58KB para módulos)
+- [ ] Definir contratos fechados da batalha: PA, convocação, grid, alcance, timeout, desconexão e cooperação
+- [ ] Extrair de `GameCanvas.tsx` input, rede, entidades, interação e HUD antes da migração 3D
+- [ ] Construir vertical slice R3F: personagem, câmera, chão, colisão, NPC e segundo jogador sincronizado
+- [ ] Validar performance e sensação da exploração 3D antes de retirar o renderer PixiJS
 - [ ] Separar HUD/missão mockados do estado real (`Lv. 128`, poder da equipe e quest padrão ainda são visuais estáticos)
 - [ ] Conectar `PREP_ROSTER` do client ao endpoint `/companions`
-- [ ] Implementar posição no combate (frente/meio/trás) com efeito real
+- [ ] Evoluir batalha atual de 3v3 para 3 titulares + reservas, até 6 ativos e grade 3×3 por lado
+- [ ] Implementar frente/meio/trás com alcance, proteção e efeito real
 - [ ] Expandir catálogo de magias (8 spells com custos e efeitos)
 - [ ] Implementar 5 runas funcionais com efeitos reais
 - [ ] Criar endpoints de equipar/desequipar itens
@@ -271,6 +286,8 @@ Login → Seleção de Save → Lobby Central (Cidade-Portal de Veylar)
 8. **Mocks visuais no overworld:** O HUD de `GameCanvas.tsx` ainda mostra nível, poder da equipe e quest padrão estáticos, diferentes do personagem real carregado no lobby.
 9. **Cobertura de testes:** A CI executa typecheck e build, mas o repositório ainda não possui testes automatizados.
 10. **Credencial GM de desenvolvimento:** `GameRoom.ts` aceita `gm-master-key` quando `GM_SECRET` não está definido. O fallback precisa ser bloqueado em produção antes de qualquer implantação pública.
+11. **Migração 3D:** PixiJS representa o estado atual, não a arquitetura final da exploração. Não remover o overworld existente antes de uma vertical slice R3F atingir paridade mínima de rede, input, interação e desempenho.
+12. **Batalha-alvo diferente da implementação atual:** o backend atual é 3v3. O design canônico agora prevê 3 titulares, até 6 ativos e grade 3×3 por lado; a transição exige novo contrato de estado e não deve ser tratada como ajuste apenas visual.
 
 ---
 

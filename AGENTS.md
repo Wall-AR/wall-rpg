@@ -4,7 +4,7 @@ Estas instruções valem para qualquer agente de IA que trabalhe neste repositó
 
 ## Antes de editar
 
-1. Leia `PROJECT_ROADMAP.md`, `AI_SYNC.md` e `.ai/README.md`.
+1. Leia `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` e `.ai/README.md`.
 2. Execute `powershell -ExecutionPolicy Bypass -File .ai/preflight.ps1 -Fetch`.
 3. Não altere arquivos se houver mudanças não reconhecidas de outra pessoa ou agente. Preserve-as e coordene pelo `AI_SYNC.md`.
 4. Registre ou assuma um assignment no `AI_SYNC.md` com ID, owner, status, branch/worktree, arquivos reservados e validação esperada.
