@@ -6,6 +6,7 @@
 > **Referência visual analisada:** `C:\Users\walla\Downloads\batalha.png` (1672 × 938, proporção 16:9)  
 > **Documentos relacionados:** `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md`  
 > **Regra de autoridade:** o servidor decide regras e resultados; o cliente apresenta intenção, câmera, HUD, animação, áudio e acessibilidade.
+> **Board Figma:** [MEGACOLISEUM — Battle System Blueprint v1](https://www.figma.com/design/IrQYidktqDxbNfriX9U5M2) — criação parcial; quadros 01 e 02 validados, quadros 03–06 aguardam renovação do limite MCP do plano Starter.
 
 ---
 

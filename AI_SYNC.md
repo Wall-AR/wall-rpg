@@ -260,6 +260,17 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Parâmetros ainda ajustáveis: Pressão do Coliseu, multiplicadores, prioridades numéricas, QTE, reconexão/WO, PvPvE e Brawl completo
   - Branch/commit: codex/docs-004-battle-ui-spec; este registro integra o commit de handoff
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [UI-003] [DESIGN] Criar board Figma da batalha
+  - Arquivo externo: https://www.figma.com/design/IrQYidktqDxbNfriX9U5M2 — MEGACOLISEUM — Battle System Blueprint v1
+  - Concluído: arquivo Design criado; referência batalha.png enviada como imagem real; seção horizontal e seis frames estruturados; quadro 01 de auditoria e quadro 02 de anatomia 16:9 construídos, corrigidos e inspecionados por screenshot
+  - Pendente: preencher quadros 03 grade/slots, 04 fluxo/Mana, 05 ações/alvos/privacidade e 06 controles/responsividade/implementação; validar seção completa e remover placeholders
+  - Bloqueio: Figma MCP retornou limite de chamadas atingido no plano Starter; novas mutações ficaram indisponíveis nesta sessão
+  - Arquivos modificados: BATTLE_SYSTEM_SPEC.md, AI_SYNC.md
+  - Runtime/API/schema/migrations: nenhum alterado
+  - Retomada: continuar no file key `IrQYidktqDxbNfriX9U5M2`, page `Battle Blueprint`, section `3:2`; frames `3:5` a `3:8`; não recriar arquivo nem duplicar os quadros 01/02
+  - Branch: codex/ui-003-battle-figma-board
+  - Status: BLOQUEADO
 ```
 
 ---
@@ -276,6 +287,7 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 | GAME-004 | Criar caminho dourado da conta zero até batalha PvE | Codex | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `server/src/index.ts`, `server/src/routes/{auth,companions}.ts`, `server/src/rooms/{GameRoom,BattleRoom}.ts`, `server/src/schemas/*`, `server/src/testing/*`, `server/src/battle/*`, `client/src/{main,App}.tsx`, `client/vite.config.ts`, `client/src/game/*`, `client/src/screens/{LoginScreen,LobbyScreen}.tsx`, `client/src/screens/{lobby,battle,menu}/*`, docs | 6 testes + lint + build + playtest completo: concluídos |
 | GAME-005 | Redesenhar hub/lobby inspirado na hierarquia do Wild Rift | Codex | ✅ Concluído | `codex/game-005-rift-inspired-lobby` | `client/src/screens/LobbyScreen.tsx`, `client/src/screens/lobby/*`, `client/src/screens/styles/lobby-hub.css`, `client/src/App.tsx`, `server/src/rooms/GameRoom.ts`, `AI_SYNC.md`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md` | Hub original + salas; lint/build + playtest desktop/mobile concluídos |
 | DOCS-004 | Especificar visual e lógica completos da batalha | Codex | ✅ Concluído | `codex/docs-004-battle-ui-spec` | `BATTLE_SYSTEM_SPEC.md`, `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | Auditoria + contrato visual/mecânico + revisão documental concluídos |
+| UI-003 | Criar board Figma da batalha e registrar fonte visual | Codex | ⛔ Bloqueado | `codex/ui-003-battle-figma-board` | Figma externo, `BATTLE_SYSTEM_SPEC.md`, `AI_SYNC.md` | Plano Starter atingiu limite MCP; retomar frames 03–06 no file key documentado |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
 | BUG-001 | Corrigir proxy dev de `/companions` | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/vite.config.ts` | Roster autenticado de 5 heróis carregado no playtest |
 | BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | Codex / GAME-004 | ✅ Concluído | `codex/game-004-zero-pve-golden-path` | `client/src/screens/lobby/useLobbyData.ts`, `client/src/game/GameCanvas.tsx` | Lobby e mundo validados com Callbacks.get(room) |
