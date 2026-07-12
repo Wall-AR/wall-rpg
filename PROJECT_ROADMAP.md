@@ -126,7 +126,7 @@ D:\MEGACOLISEUM\
 |:---|:---|
 | `accounts` | Contas de jogador (username, password hash, soulOrbs) |
 | `characters` | Personagem principal da conta (stats, level, xp) |
-| `companions` | Companheiros colecionáveis (6 ativos, N reservas) |
+| `companions` | Companheiros colecionáveis (até 6 no roster de batalha; máximo de 3 heróis simultaneamente no campo por jogador) |
 | `inventory` | Itens e armas (com `level` e `xp` para evolução infinita) |
 | `items_base` | Catálogo de tipos de item (sword_1, potion_1, etc.) |
 | `friendships` | Relações de amizade entre contas |
@@ -143,7 +143,11 @@ D:\MEGACOLISEUM\
 ```
 Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
                          ↓
-            Cidade inicial / Mundo Persistente 3D
+             Lobby Social / Seleção de Modo
+          ↙                 ↓                 ↘
+  Mundo RPG             Duelo PvP          Brawl (8)
+      ↓                                      ↓
+ Cidade inicial / Mundo Persistente 3D   Rodadas até 1 vencedor
                          ↓
       Explorar → Farmar → Batalhar → Coletar/Vender/Aprimorar
                          ↓
@@ -154,17 +158,28 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
  Recompensas e consequências → Retorno ao mundo persistente
 ```
 
-### 3.2 Sistema de Batalha (3 titulares, até 6 ativos, grade 3×3)
+### 3.2 Sistema de Batalha (roster 6, máximo 3 heróis ativos, grade 3×3)
 - **Encontro:** O servidor valida o gatilho durante a exploração e abre a transição.
 - **Lobby de Batalha:** Escolher 3 titulares entre até 6 heróis e definir posições iniciais na grade 3×3.
-- **Preparação:** Planejamento simultâneo com cronômetro e PA; atacar, defender, usar habilidade/feitiço/item, reposicionar ou colocar reservas em campo.
-- **Campo:** Cada lado possui 9 casas em três faixas — frente, meio e trás — e pode chegar a 6 heróis ativos.
+- **Mana universal:** Funciona como a economia de turno de Hearthstone e é compartilhada por PvE, PvP, cooperativo e Brawl.
+- **Ações gratuitas:** Ataque básico e modo de defesa custam 0 Mana.
+- **Preparação:** Planejamento simultâneo com cronômetro; habilidades, itens, ações especiais e substituições competem pelo orçamento de Mana.
+- **Campo:** Cada jogador possui 9 casas em três faixas e no máximo 3 heróis ativos; casas restantes podem receber clones, tokens, barreiras e invocações.
+- **Prioridade:** Ataques comuns acertam o alvo válido mais à frente; Perfurante 1 alcança dois alvos e Perfurante 2 alcança três.
+- **Cooperativo:** Cada jogador confirma um herói no lobby (favorito por padrão) e controla sua própria ação; substituir consome Mana e perde a ação do turno.
 - **Resolução:** O servidor bloqueia os planos e resolve ações por prioridade, velocidade e modificadores.
+- **WO competitivo:** Abandono ou desconexão além da tolerância gera derrota, impacto de ranking e possíveis punições.
 - **QTE (Quick Time Events):** Inspirado em Legend of Dragoon — timing perfeito dá combo bonus.
 - **Resultado:** XP distribuída para personagem e arma equipada. Drops de loot. Chance de recrutamento.
-- **Decisões abertas:** economia exata de PA/convocação, alcance posicional, cooperação entre jogadores, timeout e desconexão. Não implementar por suposição; consultar `GAME_DESIGN.md`.
+- **Decisões abertas:** números da curva de Mana, custo de substituição, lacunas/colunas, reconexão, punições de WO e regras completas do Brawl. Não implementar por suposição; consultar `GAME_DESIGN.md`.
 
-### 3.3 Progressão (Decisão em Aberto — Proposta A recomendada)
+### 3.3 Modos Compartilhados
+- **Mundo RPG:** exploração persistente, PvE, farming, quests e campanhas cooperativas do Mestre.
+- **Duelo:** PvP direto usando a coleção compartilhada.
+- **Brawl:** oito jogadores preparam seus tabuleiros simultaneamente, são emparelhados por rodada e retornam à Preparação após a resolução até restar um vencedor.
+- **Futuro:** Mario Party, Tetris, Tower Defense e outros runtimes dentro do mesmo universo, conta e metajogo.
+
+### 3.4 Progressão (Decisão em Aberto — Proposta A recomendada)
 
 #### Armas (DEFINIDO — Evolução Infinita)
 - Armas ganham XP das batalhas e sobem de nível infinitamente.
@@ -179,12 +194,12 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 | **B** | Heróis têm nível normal, mas ao serem aposentados, transferem XP para as armas (fusão geracional). |
 | **C** | Nível global da conta (Master Level). Heróis e armas herdam o nível da conta. |
 
-### 3.4 Colecionismo
+### 3.5 Colecionismo
 - **Bestiário/Pokédex:** Registro de todos os companheiros que passaram pela equipe.
 - **Livro de Memórias:** Companheiros aposentados ficam imortalizados com legado.
 - **Armas:** Coleção de armas com níveis visíveis e histórico de evolução.
 
-### 3.5 Ferramentas do Mestre (GM)
+### 3.6 Ferramentas do Mestre (GM)
 - **Preparação:** Criar capítulos, áreas, cenas, NPCs, encontros, objetivos e recompensas.
 - **Reunião:** Selecionar participantes e transportar o grupo para a sessão.
 - **Controle de área:** Abrir, fechar ou isolar regiões da campanha e recuperar jogadores presos por falha.
@@ -236,13 +251,13 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [ ] Remover credencial GM padrão (`gm-master-key`) e exigir `GM_SECRET` seguro em produção
 - [ ] Corrigir proxy local de `/companions` no Vite (a rota hoje retorna o HTML da SPA em desenvolvimento)
 - [ ] Migrar listeners de presença para `Callbacks.get(room)` do Colyseus 0.17
-- [ ] Definir contratos fechados da batalha: PA, convocação, grid, alcance, timeout, desconexão e cooperação
+- [ ] Definir contratos fechados da batalha: curva de Mana, substituição, ocupação, prioridade, perfuração, timeout, WO e reconexão
 - [ ] Extrair de `GameCanvas.tsx` input, rede, entidades, interação e HUD antes da migração 3D
 - [ ] Construir vertical slice R3F: personagem, câmera, chão, colisão, NPC e segundo jogador sincronizado
 - [ ] Validar performance e sensação da exploração 3D antes de retirar o renderer PixiJS
 - [ ] Separar HUD/missão mockados do estado real (`Lv. 128`, poder da equipe e quest padrão ainda são visuais estáticos)
 - [ ] Conectar `PREP_ROSTER` do client ao endpoint `/companions`
-- [ ] Evoluir batalha atual de 3v3 para 3 titulares + reservas, até 6 ativos e grade 3×3 por lado
+- [ ] Evoluir batalha atual para roster 6, máximo 3 heróis ativos por jogador e grade 3×3 com entidades auxiliares
 - [ ] Implementar frente/meio/trás com alcance, proteção e efeito real
 - [ ] Expandir catálogo de magias (8 spells com custos e efeitos)
 - [ ] Implementar 5 runas funcionais com efeitos reais
@@ -251,6 +266,9 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [ ] Tela de Seleção de Save (estilo Zelda, antes do lobby)
 
 ### Fase 3: Telas e Fluxo
+- [ ] Transformar lobby em espaço social com seleção inicial de Mundo RPG, Duelo e Brawl
+- [ ] Implementar lobby pré-batalha cooperativo com herói favorito e troca antes da confirmação
+- [ ] Implementar fundação do Brawl de oito jogadores: pareamento, preparação, resolução, vida e eliminação
 - [ ] Completar Ficha de Companheiro com dados reais do DB
 - [ ] Completar Mapa Dimensional com viagem funcional
 - [ ] Sistema de recrutamento generalizado (não apenas Thorn hardcoded)
@@ -267,9 +285,10 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 - [ ] Sistema de Party (grupo de jogadores)
 - [ ] Sistema de troca de itens entre jogadores (já tem rota, falta UI)
 
-### Fase 5: Multi-Mundo (Futuro)
-- [ ] Lobby com portais para diferentes modos de jogo
+### Fase 5: Modos Futuros
 - [ ] Modo Mario Party (tabuleiro digital com mini-games)
+- [ ] Modo Tetris com progressão/recompensas compatíveis
+- [ ] Modo Tower Defense com progressão/recompensas compatíveis
 - [ ] Eventos especiais do Mestre com recompensas únicas
 
 ---
@@ -287,7 +306,7 @@ Link → Login/Conta → Primeiro Herói (aleatório ou convite especial)
 9. **Cobertura de testes:** A CI executa typecheck e build, mas o repositório ainda não possui testes automatizados.
 10. **Credencial GM de desenvolvimento:** `GameRoom.ts` aceita `gm-master-key` quando `GM_SECRET` não está definido. O fallback precisa ser bloqueado em produção antes de qualquer implantação pública.
 11. **Migração 3D:** PixiJS representa o estado atual, não a arquitetura final da exploração. Não remover o overworld existente antes de uma vertical slice R3F atingir paridade mínima de rede, input, interação e desempenho.
-12. **Batalha-alvo diferente da implementação atual:** o backend atual é 3v3. O design canônico agora prevê 3 titulares, até 6 ativos e grade 3×3 por lado; a transição exige novo contrato de estado e não deve ser tratada como ajuste apenas visual.
+12. **Batalha-alvo diferente da implementação atual:** o backend atual é 3v3 simples. O design canônico agora prevê roster de 6, máximo de 3 heróis ativos por jogador, Mana universal e grade 3×3 ocupável por heróis e entidades auxiliares; a transição exige novo contrato de estado.
 
 ---
 

@@ -56,8 +56,10 @@ A campanha pode ficar meses sem um novo capítulo. Nesse intervalo, o mundo cont
 - O encontro interrompe a exploração e abre um lobby de batalha.
 - O jogador leva até seis heróis e escolhe três titulares.
 - Cada lado possui uma grade de nove espaços, organizada em três faixas: frente, meio e trás.
+- Cada jogador controla no máximo três heróis ativos ao mesmo tempo.
+- As outras casas podem receber clones, tokens, barreiras e invocações criados por habilidades ou itens.
 - A batalha alterna **Preparação** e **Resolução**.
-- A Preparação permite planejar ações, gastar PA, reposicionar e colocar heróis da reserva em campo.
+- A Preparação permite planejar ações, gastar Mana, reposicionar e substituir heróis.
 - A Resolução executa as ações confirmadas segundo regras determinísticas de prioridade/velocidade.
 
 ### 2.5 Progressão longa sem apagar o passado
@@ -152,7 +154,29 @@ A decisão 3D refere-se inicialmente à **exploração**. A batalha pode permane
 
 ---
 
-## 6. Encontros e Lobby de Batalha
+## 6. Lobby Social e Modos de Jogo
+
+Depois do login, o jogador entra em um lobby que também existe como lugar social. Jogadores conectados podem se ver, interagir, organizar grupos e escolher qual mundo/modo acessar.
+
+### Modos iniciais
+
+1. **Mundo RPG:** exploração persistente, PvE, farming, quests públicas e campanhas cooperativas do Mestre.
+2. **Duelo:** confronto competitivo direto entre jogadores usando seus heróis, armas e coleção do mesmo universo.
+3. **Brawl:** competição para oito jogadores inspirada em Battlegrounds/autochess. A cada rodada, o servidor sorteia/emparelha adversários, todos preparam seus tabuleiros simultaneamente, as batalhas são resolvidas e os sobreviventes retornam à Preparação até restar um vencedor.
+
+### Modos futuros
+
+Mario Party, Tetris, Tower Defense e outros modos clássicos poderão existir dentro do mesmo servidor/universo. Eles reutilizam conta, identidade, coleção e recompensas compatíveis, mas possuem runtimes e regras próprias.
+
+### Regra estrutural
+
+O lobby, a conta e a coleção formam a plataforma compartilhada. Cada modo deve declarar quais itens/heróis usa e quais recompensas devolve ao metajogo, sem acoplar suas regras internas ao mundo RPG.
+
+Usar os mesmos colecionáveis não define automaticamente o balanceamento competitivo. Duelo e Brawl precisarão declarar se usam poder integral, faixas de poder, matchmaking por coleção ou algum tipo de normalização.
+
+---
+
+## 7. Encontros e Lobby de Batalha
 
 ### Gatilho
 
@@ -174,9 +198,17 @@ Exploração → encontro validado pelo servidor → transição
 - Pode permitir escolher runa, consumíveis ou modificadores pré-batalha, quando esses sistemas estiverem definidos.
 - Ao confirmar, a formação inicial torna-se uma ordem enviada ao servidor.
 
+### Campanha cooperativa
+
+- Cada jogador entra inicialmente com **um herói**, usando o herói marcado como favorito por padrão.
+- O jogador pode alterar essa escolha no lobby pré-batalha antes de confirmar.
+- Cada participante decide a ação do próprio herói durante a Preparação.
+- Uma substituição usa Mana e consome a ação daquele personagem no turno, seguindo a leitura estratégica de troca de Pokémon.
+- A composição do grupo surge da combinação dos heróis escolhidos pelos participantes, não de um único jogador controlando seis heróis.
+
 ---
 
-## 7. Campo de Batalha
+## 8. Campo de Batalha
 
 ### Grade
 
@@ -194,22 +226,27 @@ A orientação visual pode ser espelhada entre equipes, mas os identificadores l
 
 - Três heróis começam em campo.
 - Os três heróis restantes ficam na reserva.
-- Heróis da reserva podem entrar durante a Preparação mediante custo e condição válidos.
-- O campo suporta até seis heróis ativos por lado, deixando espaços para reposicionamento, invocações, obstáculos ou efeitos de área.
+- Cada jogador pode manter no máximo três heróis ativos simultaneamente.
+- Heróis da reserva podem substituir heróis ativos durante a Preparação mediante custo de Mana e condição válidos.
+- Casas sem herói podem ser ocupadas por clones, tokens, barreiras e invocações criados por habilidades ou itens.
+- Unidades auxiliares não aumentam o limite de três heróis, mas podem preencher o tabuleiro e criar estratégias de ocupação.
 
-### Efeito de posição — intenção inicial
+### Prioridade e perfuração
 
-- **Frente:** maior acesso a ataques corpo a corpo e maior exposição.
-- **Meio:** faixa híbrida para suporte, alcance intermediário e proteção parcial.
-- **Trás:** maior segurança para suporte/alcance, com restrições contra alvos protegidos.
+- Ataques comuns priorizam o alvo válido mais à frente.
+- Unidades e barreiras à frente protegem o conteúdo posicionado atrás.
+- **Sem perfuração:** atinge somente o primeiro alvo válido.
+- **Perfurante 1:** atravessa o primeiro alvo e alcança os dois primeiros da linha de prioridade.
+- **Perfurante 2:** alcança os três primeiros da linha de prioridade.
+- Habilidades podem declarar exceções, alvo direto, área, linha, coluna ou regras próprias.
 
-As fórmulas exatas ainda não estão decididas.
+A distribuição exata entre linhas/colunas e o comportamento quando existem lacunas ainda precisam de um contrato visual e lógico fechado.
 
 ---
 
-## 8. Ciclo do Turno
+## 9. Ciclo do Turno
 
-### 8.1 Fase de Preparação
+### 9.1 Fase de Preparação
 
 Os participantes planejam simultaneamente dentro de um limite de tempo.
 
@@ -224,11 +261,17 @@ Possíveis ordens:
 - colocar herói da reserva em campo;
 - outras ações futuras autorizadas pelas regras.
 
+- **Ataque básico e modo de defesa custam 0 Mana.** Sempre existe uma ação útil disponível.
+- Habilidades, feitiços, itens, reposicionamentos especiais e substituições podem consumir Mana.
+- Habilidades mais poderosas possuem custos maiores e tornam-se naturalmente opções de lategame.
+- O modo de defesa permite planos de early game defensivos que preservam recursos para curvas de poder tardias.
+- Suportes podem gerar, preservar, reduzir, aumentar, transferir ou reagir ao gasto de Mana conforme suas habilidades específicas.
+
 Cada ordem possui custo, alvos válidos, restrições posicionais e pré-condições. O cliente mostra a intenção, mas o servidor valida tudo.
 
 A fase termina quando todos confirmam ou quando o cronômetro acaba. O servidor bloqueia o plano final antes da resolução.
 
-### 8.2 Fase de Resolução
+### 9.2 Fase de Resolução
 
 O servidor determina a sequência usando velocidade, prioridade da ação, modificadores e critérios de desempate definidos.
 
@@ -241,6 +284,14 @@ Bloquear planos → calcular ordem → executar eventos
 
 Animações representam os eventos confirmados; elas não decidem o resultado.
 
+### 9.3 Desconexão e WO
+
+- Em modos competitivos, abandonar ou exceder a janela de reconexão resulta em derrota por WO.
+- O WO afeta o ranking e pode aplicar punições adicionais de fila, recompensa ou reincidência.
+- O servidor, não o cliente desconectado, registra o resultado.
+- A duração da tolerância e a escala das punições ainda precisam ser definidas.
+- Em campanha/PvE cooperativo, a recuperação deve priorizar reconexão e continuidade do grupo; a regra competitiva não será copiada automaticamente.
+
 ### Interface de referência
 
 A referência visual enviada por Wall define a direção macro:
@@ -249,34 +300,46 @@ A referência visual enviada por Wall define a direção macro:
 - ordem de turno persistente;
 - timer central e status de confirmação;
 - grade e faixas posicionais legíveis;
-- PA visível e ações com custo explícito;
+- Mana visível e ações com custo explícito;
 - painel da ação selecionada;
 - log separado entre ações planejadas e histórico resolvido;
 - grande comando de confirmação da estratégia.
 
 ---
 
-## 9. Pontos de Ação e Entrada da Reserva
+## 10. Mana e Curva Estratégica
 
 ### Confirmado
 
-- A Preparação usa uma moeda/custo de ações.
-- Colocar um herói da reserva em campo também exige recurso acumulado.
-- O recurso cresce conforme a batalha avança, permitindo aumentar a presença no tabuleiro.
+- Mana é a economia universal de batalha nos modos PvE, PvP, cooperativo e Brawl.
+- Ela funciona como a moeda de turno de Hearthstone: a capacidade cresce ao longo das rodadas e é renovada para a nova Preparação.
+- Ataque básico e defesa custam 0.
+- Cada habilidade tem custo próprio; habilidades mais determinantes exigem mais Mana.
+- Substituir/descer um herói da reserva consome Mana.
+- O mesmo orçamento atende ações, habilidades e mudanças de composição; não existe um sistema paralelo de PA.
+- Suportes podem interagir com a economia de Mana e criar identidades de deck/composição.
 
-### Decisão crítica aberta
+### Objetivo de design
 
-Definir se existe:
+A curva de Mana cria momentos diferentes dentro da mesma batalha:
 
-1. **um único PA** para ações e entrada de heróis;
-2. **PA + recurso de convocação** separados;
-3. **PA por herói + recurso global da equipe**.
+- **Early game:** ataques básicos, defesa, preparação de tabuleiro e economia.
+- **Mid game:** habilidades de sinergia, substituições e disputas por posição.
+- **Late game:** habilidades de alto impacto, combos e condições de vitória construídas ao longo dos turnos.
 
-A referência visual mostra `PA 4/10` e regeneração temporal. Ainda precisa ser decidido se o PA regenera durante o cronômetro, apenas por turno ou por eventos de combate. Essa decisão altera profundamente o ritmo e a possibilidade de espera estratégica.
+### Números ainda abertos
+
+Ainda precisam ser definidos: Mana inicial, crescimento por rodada, limite máximo, regras de renovação, custos de substituição e efeitos permitidos de aceleração/desconto.
+
+### Guardrails necessários
+
+- Defesa gratuita não pode sustentar partidas infinitas; será necessário limite, pressão crescente, fadiga, desempate ou outra regra antistall.
+- Manipulação de Mana por suportes precisa de limites por turno/efeito para não quebrar a curva planejada.
+- Efeitos de redução de custo não podem transformar habilidades de lategame em abertura consistente sem contrapartida.
 
 ---
 
-## 10. Autoridade e Persistência
+## 11. Autoridade e Persistência
 
 ### Servidor autoritativo
 
@@ -303,7 +366,7 @@ O cliente controla:
 
 ---
 
-## 11. Papel do Mestre
+## 12. Papel do Mestre
 
 O Mestre não é apenas um administrador. É um papel de jogo com autoridade narrativa controlada.
 
@@ -343,28 +406,34 @@ O mundo permanente e a campanha compartilham conta, coleção, armas, economia e
 
 ---
 
-## 12. Decisões em Aberto
+## 13. Decisões em Aberto
 
 Estas questões não devem ser implementadas por suposição:
 
-1. Batalha de campanha é um jogador contra IA, vários jogadores cooperando ou ambos?
-2. Cada jogador controla seus seis heróis ou existe uma equipe compartilhada pelo grupo?
-3. PA de ações e recurso de entrada da reserva são o mesmo sistema?
-4. Como PA é recuperado: por turno, tempo real, ação, dano ou combinação?
-5. O que acontece quando o timer acaba sem confirmação?
-6. Uma casa comporta exatamente uma unidade? Invocações usam as mesmas casas?
-7. Como alcance, bloqueio e troca de alvo funcionam entre frente/meio/trás?
-8. Qual é a condição e o custo para retirar um herói ativo ou substituir um derrotado?
-9. Como derrota, fuga, desconexão e retorno à batalha funcionam?
-10. O mundo 3D usa câmera fixa por cena, câmera orbital limitada ou seguimento livre?
-11. Qual é o primeiro hardware e viewport alvo: desktop apenas ou mobile desde o início?
-12. Como progressão infinita evita tornar regiões antigas e novos jogadores irrelevantes?
+1. Qual é a fórmula exata de Mana: valor inicial, crescimento, teto e renovação?
+2. Qual é o custo padrão para substituir/descer um herói?
+3. Quais interações de suporte com Mana são permitidas sem quebrar a curva de lategame?
+4. O que acontece quando o timer acaba sem confirmação: defesa automática, último plano válido ou outra regra?
+5. Uma casa comporta exatamente uma entidade? Barreiras e tokens substituem ou compartilham espaço?
+6. Como linhas, colunas e lacunas alteram prioridade e perfuração?
+7. Como o jogador escolhe entre múltiplos alvos igualmente prioritários?
+8. Qual é a janela de reconexão antes de uma derrota por WO?
+9. Quais punições de ranking, fila ou recompensa acompanham o WO em cada modo competitivo?
+10. Como desconexão funciona em PvE cooperativo e campanha, onde ranking pode não ser aplicável?
+11. No cooperativo, todos compartilham uma única grade 3×3 ou cada jogador possui seu próprio tabuleiro?
+12. Quantos participantes podem ocupar a mesma batalha cooperativa e como áreas/efeitos atravessam seus tabuleiros?
+13. Como o emparelhamento, vida do jogador e eliminação funcionam no Brawl de oito jogadores?
+14. Duelo e Brawl usam poder persistente integral, matchmaking por faixa ou normalização competitiva?
+15. Qual regra antistall impede ciclos indefinidos de defesa gratuita?
+16. O mundo 3D usa câmera fixa por cena, câmera orbital limitada ou seguimento livre?
+17. Qual é o primeiro hardware e viewport alvo: desktop apenas ou mobile desde o início?
+18. Como progressão infinita evita tornar regiões antigas e novos jogadores irrelevantes?
 
 ---
 
-## 13. Ordem Recomendada para os Próximos Aprofundamentos
+## 14. Ordem Recomendada para os Próximos Aprofundamentos
 
-1. **Contrato da batalha:** PA, convocação, grade, alvo, resolução, vitória e desconexão.
+1. **Contrato da batalha:** curva de Mana, substituição, ocupação, prioridade, perfuração, resolução, WO e desconexão.
 2. **Mundo persistente versus campanha:** instâncias, transporte, isolamento e retorno seguro.
 3. **Progressão e economia:** heróis, armas infinitas, itens, venda, upgrade e equilíbrio de longo prazo.
 4. **Exploração 3D:** câmera, movimentação, visual, assets, colisão e vertical slice.

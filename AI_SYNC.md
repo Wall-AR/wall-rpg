@@ -192,6 +192,18 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
   - Próximos passos: aprofundar contrato de PA/convocação, cooperação, grid, timeout e desconexão antes da implementação
   - Branch/commit: codex/docs-002-macro-game-design; commit será criado após este registro
   - Status: CONCLUÍDO
+
+[2026-07-12] [Codex] [DOCS-003] [DESIGN] Consolidar Mana universal, ocupação 3×3, cooperativo e modos iniciais
+  - Comportamento alterado: PA removido do design-alvo; Mana passa a reger ações, habilidades e substituições em PvE, PvP, cooperativo e Brawl
+  - Arquivos modificados: GAME_DESIGN.md, PROJECT_ROADMAP.md, AI_SYNC.md
+  - Contratos, APIs ou migrations: nenhum runtime alterado; documentados máximo de 3 heróis por jogador, entidades auxiliares nas casas vagas, prioridade/perfuração, herói individual no coop e WO competitivo
+  - Validação automatizada: .ai/preflight.ps1 (PASS), git diff --check (PASS), busca por termos contraditórios PA/6 ativos (PASS)
+  - Teste manual: decisões de Wall confrontadas com os fluxos de Mundo RPG, Duelo, Brawl e campanha cooperativa
+  - Não testado: regras ainda não implementadas; curva numérica de Mana, grid cooperativo, antistall, matchmaking e punições permanecem abertas
+  - Riscos, mocks e fallbacks mantidos: BattleRoom atual continua 3v3 simples; nenhuma alteração de código ou dependência
+  - Próximos passos: definir números da Mana e topologia do tabuleiro cooperativo antes de escrever o novo schema de batalha
+  - Branch/commit: codex/docs-003-mana-modes-battle-contract; commit será criado após este registro
+  - Status: CONCLUÍDO
 ```
 
 ---
@@ -203,6 +215,7 @@ Uma migração Drizzle deve ser gerada **depois** de atualizar a branch com `ori
 | DOCS-001 | Auditar projeto e fortalecer protocolo multi-IA | Codex | ✅ Concluído | `main` (sessão exclusiva anterior ao protocolo 2.0) | `AI_SYNC.md`, `PROJECT_ROADMAP.md` | lint + build + smoke test: concluídos |
 | OPS-001 | Estruturar base operacional dos agentes | Codex | ✅ Concluído | `codex/ops-001-agent-foundation` | `AGENTS.md`, `.ai/*`, `AI_SYNC.md` | Preflight + `git diff --check`: concluídos |
 | DOCS-002 | Consolidar visão macro, fluxo de batalha e decisão de exploração 3D | Codex | ✅ Concluído | `codex/docs-002-macro-game-design` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AGENTS.md`, `.ai/preflight.ps1`, `AI_SYNC.md` | Visão, imagem e compatibilidade R3F/React validadas |
+| DOCS-003 | Consolidar Mana universal, ocupação 3×3, coop e modos iniciais | Codex | ✅ Concluído | `codex/docs-003-mana-modes-battle-contract` | `GAME_DESIGN.md`, `PROJECT_ROADMAP.md`, `AI_SYNC.md` | Mana, modos, ocupação e termos contraditórios validados |
 | SEC-001 | Exigir `GM_SECRET` seguro e remover fallback em produção | NÃO ATRIBUÍDO | ⏳ Pendente | — | `server/src/rooms/GameRoom.ts`, `.env.example` | Testar dev + falha segura em produção |
 | BUG-001 | Corrigir proxy dev de `/companions` | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/vite.config.ts` | Smoke: resposta JSON autenticada |
 | BUG-002 | Migrar callbacks de presença para API Colyseus 0.17 | NÃO ATRIBUÍDO | ⏳ Pendente | — | `client/src/screens/lobby/useLobbyData.ts` | Presença sem erros; 2 clientes entram/saem |
